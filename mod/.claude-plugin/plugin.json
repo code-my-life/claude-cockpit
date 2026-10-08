@@ -1,0 +1,7 @@
+{
+  "name": "sessions",
+  "version": "0.1.0",
+  "author": { "name": "Code My Life" },
+  "description": "Panneau listant les conversations ouvertes et leur statut : travaille, attend une permission, a fini",
+  "types": "./types/index.d.ts"
+}
