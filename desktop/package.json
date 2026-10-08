@@ -1,0 +1,8 @@
+{
+  "name": "cockpit-desktop",
+  "private": true,
+  "main": "main.js",
+  "devDependencies": {
+    "electron": "^44.7.0"
+  }
+}

@@ -1,0 +1,2052 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ton équipe</title>
+<!--SEED-->
+<style>
+  :root {
+    --bg: #F7F7F8;
+    --surface: #FFFFFF;
+    --line: #E6E7EA;
+    --field: #E1E2E6;
+    --ink: #15161A;
+    --ink-2: #3F424A;
+    --muted: #6B6F7A;
+    --indigo: #4338CA;
+    --indigo-hover: #3730A3;
+    --indigo-tint: #EEF0FF;
+    --orange: #F97316;
+    --orange-ink: #C2410C;
+    --orange-line: #FAD9B8;
+    --blue: #2563EB;
+    --idle-ring: #D4D5DA;
+    --green-ink: #15803D;
+    --gold: #FFC93C;
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+  a { color: var(--indigo); }
+  a:hover { color: var(--indigo-hover); }
+  button { font-family: inherit; }
+
+  .wrap { zoom: var(--zoom, 1); max-width: 920px; margin: 0 auto; padding: 36px 32px 96px; display: flex; flex-direction: column; gap: 36px; }
+  .display { font-weight: 800; letter-spacing: -0.03em; }
+
+  .btn { font-family: var(--font); font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; background: transparent; border: 1px solid transparent; color: var(--ink-2); transition: background 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, transform 140ms ease-out; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+  .btn:hover { background: #EDEDF0; color: var(--ink); }
+  .btn:active { transform: scale(0.96); }
+  .btn-line { border-color: var(--field); background: var(--surface); }
+  .btn-line:hover { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-tint); }
+  .btn-primary { background: var(--indigo); border-color: var(--indigo); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--indigo-hover); color: #FFFFFF; }
+  .btn-icon { width: 36px; height: 36px; padding: 0; }
+  .btn:focus-visible, .field:focus-visible, .av:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px; }
+  .field { font-family: var(--font); font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--field); border-radius: 10px; }
+  .field::placeholder { color: var(--muted); }
+  .field:focus { border-color: var(--indigo); outline: none; }
+  .trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  header { display: flex; flex-direction: column; gap: 24px; }
+  .topbar { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .topbar-left { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { margin: 0; font-size: 30px; }
+  .stats { font-size: 14px; color: var(--muted); }
+  .stats .count { display: inline-block; font-weight: 700; color: var(--indigo); }
+  #day-stats { font-size: 12px; color: #8A8D96; }
+  .tools { display: flex; align-items: center; gap: 4px; }
+  .tools .btn { height: 36px; min-width: 40px; padding: 0 8px; color: var(--muted); }
+  .tools .bell.on { color: var(--indigo); }
+  .clock { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; padding-left: 10px; }
+  .fresh-note { font-size: 13px; color: var(--muted); margin-top: -16px; }
+  .fresh-note.stale { color: var(--orange-ink); }
+
+  .banner { display: none; background: #FFF4CC; border: 1px solid #F1D58A; color: #7A5200; border-radius: 14px; padding: 12px 16px; font-size: 14px; }
+  .banner.show { display: block; }
+
+  .crew { display: flex; flex-wrap: wrap; gap: 16px; }
+  .av { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 64px; transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .av:hover { transform: translateY(-4px) rotate(-3deg); }
+  .av.inert { cursor: default; }
+  .av-face { position: relative; width: 54px; height: 54px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ring); }
+  .av-emoji { position: absolute; right: -9px; top: -9px; width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 0 0 2px var(--ring); display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+  .av-level { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .t-stats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .t-stat { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #F2F2F5; font-size: 12.5px; color: var(--muted); }
+  .t-stat-value { font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+  section { display: flex; flex-direction: column; }
+  section h2 { margin: 0 0 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .lane { display: flex; flex-direction: column; gap: 10px; }
+
+  .card { border-radius: 18px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 1px 2px rgba(21, 22, 26, 0.04); }
+  .card.permission { border-color: var(--orange-line); }
+  .card-head { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: start; gap: 14px; padding: 16px 16px 12px; }
+  .card-av { width: 46px; height: 46px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; }
+  .card-main { all: unset; cursor: pointer; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .card-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; color: var(--muted); }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--ink-2); }
+  .card-ask { font-size: 18px; line-height: 1.4; font-weight: 500; color: var(--ink); }
+  .card-ask.stale { color: var(--muted); }
+  .card-side { display: flex; align-items: center; gap: 2px; }
+  .pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; margin-right: 6px; white-space: nowrap; }
+  .card-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 16px 16px 76px; }
+  .card-quick .btn { height: 36px; padding: 0 14px; }
+  .card-quick .order { color: var(--indigo); padding: 0 12px; }
+  .card-body { display: flex; flex-direction: column; gap: 14px; padding: 0 18px 18px 76px; }
+  .plain { font-size: 16px; line-height: 1.6; color: var(--ink-2); max-width: 66ch; }
+  .plain p { margin: 4px 0; }
+  .plain.stale { opacity: 0.7; }
+  .link-btn { align-self: flex-start; height: 32px; padding: 0 8px; margin-left: -8px; color: var(--indigo); }
+  .thread { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+  .bubble-row { display: flex; }
+  .bubble-row.user { justify-content: flex-end; }
+  .bubble { max-width: 80%; padding: 10px 14px; font-size: 15px; line-height: 1.55; }
+  .bubble.user { background: var(--indigo); color: #FFFFFF; border-radius: 16px 16px 4px 16px; }
+  .bubble.user a { color: #FFFFFF; }
+  .bubble.assistant { background: #F1F1F3; color: var(--ink); border-radius: 16px 16px 16px 4px; }
+  .bubble p { margin: 3px 0; }
+  .note { font-size: 13px; color: var(--muted); font-style: italic; }
+  textarea.field { width: 100%; padding: 12px 14px; line-height: 1.5; resize: vertical; min-height: 84px; }
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb button { position: absolute; top: 3px; right: 3px; border: 0; background: rgba(0, 0, 0, 0.6); color: #FFFFFF; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; padding: 0; cursor: pointer; }
+  .card-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+  .card-actions .group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .card-actions .btn { height: 40px; padding: 0 14px; }
+  .feedback { font-size: 13px; color: var(--green-ink); }
+  .feedback.error { color: #B91C1C; }
+
+  h3.md, h4.md, h5.md, h6.md { margin: 10px 0 4px; font-weight: 700; }
+  h3.md { font-size: 16px; } h4.md { font-size: 15px; } h5.md, h6.md { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  ul.md, ol.md { margin: 4px 0 6px; padding-left: 20px; }
+  ul.md li, ol.md li { margin: 2px 0; }
+  ul.md li::marker, ol.md li::marker { color: var(--indigo); }
+  .bubble.user ul.md li::marker, .bubble.user ol.md li::marker { color: #FFFFFF; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.9em; background: rgba(67, 56, 202, 0.07); border-radius: 5px; padding: 0 4px; }
+  pre.md { background: #EEEEF1; border-radius: 8px; padding: 8px 10px; overflow-x: auto; margin: 6px 0; }
+  pre.md code { background: none; padding: 0; font-size: 12.5px; }
+  blockquote.md { margin: 6px 0; padding: 2px 10px; border-left: 3px solid var(--field); color: var(--muted); }
+  hr.md { border: 0; border-top: 1px solid var(--field); margin: 8px 0; }
+  table.md { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
+  table.md th, table.md td { border: 1px solid var(--field); padding: 4px 8px; text-align: left; vertical-align: top; }
+  table.md th { background: var(--bg); }
+
+  .empty { display: flex; align-items: center; gap: 18px; padding: 24px 28px; border-radius: 22px; background: var(--indigo); color: #FFFFFF; }
+  .empty-icon { width: 54px; height: 54px; border-radius: 18px; background: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 28px; flex: none; }
+  .empty-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .empty-line { font-size: 15px; color: #E0E7FF; }
+
+  .mrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 8px 14px; border-radius: 12px; transition: background 140ms ease-out; }
+  .mrow:hover { background: #FFFFFF; }
+  .mrow-av { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+  .mrow-main { all: unset; cursor: pointer; min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+  .mrow-tools { display: flex; gap: 2px; }
+  .card.mission { margin: 6px 0; }
+  .card.mission .mrow { padding: 12px 16px 8px; }
+  .card.mission .mrow:hover { background: transparent; }
+  .card.mission .card-body { padding-left: 64px; }
+  .mrow-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .mrow-activity { font-size: 14px; }
+  .mrow-age { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .mrow .btn-icon { width: 30px; height: 30px; opacity: 0; }
+  .mrow:hover .btn-icon, .mrow .btn-icon:focus-visible, .card.mission .btn-icon { opacity: 1; }
+  .blocked .mrow-av { opacity: 0.6; }
+  .blocked .mrow-title { color: var(--ink-2); }
+
+  .rest-toggle { align-self: flex-start; height: 36px; padding: 0 10px; margin-left: -10px; color: var(--muted); font-weight: 500; }
+  .rest-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0 7px 14px; font-size: 14px; color: var(--ink-2); }
+  .rest-row a { color: inherit; text-decoration: none; }
+  .rest-row a:hover { color: var(--indigo); }
+  .rest-side { flex: none; color: var(--muted); display: flex; align-items: baseline; gap: 8px; }
+  .rest-side .btn { height: 28px; padding: 0 8px; font-size: 12.5px; }
+
+  .changed { animation: changed 1200ms ease-out; }
+  @keyframes changed { 0% { background-color: #EEF0FF; } 100% { background-color: var(--surface); } }
+  .mission.changed { animation-name: changedRow; }
+  @keyframes changedRow { 0% { background-color: #EEF0FF; } 100% { background-color: transparent; } }
+  .repo-menu { position: fixed; z-index: 50; min-width: 280px; max-width: 460px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(21, 22, 26, 0.16); padding: 6px; display: flex; flex-direction: column; }
+  .repo-title { font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 10px 4px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .repo-item { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 10px; }
+  .repo-item:hover, .repo-item:focus-visible { background: var(--indigo-tint); }
+  .repo-item.muted .repo-name { color: var(--muted); font-weight: 500; }
+  .repo-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .repo-path { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .park-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 10px 8px; }
+  .park-chips .btn { height: 30px; padding: 0 10px; font-size: 13px; }
+  .park-input { margin: 0 10px; padding: 8px 10px; width: calc(100% - 20px); }
+  .park-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 10px; }
+  .park-actions .btn { height: 34px; padding: 0 12px; }
+  .parked { border-left: 4px solid transparent; border-radius: 12px; }
+  .parked.parked-blocked { border-left-color: #DC2626; background: #FEF2F2; }
+  .parked.parked-later { border-left-color: var(--idle-ring); }
+  .card.parked.parked-blocked { border-color: #FCA5A5; border-left-color: #DC2626; background: var(--surface); }
+  .parked .resume { height: 30px; padding: 0 10px; font-size: 13px; }
+  .moved { font-size: 12px; font-weight: 700; color: var(--indigo); margin-right: 6px; white-space: nowrap; }
+  .backdrop { position: fixed; inset: 0; background: rgba(21, 22, 26, 0.35); z-index: 25; }
+  .card.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: 30; overflow-y: auto; box-shadow: 0 20px 60px rgba(21, 22, 26, 0.3); }
+  .card.big .thread { max-height: none; overflow: visible; }
+
+  .wave { animation: wave 1.8s ease-in-out infinite; transform-origin: 70% 80%; }
+  @keyframes wave { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-16deg); } 80% { transform: rotate(12deg); } 90% { transform: rotate(-6deg); } }
+  .pop { animation: pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes pop { 0% { transform: scale(0.4) rotate(-12deg); } 100% { transform: scale(1) rotate(0); } }
+  .bump { animation: bump 460ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
+  .reward { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 10px 20px 10px 10px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: 15px; box-shadow: 0 16px 40px rgba(21, 22, 26, 0.22); white-space: nowrap; z-index: 40; animation: toastIn 380ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .reward-badge { font-weight: 800; font-size: 15px; padding: 5px 12px; border-radius: 999px; background: var(--gold); color: var(--ink); }
+  .reward.error .reward-badge { background: #FCA5A5; }
+  .reward.info .reward-badge { background: #E0E7FF; }
+  .reward.out { opacity: 0; transition: opacity 300ms ease-in; }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 24px) scale(0.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+  .sparks { position: fixed; left: 50%; bottom: 40px; width: 0; height: 0; pointer-events: none; z-index: 39; }
+  .spark { position: absolute; left: 0; top: 0; border-radius: 3px; animation: fly 1100ms cubic-bezier(0.22, 1, 0.36, 1) forwards; opacity: 0; }
+  @keyframes fly { 0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(0.4); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .wave, .pop, .bump, .reward, .changed { animation: none !important; } .av, .btn { transition: none !important; } .spark { display: none; } }
+  .view-switch { display: inline-flex; padding: 3px; border-radius: 12px; background: #EDEDF0; gap: 2px; margin-right: 6px; }
+  .tools .view-switch .btn { height: 30px; min-width: 0; padding: 0 12px; color: var(--muted); border-radius: 9px; }
+  .tools .view-switch .btn[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(21, 22, 26, 0.08); }
+  .wrap.team-mode { max-width: 1600px; }
+  .wrap.team-mode #crew, .wrap.team-mode > section { display: none !important; }
+  #team { display: none; flex-direction: column; gap: 20px; }
+  .wrap.team-mode #team { display: flex; }
+  .t-board { display: flex; flex-direction: column; background: var(--surface); border-radius: 28px; box-shadow: 0 1px 2px rgba(21, 22, 26, 0.04), 0 12px 32px rgba(21, 22, 26, 0.05); overflow: hidden; }
+  .t-zone { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 24px 10px; }
+  .t-zone + .t-zone { border-top: 1px solid #F0F0F3; }
+  .t-zone.stuck { background: #FFFBFB; }
+  .t-zone.later { background: #FAFAFB; }
+  .t-zone-head { display: flex; align-items: center; gap: 10px; }
+  .t-dot { width: 10px; height: 10px; border-radius: 999px; }
+  .t-zone-title { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+  .t-zone-count { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .t-grid { height: 112px; display: flex; align-items: center; gap: 14px; overflow-x: auto; overflow-y: hidden; padding: 6px 2px; overscroll-behavior-x: contain; }
+  .t-grid .t-agent { flex: none; width: 300px; display: grid; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 14px; row-gap: 4px; align-items: center; padding: 6px 10px 6px 4px; border-radius: 16px; }
+  .t-grid .t-agent:hover { transform: translateY(-3px); background: #F7F7F9; }
+  .t-grid .t-agent .t-mii { grid-column: 1; grid-row: 1 / span 2; zoom: 0.8; }
+  .t-grid .t-agent .t-bubble { grid-column: 2; grid-row: 1; text-align: left; padding: 7px 10px; font-size: 13.5px; border-radius: 12px; }
+  .t-grid .t-agent .t-clamp { -webkit-line-clamp: 2; }
+  .t-grid .t-agent .t-tail { left: -6px; top: 50%; bottom: auto; margin-left: 0; margin-top: -5.5px; border-right: 0; border-bottom: 1px solid var(--b-line); border-left: 1px solid var(--b-line); border-radius: 0 0 0 3px; }
+  .t-grid .t-agent .t-name { grid-column: 2; grid-row: 2; flex-direction: row; justify-content: space-between; gap: 8px; min-width: 0; }
+  .t-grid .t-agent .t-title { max-width: none; min-width: 0; font-size: 13px; }
+  .t-grid .t-agent .t-meta { flex: none; white-space: nowrap; }
+  .t-empty { height: 112px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; padding: 24px 8px; text-align: center; }
+  .t-empty-icon { font-size: 30px; }
+  .t-empty-title { font-size: 19px; font-weight: 800; }
+  .t-empty-line { font-size: 14px; color: var(--muted); }
+  .t-agent { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 16px; transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .t-agent:hover { transform: translateY(-6px); }
+  .t-agent:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px; }
+  .t-agent.is-current { cursor: default; }
+  .t-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .t-bubble { position: relative; width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; text-align: center; box-shadow: 0 2px 10px rgba(21, 22, 26, 0.06); background: var(--b-bg); color: var(--b-fg); border: 1px solid var(--b-line); font-weight: var(--b-weight, 400); }
+  .t-tail { position: absolute; left: 50%; bottom: -6px; width: 11px; height: 11px; margin-left: -5.5px; transform: rotate(45deg); border-radius: 0 0 3px 0; background: var(--b-bg); border-right: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line); }
+  .t-mii { position: relative; display: block; width: 72px; height: 90px; flex: none; }
+  .t-spot { position: absolute; left: 8px; bottom: -6px; width: 56px; height: 12px; border-radius: 50%; }
+  .t-body { position: absolute; left: 11px; bottom: 0; width: 50px; height: 33px; border-radius: 25px 25px 12px 12px; box-shadow: inset -5px -4px 0 rgba(0, 0, 0, 0.08); }
+  .t-neck { position: absolute; left: 29px; bottom: 27px; width: 14px; height: 10px; border-radius: 0 0 7px 7px; }
+  .t-ear { position: absolute; top: 28px; width: 9px; height: 12px; border-radius: 50%; }
+  .t-head { position: absolute; left: 13px; top: 6px; width: 46px; height: 50px; border-radius: 50% 50% 46% 46%; box-shadow: inset -5px -5px 0 rgba(0, 0, 0, 0.05); }
+  .t-hair { position: absolute; left: -3px; top: -5px; width: 52px; height: 22px; border-radius: 26px 26px 8px 8px; }
+  .t-fringe { position: absolute; left: 3px; top: 10px; width: 24px; height: 11px; border-radius: 0 0 16px 4px; }
+  .t-eye { position: absolute; top: 24px; width: 6px; height: 8px; border-radius: 3px; background: #2A2320; animation: tBlink 5s infinite; }
+  .t-eye::after { content: ''; position: absolute; top: 1px; left: 1px; width: 2px; height: 2px; border-radius: 50%; background: #FFFFFF; }
+  @keyframes tBlink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+  .t-cheek { position: absolute; top: 33px; width: 8px; height: 4px; border-radius: 50%; background: #F28C8C; opacity: 0.35; }
+  .t-mouth { position: absolute; left: 50%; top: 37px; transform: translateX(-50%); box-sizing: border-box; }
+  .m-smile { width: 12px; height: 6px; border: 2px solid #2A2320; border-top: none; border-radius: 0 0 10px 10px; }
+  .m-o { width: 7px; height: 8px; border-radius: 50%; background: #2A2320; top: 36px; }
+  .m-flat { width: 9px; height: 2px; border-radius: 2px; background: #2A2320; top: 40px; }
+  .m-frown { width: 12px; height: 6px; border: 2px solid #2A2320; border-bottom: none; border-radius: 10px 10px 0 0; top: 39px; }
+  .t-badge { position: absolute; right: -6px; top: -2px; width: 28px; height: 28px; border-radius: 999px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 2px 8px rgba(21, 22, 26, 0.12); }
+  .t-name { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .t-title { max-width: 190px; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .t-meta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .t-meta .pill { margin: 0; font-size: 11.5px; padding: 2px 8px; }
+  .t-floor { height: 6px; border-radius: 999px; background: #EDEDF2; }
+  .t-floor.run { background-image: repeating-linear-gradient(90deg, #DCDDFB 0 10px, #EDEDF2 10px 20px); background-size: 20px 100%; animation: tBelt 1.4s linear infinite; }
+  @keyframes tBelt { from { background-position: 0 0; } to { background-position: 20px 0; } }
+  .t-bob { animation: tBob 2.6s ease-in-out infinite; }
+  @keyframes tBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  .t-shake { animation: tShake 2.8s ease-in-out infinite; }
+  @keyframes tShake { 0%, 86%, 100% { transform: translateX(0); } 89% { transform: translateX(-3px); } 93% { transform: translateX(3px); } 97% { transform: translateX(-2px); } }
+  .t-rest { display: flex; flex-direction: column; gap: 10px; }
+  .t-rest .rest-toggle { margin-left: -12px; }
+  .t-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .t-chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px; background: var(--surface); font-size: 13px; color: var(--ink-2); box-shadow: 0 1px 2px rgba(21, 22, 26, 0.05); text-decoration: none; max-width: 100%; }
+  a.t-chip:hover { color: var(--indigo); }
+  .t-chip-state { color: var(--muted); white-space: nowrap; }
+  .t-modal { position: fixed; left: 0; top: 0; width: calc(100vw / var(--zoom, 1)); height: calc(100vh / var(--zoom, 1)); z-index: 30; display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
+  .t-backdrop { position: absolute; inset: 0; background: rgba(21, 22, 26, 0.38); }
+  .t-sheet { position: relative; width: 100%; max-width: min(1500px, calc(96vw / var(--zoom, 1))); max-height: calc(96vh / var(--zoom, 1)); overflow-x: hidden; overflow-y: auto; border-radius: 28px; background: var(--surface); box-shadow: 0 24px 64px rgba(21, 22, 26, 0.25); display: flex; flex-direction: column; gap: 16px; padding: 22px 24px 24px; }
+  .t-sheet > * { flex-shrink: 0; }
+  .t-sheet .thread { max-height: calc(70vh / var(--zoom, 1)); }
+  .t-sheet .plain { max-width: none; }
+  .t-sheet.enter { animation: tSheetIn 260ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes tSheetIn { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: none; } }
+  .t-sheet-head { display: flex; align-items: center; gap: 16px; }
+  .t-sheet-title { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+  .t-sheet-sub { font-size: 13px; color: var(--muted); }
+  .t-ask { padding: 14px 16px; border-radius: 16px; font-size: 18px; line-height: 1.45; font-weight: 500; }
+  .t-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .t-quick .btn { height: 38px; padding: 0 16px; }
+  .t-sheet .card-actions .btn { height: 38px; padding: 0 10px; }
+  .t-sheet .card-actions .btn-primary { height: 44px; padding: 0 20px; }
+  @media (prefers-reduced-motion: reduce) { .t-eye, .t-floor.run, .t-bob, .t-shake, .t-sheet.enter { animation: none !important; } .t-agent { transition: none !important; } }
+  #mini { display: none; }
+  html.mini-mode, html.mini-mode body { background: transparent; overflow: hidden; }
+  body.mini-mode .wrap { display: none; }
+  body.mini-mode #mini { display: block; }
+  .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 6px 6px 0; pointer-events: none; }
+  .dock { pointer-events: auto; position: relative; display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-radius: 24px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 10px 30px rgba(21, 22, 26, 0.22), 0 0 0 1px rgba(21, 22, 26, 0.06); -webkit-app-region: drag; }
+  .dock button { -webkit-app-region: no-drag; }
+  .dock-count { all: unset; cursor: pointer; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 17px; background: var(--orange); color: #FFFFFF; box-shadow: 0 6px 14px rgba(249, 115, 22, 0.35); margin-right: 4px; }
+  .dock-count.calm { background: #DCFCE7; color: var(--green-ink); box-shadow: none; }
+  .dock-count-value { font-size: 22px; font-weight: 800; line-height: 1; }
+  .dock-count-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+  .dock-sep { flex: none; width: 1px; height: 44px; background: var(--line); margin: 0 4px; }
+  .mini-head { all: unset; cursor: pointer; flex: none; position: relative; display: flex; align-items: flex-end; justify-content: center; width: 50px; height: 58px; border-radius: 14px; transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background 140ms ease-out; }
+  .mini-head:hover { transform: translateY(-4px); background: #F2F2F5; }
+  .mini-head .t-mii { zoom: 0.6; }
+  .mini-head.working, .mini-head.later { opacity: 0.5; }
+  .mini-head.working:hover { opacity: 1; }
+  .mini-tip { position: absolute; right: -6px; bottom: calc(100% + 10px); width: 230px; padding: 8px 11px; border-radius: 12px; background: #15161A; color: #FFFFFF; font-size: 12px; line-height: 1.4; text-align: left; opacity: 0; transform: translateY(4px); transition: opacity 140ms ease-out, transform 140ms ease-out; pointer-events: none; }
+  .mini-tip strong { display: block; font-size: 12.5px; margin-bottom: 2px; }
+  .mini-head:hover .mini-tip { opacity: 1; transform: none; }
+  .mini-head.fresh { animation: miniHop 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 2; }
+  @keyframes miniHop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } }
+  .dock-quit { all: unset; cursor: pointer; position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 999px; background: #FFFFFF; color: var(--muted); font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(21, 22, 26, 0.2); opacity: 0; transition: opacity 140ms ease-out; }
+  .dock:hover .dock-quit { opacity: 1; }
+  .dock-calm { font-size: 12.5px; color: var(--muted); padding: 0 6px; white-space: nowrap; }
+  body.mini-mode .t-modal { padding: 0; }
+  body.mini-mode .reward { left: auto; right: 8px; bottom: 96px; transform: none; white-space: normal; max-width: calc(100vw - 16px); animation: miniToastIn 280ms ease-out; }
+  @keyframes miniToastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  body.mini-mode .sparks { left: auto; right: 120px; bottom: 60px; }
+  body.mini-mode .t-backdrop { background: transparent; pointer-events: none; }
+  body.mini-mode .t-modal { align-items: flex-end; }
+  body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; border-radius: 22px; box-shadow: 0 10px 30px rgba(21, 22, 26, 0.25), 0 0 0 1px rgba(21, 22, 26, 0.06); }
+  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } }
+  body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
+  .nc-label { font-size: 13px; font-weight: 700; color: var(--ink-2); }
+  .nc-label span { font-weight: 400; color: var(--muted); }
+  .nc-search { width: 100%; padding: 10px 12px; }
+  .nc-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+  .nc-item { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; column-gap: 8px; padding: 7px 10px; border-radius: 9px; cursor: pointer; }
+  .nc-item:hover { background: var(--indigo-tint); }
+  .nc-item input { margin: 0; accent-color: var(--indigo); }
+  .nc-item-text { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+  .nc-name { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .nc-path { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nc-picked { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; align-items: center; }
+  .nc-chip { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--indigo-tint); color: var(--indigo); }
+  .nc-none { font-size: 12.5px; color: var(--muted); }
+  .nc-note { font-size: 12.5px; color: var(--muted); }
+  .nc-text { min-height: 100px; }
+  .dock-new { all: unset; cursor: pointer; flex: none; width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: var(--indigo); background: var(--indigo-tint); margin-right: 4px; }
+  .dock-new:hover { background: #E0E4FF; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <header>
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 class="display">Ton équipe</h1>
+        <span class="stats"><span class="count" id="relaunched">0</span> relances aujourd'hui · record <span id="record">0</span><span id="day-stats"></span></span>
+      </div>
+      <div class="tools">
+        <button type="button" class="btn" id="new-conv" title="Nouvelle conversation" aria-label="Nouvelle conversation">➕</button>
+        <div class="view-switch" role="group" aria-label="Vue">
+          <button type="button" class="btn" data-view="list" aria-pressed="true">Liste</button>
+          <button type="button" class="btn" data-view="team" aria-pressed="false">Équipe</button>
+        </div>
+        <button type="button" class="btn" id="zoom-out" aria-label="Réduire le texte">A−</button>
+        <button type="button" class="btn" id="zoom-in" aria-label="Agrandir le texte">A+</button>
+        <button type="button" class="btn bell" id="bell" aria-label="Activer les notifications" style="width: 40px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        </button>
+        <span class="clock display" id="clock">--:--</span>
+      </div>
+    </div>
+    <div class="fresh-note" id="freshness">en attente des données…</div>
+    <div class="banner" id="banner">Version lecture seule. Pour donner des ordres depuis cette page, ouvre <a href="http://127.0.0.1:48123/">http://127.0.0.1:48123/</a> (une conversation avec le mod doit être ouverte).</div>
+    <div class="crew" id="crew"></div>
+  </header>
+
+  <section id="s-waiting" aria-labelledby="h-waiting">
+    <h2 id="h-waiting" class="display">Attendent tes ordres <span style="color: var(--orange-ink)" id="n-waiting">0</span></h2>
+    <div class="lane"></div>
+  </section>
+
+  <section id="s-working" aria-labelledby="h-working">
+    <h2 id="h-working" class="display">En mission <span style="color: var(--blue)" id="n-working">0</span></h2>
+    <div class="lane" style="gap: 2px"></div>
+  </section>
+
+  <section id="s-parked" aria-labelledby="h-parked">
+    <h2 id="h-parked" class="display">Mis de côté <span style="color: var(--muted)" id="n-parked">0</span></h2>
+    <div class="lane" style="gap: 6px"></div>
+  </section>
+
+  <section id="s-others" style="gap: 6px">
+    <button type="button" class="btn rest-toggle" id="rest-toggle" aria-expanded="false"></button>
+    <div class="lane" style="gap: 0" id="rest-list"></div>
+  </section>
+
+  <div id="team"></div>
+</div>
+<div id="mini"></div>
+<div id="newconv"></div>
+
+<script>
+  const DATA_FILE = 'conversations-data.js';
+  const DEEP_LINK_PREFIX = 'claude://claude.ai/epitaxy/';
+  const SERVER_PORT = 48123;
+  const STALE_AFTER_MS = 20000;
+  const SENT_GRACE_MS = 60000;
+  const STATS_KEY = 'cockpit.stats';
+  const ZOOM_KEY = 'cockpit.zoom';
+  const VIEW_KEY = 'cockpit.view';
+  const ZOOM_MIN = 0.85;
+  const ZOOM_MAX = 1.3;
+  const ZOOM_STEP = 0.05;
+  const QUICK_REPLIES = ['OK', 'GO', 'Non'];
+
+  const ACTIVE_STATUSES = ['thinking', 'writing', 'tool', 'working'];
+  const WAITING_STATUSES = ['permission', 'done'];
+  const REST_LABELS = {
+    seen: 'vue, au repos', opened: 'ouverte, rien de nouveau', idle: 'hors radar', closed: 'fermée',
+    aborted: 'interrompue', error: 'en erreur',
+  };
+  const ACTIVITY = {
+    thinking: ['🤔', 'réfléchit'],
+    writing: ['💬', 'rédige'],
+    working: ['⚙️', 'travaille'],
+    tool: ['🔧', 'utilise un outil'],
+  };
+  const TOOL_FLAVORS = [
+    [/^(Read|Grep|Glob)$/, '🔎', 'fouille le code'],
+    [/^(Edit|Write|NotebookEdit)$/, '📝', 'modifie le code'],
+    [/^Bash$/, '🖥️', 'lance une commande'],
+    [/^Agent$/, '🤖', 'délègue à un sous-agent'],
+    [/^(WebFetch|WebSearch)$/, '🌐', 'va sur le web'],
+    [/^AskUserQuestion$/, '❓', 'te pose une question'],
+    [/^mcp__/, '🔌', 'interroge un service'],
+  ];
+  const KINDS = {
+    permission: { label: '✋ Permission', emoji: '✋', color: 'var(--orange-ink)', rank: 0 },
+    question: { label: '💬 Question', emoji: '💬', color: 'var(--indigo)', rank: 1 },
+    unknown: { label: '✅ A fini', emoji: '✅', color: 'var(--ink-2)', rank: 2 },
+    delivered: { label: '📦 Mission livrée', emoji: '📦', color: 'var(--green-ink)', rank: 3 },
+  };
+  const TONES = [
+    ['#E0E7FF', '#3730A3'], ['#FFE4D6', '#9A3412'], ['#DCFCE7', '#166534'],
+    ['#E0F2FE', '#075985'], ['#FCE7F3', '#9D174D'], ['#FEF3C7', '#92400E'],
+  ];
+  const SPARK_COLORS = ['#4338CA', '#FFC93C', '#F472B6', '#38BDF8'];
+
+  const isMini = new URLSearchParams(location.search).has('mini');
+  const isLocalFile = location.protocol === 'file:';
+  const isServer = /^https?:$/.test(location.protocol);
+  const serverBase = isServer ? '' : `http://127.0.0.1:${SERVER_PORT}`;
+
+  const state = {
+    data: window.__CONVERSATIONS__ || { generatedAt: 0, rows: [] },
+    expanded: new Set(),
+    exactThreads: new Set(),
+    drafts: new Map(),
+    feedback: new Map(),
+    requestedSummaries: new Set(),
+    sentAt: new Map(),
+    pendingBottom: new Set(),
+    popId: null,
+    bigId: null,
+    othersOpen: false,
+    frozenOrder: null,
+    shownOrder: new Map(),
+    lastRenderedKey: '',
+    knownWaiting: null,
+    lastStatus: new Map(),
+    newConv: null,
+    miniWaiting: null,
+    hasRendered: false,
+    focusDraft: null,
+    view: 'list',
+    teamPopId: null,
+    teamPopFresh: false,
+  };
+
+  const escapeHtml = text => String(text ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const folderOf = cwd => (cwd || '').split(/[\\/]/).filter(Boolean).at(-1) || cwd || '';
+
+  const inlineMarkdown = text => {
+    const codes = [];
+    const withoutCode = escapeHtml(text).replace(/`([^`]+)`/g, (match, code) => {
+      codes.push(code);
+      return `\u0000${codes.length - 1}\u0000`;
+    });
+    const bold = withoutCode.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/__(.+?)__/g, '<strong>$1</strong>');
+    const italic = bold.replace(/(^|[^*\w])\*(?!\s)([^*]+?)\*(?!\w)/g, '$1<em>$2</em>').replace(/(^|[^_\w])_(?!\s)([^_]+?)_(?!\w)/g, '$1<em>$2</em>');
+    const strike = italic.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    const links = strike.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    const bare = links.replace(/(?<![="'>])(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    return bare.replace(/\u0000(\d+)\u0000/g, (match, index) => `<code>${codes[Number(index)]}</code>`);
+  };
+
+  const renderMarkdown = text => {
+    const lines = String(text ?? '').split(/\r?\n/);
+    const parts = [];
+    let list = null;
+    let table = [];
+    let fence = null;
+    const flushList = () => {
+      if (list === null) return;
+      const items = list.items.map(item => `<li style="margin-left:${item.depth * 16}px">${inlineMarkdown(item.text)}</li>`).join('');
+      parts.push(`<${list.tag} class="md">${items}</${list.tag}>`);
+      list = null;
+    };
+    const flushTable = () => {
+      if (table.length === 0) return;
+      const rows = table.filter(cells => !cells.every(cell => /^:?-{2,}:?$/.test(cell)));
+      const html = rows.map((cells, index) => `<tr>${cells.map(cell => index === 0 ? `<th>${inlineMarkdown(cell)}</th>` : `<td>${inlineMarkdown(cell)}</td>`).join('')}</tr>`).join('');
+      parts.push(`<table class="md">${html}</table>`);
+      table = [];
+    };
+    const flushAll = () => { flushList(); flushTable(); };
+    for (const line of lines) {
+      if (fence !== null) {
+        if (/^\s*```/.test(line)) {
+          parts.push(`<pre class="md"><code>${escapeHtml(fence.join('\n'))}</code></pre>`);
+          fence = null;
+        } else {
+          fence.push(line);
+        }
+        continue;
+      }
+      if (/^\s*```/.test(line)) { flushAll(); fence = []; continue; }
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        flushList();
+        table.push(line.trim().slice(1, -1).split('|').map(cell => cell.trim()));
+        continue;
+      }
+      flushTable();
+      const heading = line.match(/^\s*(#{1,4})\s+(.*)$/);
+      if (heading) {
+        flushList();
+        const level = Math.min(heading[1].length + 2, 6);
+        parts.push(`<h${level} class="md">${inlineMarkdown(heading[2])}</h${level}>`);
+        continue;
+      }
+      if (/^\s*([-*_])\s*\1\s*\1[\s\1]*$/.test(line)) { flushList(); parts.push('<hr class="md">'); continue; }
+      const quote = line.match(/^\s*>\s?(.*)$/);
+      if (quote) { flushList(); parts.push(`<blockquote class="md">${inlineMarkdown(quote[1])}</blockquote>`); continue; }
+      const bullet = line.match(/^(\s*)[-*+]\s+(.*)$/);
+      const numbered = line.match(/^(\s*)\d+[.)]\s+(.*)$/);
+      const item = bullet || numbered;
+      if (item) {
+        const tag = numbered && !bullet ? 'ol' : 'ul';
+        const depth = Math.floor(item[1].replace(/\t/g, '  ').length / 2);
+        if (list === null || (list.tag !== tag && depth === 0)) { flushList(); list = { tag, items: [] }; }
+        list.items.push({ depth, text: item[2] });
+        continue;
+      }
+      if (line.trim().length === 0) { flushList(); continue; }
+      flushList();
+      parts.push(`<p>${inlineMarkdown(line)}</p>`);
+    }
+    if (fence !== null) parts.push(`<pre class="md"><code>${escapeHtml(fence.join('\n'))}</code></pre>`);
+    flushAll();
+    return parts.join('');
+  };
+
+  const todayKey = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  const readStats = () => {
+    let stored = {};
+    try { stored = JSON.parse(localStorage.getItem(STATS_KEY) || '{}') || {}; } catch { stored = {}; }
+    const stats = { day: todayKey(), relaunched: 0, record: 0, lastSendAt: 0, combo: 0, ...stored };
+    if (stats.day !== todayKey()) { stats.day = todayKey(); stats.relaunched = 0; stats.combo = 0; }
+    return stats;
+  };
+  const writeStats = stats => { try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch { } };
+  const formatDuration = ms => {
+    const minutes = Math.round((ms || 0) / 60000);
+    if (minutes < 1) return '< 1 min';
+    if (minutes < 60) return `${minutes} min`;
+    return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
+  };
+  const formatDelay = ms => (ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))} s` : formatDuration(ms));
+
+  const medianOf = values => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+
+  const renderDayStats = () => {
+    const today = todayKey();
+    const days = state.data.rows.map(row => row.stats && row.stats.today).filter(day => day && day.day === today);
+    const prompts = days.reduce((total, day) => total + day.prompts, 0);
+    const delays = days.flatMap(day => day.delays);
+    const parts = [];
+    if (delays.length > 0) parts.push(`⏱ tu réponds en ${formatDelay(medianOf(delays))}`);
+    parts.push(`💬 ${prompts} messages envoyés aujourd'hui`);
+    document.getElementById('day-stats').textContent = ` · ${parts.join(' · ')}`;
+  };
+
+  const statsLineOf = row => (row.stats ? `💬 ${row.stats.messages} · ⏱ ${formatDuration(row.stats.activeMs)}` : '');
+
+  const hashOf = text => {
+    let hash = 0;
+    for (let index = 0; index < text.length; index++) hash = (hash * 31 + text.charCodeAt(index)) | 0;
+    return Math.abs(hash);
+  };
+  const toneOf = engineId => TONES[hashOf(engineId) % TONES.length];
+  const lettersOf = word => word.replace(/[^\p{L}\p{N}]/gu, '');
+  const initialsOf = title => {
+    const words = String(title || '').split(/\s+/).filter(word => lettersOf(word).length > 2);
+    const first = lettersOf(words[0] || title || '?');
+    const second = lettersOf(words[1] || '');
+    return (first.charAt(0) + second.charAt(0)).toUpperCase() || '?';
+  };
+
+  const formatAge = (updatedAt, now) => {
+    const seconds = Math.max(0, Math.round((now - updatedAt) / 1000));
+    if (seconds < 60) return `${seconds} s`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return `${hours} h ${String(minutes % 60).padStart(2, '0')}`;
+    return `${Math.round(hours / 24)} j`;
+  };
+
+  const isSummaryFresh = row => Boolean(row.summary && !row.summary.isLoading && row.summary.updatedAt === row.updatedAt);
+  const firstLineOf = text => (String(text || '').split(/\r?\n/).find(line => line.trim().length > 0) || '').replace(/^[-*#>\s]+/, '').replace(/\*\*/g, '').slice(0, 160);
+  const awaitingOf = row => (row.summary && !row.summary.isLoading ? (row.summary.awaiting || firstLineOf(row.summary.text)) : '');
+
+  const kindOf = row => {
+    if (row.status === 'permission') return 'permission';
+    const kind = row.summary && row.summary.kind;
+    if (kind === 'question' || kind === 'delivered') return kind;
+    return 'unknown';
+  };
+
+  const PARK_KINDS = {
+    blocked: { emoji: '🚫', label: 'Bloquée', title: 'Bloquée par…', color: '#B91C1C', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
+    later: { emoji: '⏸️', label: 'Plus tard', title: 'Je reviens dessus…', color: 'var(--muted)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
+  };
+
+  const sectionIdOf = status => {
+    if (status === 'blocked' || status === 'later') return 'parked';
+    if (WAITING_STATUSES.includes(status)) return 'waiting';
+    if (ACTIVE_STATUSES.includes(status) || status === 'external') return 'working';
+    return 'others';
+  };
+
+  const activityOf = row => {
+    if (row.status === 'external') return ['⏳', awaitingOf(row) || 'attend autre chose que toi'];
+    const base = ACTIVITY[row.status] || ['⚙️', 'travaille'];
+    if (row.status !== 'tool' || !row.tool) return base;
+    const flavor = TOOL_FLAVORS.find(([match]) => match.test(row.tool));
+    return flavor ? [flavor[1], flavor[2]] : base;
+  };
+
+  const ageBonus = (row, now) => {
+    const minutes = Math.floor((now - row.updatedAt) / 60000);
+    if (minutes < 5) return { label: `⚡ Éclair · ${5 - minutes} min`, bg: '#FFF4CC', fg: '#7A5200' };
+    if (minutes < 15) return { label: `${minutes} min`, bg: 'transparent', fg: 'var(--muted)' };
+    if (minutes < 60) return { label: `🔥 ${minutes} min`, bg: '#FFEDD5', fg: '#9A3412' };
+    return { label: `🕸️ À sauver · ${formatAge(row.updatedAt, now)}`, bg: '#15161A', fg: '#FFFFFF' };
+  };
+
+  const openUrlOf = row => (row.hostId ? `${DEEP_LINK_PREFIX}${row.hostId}` : '');
+
+  const draftOf = engineId => {
+    if (!state.drafts.has(engineId)) state.drafts.set(engineId, { text: '', images: [] });
+    return state.drafts.get(engineId);
+  };
+
+  const ICONS = {
+    open: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>',
+    eye: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+    terminal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6"></path><path d="M12 19h8"></path></svg>',
+  };
+
+  const withOptimisticWorking = data => {
+    const now = Date.now();
+    const rows = data.rows.map(row => {
+      const sentAt = state.sentAt.get(row.engineId);
+      if (sentAt === undefined) return row;
+      if (row.updatedAt >= sentAt || now - sentAt > SENT_GRACE_MS) {
+        state.sentAt.delete(row.engineId);
+        return row;
+      }
+      return { ...row, status: 'thinking', tool: undefined };
+    });
+    return { ...data, rows };
+  };
+
+  const isTyping = () => Boolean(document.activeElement && document.activeElement.matches('[data-role="draft"]'));
+
+  const keepOrderWhileReading = rows => {
+    const wrap = document.getElementById('wrap');
+    const isPointing = wrap !== null && wrap.matches(':hover');
+    const isReading = state.expanded.size > 0 || isTyping() || isPointing;
+    if (!isReading) {
+      state.frozenOrder = null;
+      return rows;
+    }
+    if (state.frozenOrder === null) state.frozenOrder = new Map(state.shownOrder);
+    const rankOf = row => (state.frozenOrder.has(row.engineId) ? state.frozenOrder.get(row.engineId) : Number.MAX_SAFE_INTEGER);
+    return [...rows].sort((a, b) => rankOf(a) - rankOf(b));
+  };
+
+  const groupRows = () => {
+    const rows = state.data.rows;
+    const waiting = rows.filter(row => sectionIdOf(row.status) === 'waiting')
+      .sort((a, b) => KINDS[kindOf(a)].rank - KINDS[kindOf(b)].rank || a.updatedAt - b.updatedAt);
+    const working = rows.filter(row => sectionIdOf(row.status) === 'working')
+      .sort((a, b) => (a.status === 'external') - (b.status === 'external') || b.updatedAt - a.updatedAt);
+    const others = rows.filter(row => sectionIdOf(row.status) === 'others')
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    const parked = rows.filter(row => sectionIdOf(row.status) === 'parked')
+      .sort((a, b) => (a.status === 'later') - (b.status === 'later') || (b.park?.at || 0) - (a.park?.at || 0));
+    return { waiting: keepOrderWhileReading(waiting), working: keepOrderWhileReading(working), parked: keepOrderWhileReading(parked), others };
+  };
+
+  const renderAvatar = (row, kind) => {
+    const [bg, fg] = toneOf(row.engineId);
+    const isWaiting = kind === 'waiting';
+    const isBlocked = row.status === 'external';
+    const ring = isWaiting ? 'var(--orange)' : (isBlocked ? 'var(--idle-ring)' : 'var(--blue)');
+    const emoji = isWaiting ? KINDS[kindOf(row)].emoji : activityOf(row)[0];
+    const label = `${row.title}, ${isWaiting ? 'attend tes ordres' : (isBlocked ? 'bloqué ailleurs' : 'en mission')}`;
+    const pop = state.popId === row.engineId ? 'pop' : '';
+    return `<button type="button" class="av ${isWaiting ? '' : 'inert'}" data-av="${row.engineId}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
+      <span class="av-face ${pop}" style="--ring: ${ring}; background: ${bg}; color: ${fg}; opacity: ${isBlocked ? 0.6 : 1}">
+        <span>${escapeHtml(initialsOf(row.title))}</span>
+        <span class="av-emoji ${isWaiting ? 'wave' : ''}" aria-hidden="true">${emoji}</span>
+      </span>
+      <span class="av-level">${row.stats ? `💬 ${row.stats.messages}` : ''}</span>
+    </button>`;
+  };
+
+  const renderPlain = row => {
+    const summary = row.summary;
+    const pending = state.requestedSummaries.has(row.engineId) && !isSummaryFresh(row);
+    if (pending) return '<div class="note">🧠 Mise à jour du résumé…</div>';
+    if (!summary) return '<div class="note">Pas encore de résumé. « Rafraîchir » pour le demander.</div>';
+    const stale = summary.updatedAt !== row.updatedAt ? ' stale' : '';
+    const text = summary.plain || summary.text || '';
+    return `<div class="plain${stale}">${renderMarkdown(text)}</div>`;
+  };
+
+  const renderThread = row => {
+    const thread = (row.summary && row.summary.thread) || [];
+    const isBig = state.bigId === row.engineId;
+    const isExactOpen = state.exactThreads.has(row.engineId);
+    const showExact = isBig || isExactOpen;
+    const toggleLabel = isExactOpen ? 'Masquer la réponse exacte' : 'Voir la réponse exacte';
+    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="btn link-btn" data-action="exact" aria-expanded="${isExactOpen}">${toggleLabel}</button>` : '';
+    if (!showExact || thread.length === 0) return toggle;
+    const bubbles = thread.map(message => {
+      const role = message.role === 'user' ? 'user' : 'assistant';
+      return `<div class="bubble-row ${role}"><div class="bubble ${role}">${renderMarkdown(message.text)}</div></div>`;
+    }).join('');
+    return `${toggle}<div class="thread" data-engine-thread="${row.engineId}">${bubbles}</div>`;
+  };
+
+  const renderComposer = row => {
+    if (!isServer) return '<div class="note">Donner un ordre demande la version servie (voir le bandeau en haut).</div>';
+    const draft = draftOf(row.engineId);
+    const thumbs = draft.images.map((image, index) => `<div class="thumb"><img src="${image.url}" alt=""><button type="button" data-action="remove-image" data-index="${index}" aria-label="Retirer l'image">×</button></div>`).join('');
+    return `<label style="display: flex"><span class="sr">Ordre pour ${escapeHtml(row.title)}</span>
+      <textarea class="field" data-role="draft" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Ctrl+Entrée, colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
+      ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}`;
+  };
+
+  const renderCardBody = row => {
+    const isBig = state.bigId === row.engineId;
+    const canOrder = isServer && !row.isCurrent;
+    const feedback = state.feedback.get(row.engineId);
+    const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
+    const composer = row.isCurrent
+      ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
+      : renderComposer(row);
+    const sendLabel = WAITING_STATUSES.includes(row.status) ? 'Relancer l\'agent' : 'Envoyer à l\'agent';
+    return `<div class="card-body">
+        ${renderPlain(row)}
+        ${renderThread(row)}
+        ${composer}
+        <div class="card-actions">
+          <div class="group">
+            ${isServer ? '<button type="button" class="btn" data-action="summarize">Rafraîchir</button>' : ''}
+            ${isServer && row.cwd ? `<button type="button" class="btn" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
+            <button type="button" class="btn" data-action="big">${isBig ? '⤡ Réduire' : '⤢ Agrandir'}</button>
+            ${feedbackHtml}
+          </div>
+          <div class="group">
+            <button type="button" class="btn" data-action="toggle">Replier</button>
+            ${canOrder ? `<button type="button" class="btn btn-primary" data-action="send">${sendLabel}</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+  };
+
+  const renderWaitingCard = (row, now) => {
+    const kind = kindOf(row);
+    const info = KINDS[kind];
+    const [bg, fg] = toneOf(row.engineId);
+    const isOpen = state.expanded.has(row.engineId);
+    const isBig = state.bigId === row.engineId;
+    const bonus = ageBonus(row, now);
+    const awaiting = awaitingOf(row) || 'Regarde où en est cet agent.';
+    const askStale = row.summary && row.summary.updatedAt !== row.updatedAt ? ' stale' : '';
+    const openUrl = openUrlOf(row);
+    const feedback = state.feedback.get(row.engineId);
+    const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
+    const canOrder = isServer && !row.isCurrent;
+    const quick = !isOpen && canOrder ? `<div class="card-quick">
+        ${QUICK_REPLIES.map(text => `<button type="button" class="btn btn-line" data-action="quick" data-text="${text}">${text}</button>`).join('')}
+        <button type="button" class="btn order" data-action="toggle">Donner un ordre…</button>
+        ${feedbackHtml}
+      </div>` : '';
+    const body = isOpen ? renderCardBody(row) : '';
+    return `<article class="card ${kind} ${isOpen ? 'open' : ''} ${isBig ? 'big' : ''}" data-engine="${row.engineId}">
+      <div class="card-head">
+        <span class="card-av" style="background: ${bg}; color: ${fg}">${escapeHtml(initialsOf(row.title))}</span>
+        <button type="button" class="card-main" data-action="toggle" aria-expanded="${isOpen}">
+          <span class="card-meta">
+            <span class="card-title trunc">${escapeHtml(row.title)}</span>
+            ${row.stats ? `<span style="flex: none">${statsLineOf(row)}</span>` : ''}
+            <span style="flex: none; font-weight: 700; color: ${info.color}">· ${info.label}</span>
+          </span>
+          <span class="card-ask${askStale}">👉 ${inlineMarkdown(awaiting)}</span>
+        </button>
+        <div class="card-side">
+          <span class="pill age-pill" data-updated="${row.updatedAt}" style="background: ${bonus.bg}; color: ${bonus.fg}">${escapeHtml(bonus.label)}</span>
+          ${openUrl ? `<a href="${openUrl}" class="btn btn-icon" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : ''}
+          ${isServer ? `<button type="button" class="btn btn-icon" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : ''}
+          ${parkButtons(row)}
+        </div>
+      </div>
+      ${quick}
+      ${body}
+    </article>`;
+  };
+
+  const renderMissionRow = (row, now) => {
+    const [bg, fg] = toneOf(row.engineId);
+    const isBlocked = row.status === 'external';
+    const isOpen = state.expanded.has(row.engineId);
+    const isBig = state.bigId === row.engineId;
+    const [emoji, label] = activityOf(row);
+    const color = isBlocked ? 'var(--muted)' : 'var(--blue)';
+    const openUrl = openUrlOf(row);
+    const pop = state.popId === row.engineId ? 'pop' : '';
+    const terminal = isServer && row.cwd
+      ? `<button type="button" class="btn btn-icon" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal dans ${escapeHtml(folderOf(row.cwd))}">${ICONS.terminal}</button>`
+      : '';
+    const open = openUrl ? `<a href="${openUrl}" class="btn btn-icon" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const head = `<div class="mrow">
+        <span class="mrow-av ${pop}" style="background: ${bg}; color: ${fg}">${escapeHtml(initialsOf(row.title))}</span>
+        <button type="button" class="mrow-main" data-action="toggle" aria-expanded="${isOpen}">
+          <span class="mrow-title trunc">${escapeHtml(row.title)}</span>
+          <span class="mrow-activity trunc" style="color: ${color}">${emoji} ${escapeHtml(label)}</span>
+        </button>
+        <span class="mrow-tools">${parkButtons(row)}${terminal}${open}</span>
+        <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span>
+      </div>`;
+    if (!isOpen) return `<div class="mission ${isBlocked ? 'blocked' : ''}" data-engine="${row.engineId}">${head}</div>`;
+    return `<article class="card mission open ${isBlocked ? 'blocked' : ''} ${isBig ? 'big' : ''}" data-engine="${row.engineId}">${head}${renderCardBody(row)}</article>`;
+  };
+
+  const parkButtons = row => (isServer && !row.isCurrent
+    ? `<button type="button" class="btn btn-icon" data-action="park" data-kind="blocked" aria-label="Marquer bloquée" title="Bloquée">🚫</button><button type="button" class="btn btn-icon" data-action="park" data-kind="later" aria-label="Mettre de côté pour plus tard" title="Plus tard">⏸️</button>`
+    : '');
+
+  const renderParkedRow = (row, now) => {
+    const [bg, fg] = toneOf(row.engineId);
+    const info = PARK_KINDS[row.status] || PARK_KINDS.later;
+    const park = row.park || { reason: '', at: row.updatedAt, hasMoved: false };
+    const isOpen = state.expanded.has(row.engineId);
+    const isBig = state.bigId === row.engineId;
+    const openUrl = openUrlOf(row);
+    const reason = park.reason ? escapeHtml(park.reason) : '<em>sans raison</em>';
+    const moved = park.hasMoved ? '<span class="moved" title="La conversation a bougé depuis">● a bougé</span>' : '';
+    const terminal = isServer && row.cwd ? `<button type="button" class="btn btn-icon" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal">${ICONS.terminal}</button>` : '';
+    const open = openUrl ? `<a href="${openUrl}" class="btn btn-icon" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const resume = isServer ? '<button type="button" class="btn btn-line resume" data-action="unpark">Reprendre</button>' : '';
+    const head = `<div class="mrow">
+        <span class="mrow-av" style="background: ${bg}; color: ${fg}">${escapeHtml(initialsOf(row.title))}</span>
+        <button type="button" class="mrow-main" data-action="toggle" aria-expanded="${isOpen}">
+          <span class="mrow-title trunc">${escapeHtml(row.title)}</span>
+          <span class="mrow-activity trunc" style="color: ${info.color}">${info.emoji} ${info.label} : ${reason}</span>
+        </button>
+        <span class="mrow-tools">${moved}${resume}${terminal}${open}</span>
+        <span class="mrow-age" title="Mise de côté">depuis <span class="park-age" data-updated="${park.at}">${formatAge(park.at, now)}</span></span>
+      </div>`;
+    const kindClass = row.status === 'blocked' ? 'parked-blocked' : 'parked-later';
+    if (!isOpen) return `<div class="mission parked ${kindClass}" data-engine="${row.engineId}">${head}</div>`;
+    return `<article class="card mission parked ${kindClass} open ${isBig ? 'big' : ''}" data-engine="${row.engineId}">${head}${renderCardBody(row)}</article>`;
+  };
+
+  const closeParkMenu = () => {
+    for (const menu of document.querySelectorAll('.park-menu')) menu.remove();
+  };
+
+  const showParkMenu = (anchor, row, kind) => {
+    closeParkMenu();
+    closeRepoMenu();
+    const info = PARK_KINDS[kind];
+    const menu = document.createElement('div');
+    menu.className = 'repo-menu park-menu';
+    menu.dataset.engine = row.engineId;
+    menu.dataset.kind = kind;
+    const chips = info.chips.map(chip => `<button type="button" class="btn btn-line park-chip" data-reason="${escapeHtml(chip)}">${escapeHtml(chip)}</button>`).join('');
+    menu.innerHTML = `<div class="repo-title">${info.emoji} ${escapeHtml(info.title)}</div>
+      <div class="park-chips">${chips}</div>
+      <input type="text" class="field park-input" maxlength="200" placeholder="Raison (facultative), Entrée pour valider">
+      <div class="park-actions"><button type="button" class="btn park-cancel">Annuler</button><button type="button" class="btn btn-primary park-ok">${kind === 'blocked' ? 'Marquer bloquée' : 'Mettre de côté'}</button></div>`;
+    document.body.appendChild(menu);
+    const box = anchor.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menu.offsetWidth - 12, Math.max(12, box.right - menu.offsetWidth));
+    const below = box.bottom + 6;
+    const top = below + menu.offsetHeight > window.innerHeight - 12 ? box.top - menu.offsetHeight - 6 : below;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.max(12, top)}px`;
+    menu.querySelector('.park-input').focus();
+  };
+
+  const submitPark = async (engineId, kind, reason) => {
+    closeParkMenu();
+    const row = rowOf(engineId);
+    try {
+      await post('/park', { engineId, kind, reason });
+      state.expanded.delete(engineId);
+      if (state.teamPopId === engineId) state.teamPopId = null;
+      if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
+      const info = PARK_KINDS[kind];
+      showReward(`${info.emoji} ${info.label}`, `${row?.title || 'Agent'}${reason ? ` : ${reason}` : ''}`, kind === 'blocked' ? 'error' : 'info');
+    } catch (error) {
+      showReward('Oups', error.message, 'error');
+    }
+  };
+
+  const unpark = async engineId => {
+    const row = rowOf(engineId);
+    try {
+      await post('/unpark', { engineId });
+      if (state.teamPopId === engineId) { state.teamPopId = null; render({ force: true }); }
+      showReward('▶️ Reprise', `${row?.title || 'Agent'} revient dans l'équipe`, 'info');
+    } catch (error) {
+      showReward('Oups', error.message, 'error');
+    }
+  };
+
+  const renderRestRow = (row, now) => {
+    const openUrl = openUrlOf(row);
+    const title = openUrl ? `<a class="trunc" href="${openUrl}">${escapeHtml(row.title)}</a>` : `<span class="trunc">${escapeHtml(row.title)}</span>`;
+    const back = row.status === 'seen' && isServer ? '<button type="button" class="btn" data-action="unseen">Remettre en attente</button>' : '';
+    const label = REST_LABELS[row.status] || row.status;
+    return `<div class="rest-row" data-engine="${row.engineId}">${title}<span class="rest-side">${back}<span>${escapeHtml(label)} · <span class="rest-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span></span></div>`;
+  };
+
+  const renderEmpty = () => {
+    const stats = readStats();
+    const line = stats.relaunched > 0 && stats.relaunched >= stats.record
+      ? `Nouveau record : ${stats.relaunched} relances aujourd'hui.`
+      : `${stats.relaunched} relances aujourd'hui. Personne n'attend.`;
+    return `<div class="empty"><div class="empty-icon" aria-hidden="true">🎉</div><div style="display: flex; flex-direction: column; gap: 2px"><span class="empty-title">Toute l'équipe est en mission</span><span class="empty-line">${escapeHtml(line)}</span></div></div>`;
+  };
+
+  const MII_LOOKS = [
+    { skin: '#F6D3B3', hair: '#3B2A20', shirt: '#6D74E8' },
+    { skin: '#E9BD97', hair: '#8A5A2B', shirt: '#EE8B6B' },
+    { skin: '#C98D66', hair: '#1F1F23', shirt: '#45B89A' },
+    { skin: '#F3DCC4', hair: '#C9973F', shirt: '#5CA6E6' },
+    { skin: '#A8724D', hair: '#2B1D16', shirt: '#B07FD9' },
+    { skin: '#EDC7A6', hair: '#9C9CA4', shirt: '#E2B04C' },
+  ];
+  const teamZoneOf = status => {
+    if (WAITING_STATUSES.includes(status)) return 'waiting';
+    if (ACTIVE_STATUSES.includes(status) || status === 'external') return 'working';
+    if (status === 'blocked' || status === 'error') return 'stuck';
+    if (status === 'later') return 'later';
+    return 'rest';
+  };
+
+  const teamGroups = () => {
+    const groups = groupRows();
+    const rows = state.data.rows;
+    const stuck = rows.filter(row => teamZoneOf(row.status) === 'stuck')
+      .sort((a, b) => (a.status !== 'blocked') - (b.status !== 'blocked') || b.updatedAt - a.updatedAt);
+    const later = rows.filter(row => teamZoneOf(row.status) === 'later')
+      .sort((a, b) => (b.park?.at || 0) - (a.park?.at || 0));
+    const rest = rows.filter(row => teamZoneOf(row.status) === 'rest')
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    return { waiting: groups.waiting, working: groups.working, stuck: keepOrderWhileReading(stuck), later: keepOrderWhileReading(later), rest };
+  };
+
+  const moodOf = row => {
+    const zone = teamZoneOf(row.status);
+    if (zone === 'waiting') return { mouth: 'm-o', spot: 'rgba(249, 115, 22, 0.22)', motion: '' };
+    if (zone === 'working') return { mouth: 'm-smile', spot: 'rgba(67, 56, 202, 0.18)', motion: 't-bob' };
+    if (row.status === 'blocked') return { mouth: 'm-frown', spot: 'rgba(220, 38, 38, 0.22)', motion: 't-shake' };
+    if (row.status === 'error') return { mouth: 'm-frown', spot: 'rgba(220, 38, 38, 0.22)', motion: 't-shake' };
+    return { mouth: 'm-flat', spot: 'rgba(21, 22, 26, 0.08)', motion: '' };
+  };
+
+  const teamFaceOf = row => {
+    if (teamZoneOf(row.status) === 'waiting') {
+      const awaiting = awaitingOf(row) || 'Regarde où en est cet agent.';
+      return { emoji: KINDS[kindOf(row)].emoji, bubble: awaiting, state: 't\u2019attend' };
+    }
+    if (row.status === 'blocked') {
+      const reason = row.park && row.park.reason ? row.park.reason : 'Bloquée, sans raison';
+      return { emoji: '🚫', bubble: reason, state: 'bloquée' };
+    }
+    if (row.status === 'error') return { emoji: '❌', bubble: 'S\u2019est arrêtée sur une erreur', state: 'en erreur' };
+    if (row.status === 'later') {
+      const reason = row.park && row.park.reason ? row.park.reason : 'Plus tard';
+      return { emoji: '⏸️', bubble: reason, state: 'mise de côté' };
+    }
+    const [emoji, label] = activityOf(row);
+    return { emoji, bubble: label, state: row.status === 'external' ? 'attend autre chose' : 'en mission' };
+  };
+
+  const bubbleStyleOf = row => {
+    const zone = teamZoneOf(row.status);
+    if (zone === 'waiting') return '--b-bg: #FFF7ED; --b-line: #FFE2C2; --b-fg: var(--ink); --b-weight: 600';
+    if (row.status === 'blocked' || row.status === 'error') return '--b-bg: #FFF1F2; --b-line: #FFD5DB; --b-fg: #9F1239; --b-weight: 600';
+    if (zone === 'working') return '--b-bg: #FFFFFF; --b-line: #EEEEF2; --b-fg: var(--ink-2)';
+    return '--b-bg: #FFFFFF; --b-line: #EEEEF2; --b-fg: var(--muted)';
+  };
+
+  const renderMii = (row, extraClass = '') => {
+    const look = MII_LOOKS[hashOf(row.engineId) % MII_LOOKS.length];
+    const mood = moodOf(row);
+    const face = teamFaceOf(row);
+    const delay = (hashOf(row.engineId) % 7) * 350;
+    const opacity = row.status === 'external' || row.status === 'later' ? 0.7 : 1;
+    const badgeClass = teamZoneOf(row.status) === 'waiting' ? 'wave' : '';
+    return `<span class="t-mii ${mood.motion} ${extraClass}" aria-hidden="true" style="opacity: ${opacity}; animation-delay: ${delay}ms">
+      <span class="t-spot" style="background: ${mood.spot}"></span>
+      <span class="t-neck" style="background: ${look.skin}"></span>
+      <span class="t-body" style="background: ${look.shirt}"></span>
+      <span class="t-ear" style="left: 9px; background: ${look.skin}"></span>
+      <span class="t-ear" style="right: 9px; background: ${look.skin}"></span>
+      <span class="t-head" style="background: ${look.skin}">
+        <span class="t-hair" style="background: ${look.hair}"></span>
+        <span class="t-fringe" style="background: ${look.hair}"></span>
+        <span class="t-eye" style="left: 12px"></span>
+        <span class="t-eye" style="right: 12px"></span>
+        <span class="t-cheek" style="left: 5px"></span>
+        <span class="t-cheek" style="right: 5px"></span>
+        <span class="t-mouth ${mood.mouth}"></span>
+      </span>
+      <span class="t-badge ${badgeClass}">${face.emoji}</span>
+    </span>`;
+  };
+
+  const renderTeamAgent = (row, now) => {
+    const face = teamFaceOf(row);
+    const isWaiting = teamZoneOf(row.status) === 'waiting';
+    const bonus = ageBonus(row, now);
+    const meta = isWaiting
+      ? `<span class="pill age-pill" data-updated="${row.updatedAt}" style="background: ${bonus.bg}; color: ${bonus.fg}">${escapeHtml(bonus.label)}</span>`
+      : `<span>🕒 <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span>`;
+    const messages = row.stats ? `<span>💬 ${row.stats.messages}</span>` : '';
+    const pop = state.popId === row.engineId ? 'pop' : '';
+    const label = `${row.title} : ${face.bubble}`;
+    return `<button type="button" class="t-agent" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(row.title)}">
+      <span class="t-bubble" style="${bubbleStyleOf(row)}"><span class="t-clamp">${escapeHtml(face.bubble)}</span><span class="t-tail"></span></span>
+      ${renderMii(row, pop)}
+      <span class="t-name"><span class="t-title trunc">${escapeHtml(row.title)}</span><span class="t-meta">${messages}${meta}</span></span>
+    </button>`;
+  };
+
+  const renderTeamZone = (zone, title, color, rows, now, empty = '') => {
+    const agents = rows.map(row => renderTeamAgent(row, now)).join('');
+    const floorClass = zone === 'working' ? 't-floor run' : 't-floor';
+    const content = rows.length === 0 && empty ? empty : `<div class="t-grid">${agents}</div>`;
+    return `<section class="t-zone ${zone}" aria-label="${escapeHtml(title)}">
+      <div class="t-zone-head"><span class="t-dot" style="background: ${color}"></span><span class="t-zone-title">${escapeHtml(title)}</span><span class="t-zone-count">${rows.length}</span></div>
+      ${content}
+      <div class="${floorClass}" aria-hidden="true"></div>
+    </section>`;
+  };
+
+  const renderTeamEmpty = () => {
+    const stats = readStats();
+    const line = stats.relaunched > 0 && stats.relaunched >= stats.record
+      ? `🏆 Nouveau record : ${stats.relaunched} relances`
+      : `${stats.relaunched} relances aujourd'hui`;
+    return `<div class="t-empty"><span class="t-empty-icon" aria-hidden="true">🎉</span><span class="t-empty-title">Personne ne t'attend</span><span class="t-empty-line">${escapeHtml(line)}</span></div>`;
+  };
+
+  const renderTeamRest = (rows, now) => {
+    const toggleLabel = `😴 ${state.othersOpen ? 'Masquer les' : 'Voir les'} ${rows.length} agents au repos`;
+    const chips = rows.map(row => {
+      const openUrl = openUrlOf(row);
+      const stateLabel = REST_LABELS[row.status] || row.status;
+      const inner = `<span class="trunc">${escapeHtml(row.title)}</span><span class="t-chip-state">${escapeHtml(stateLabel)}</span>`;
+      return openUrl
+        ? `<a href="${openUrl}" class="t-chip" data-engine="${row.engineId}">${inner}</a>`
+        : `<span class="t-chip" data-engine="${row.engineId}">${inner}</span>`;
+    }).join('');
+    return `<div class="t-rest">
+      <button type="button" class="btn rest-toggle" data-action="team-rest" aria-expanded="${state.othersOpen}">${escapeHtml(toggleLabel)}</button>
+      ${state.othersOpen ? `<div class="t-chips">${chips}</div>` : ''}
+    </div>`;
+  };
+
+  const askStyleOf = row => {
+    const zone = teamZoneOf(row.status);
+    if (zone === 'waiting') return 'background: #FFF7ED; color: var(--ink)';
+    if (row.status === 'blocked' || row.status === 'error') return 'background: #FFF1F2; color: #9F1239';
+    if (zone === 'working') return 'background: var(--indigo-tint); color: var(--ink)';
+    return 'background: #F2F2F5; color: var(--ink)';
+  };
+
+  const renderTeamStats = row => {
+    if (!row.stats) return '';
+    const tiles = [
+      ['💬', row.stats.messages, 'messages'],
+      ['⏱', formatDuration(row.stats.activeMs), 'de travail actif'],
+      ['🛠️', row.stats.tools, 'outils lancés'],
+      ['📝', row.stats.files, 'fichiers modifiés'],
+    ];
+    const html = tiles.map(([emoji, value, label]) => `<span class="t-stat">${emoji} <span class="t-stat-value">${escapeHtml(value)}</span> ${escapeHtml(label)}</span>`).join('');
+    return `<div class="t-stats">${html}</div>`;
+  };
+
+  const renderTeamPopup = (row, now) => {
+    const face = teamFaceOf(row);
+    const zone = teamZoneOf(row.status);
+    const canOrder = isServer && !row.isCurrent;
+    const openUrl = openUrlOf(row);
+    const feedback = state.feedback.get(row.engineId);
+    const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
+    const headline = zone === 'waiting' ? `👉 ${inlineMarkdown(face.bubble)}` : `${face.emoji} ${escapeHtml(face.bubble)}`;
+    const quick = canOrder && zone === 'waiting'
+      ? `<div class="t-quick">${QUICK_REPLIES.map(text => `<button type="button" class="btn btn-line" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>`
+      : '';
+    const composer = row.isCurrent
+      ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
+      : renderComposer(row);
+    const isParked = row.status === 'blocked' || row.status === 'later';
+    const restButton = isServer && zone === 'waiting' ? '<button type="button" class="btn" data-action="seen">😴 Au repos</button>' : '';
+    const parkActions = isParked && isServer
+      ? '<button type="button" class="btn" data-action="unpark">▶️ Reprendre</button>'
+      : (isServer && !row.isCurrent ? '<button type="button" class="btn" data-action="park" data-kind="blocked">🚫 Bloquée</button><button type="button" class="btn" data-action="park" data-kind="later">⏸️ Plus tard</button>' : '');
+    const sendLabel = WAITING_STATUSES.includes(row.status) ? 'Relancer l\'agent' : 'Envoyer à l\'agent';
+    const enter = state.teamPopFresh ? 'enter' : '';
+    return `<div class="t-modal" data-engine="${row.engineId}">
+      <div class="t-backdrop" data-action="team-close"></div>
+      <div class="t-sheet ${enter}" role="dialog" aria-modal="true" aria-labelledby="t-pop-title">
+        <div class="t-sheet-head">
+          ${renderMii(row)}
+          <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <h2 id="t-pop-title" class="t-sheet-title">${escapeHtml(row.title)}</h2>
+            <span class="t-sheet-sub">${escapeHtml(face.state)} depuis <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span>
+          </div>
+          <button type="button" class="btn btn-icon" data-action="team-close" aria-label="Fermer" style="align-self: flex-start; width: 40px; height: 40px; font-size: 17px">✕</button>
+        </div>
+        ${renderTeamStats(row)}
+        <div class="t-ask" style="${askStyleOf(row)}">${headline}</div>
+        ${renderPlain(row)}
+        ${renderThread(row)}
+        ${quick}
+        ${composer}
+        <div class="card-actions">
+          <div class="group">
+            ${openUrl ? `<a href="${openUrl}" class="btn">${ICONS.open} Ouvrir</a>` : ''}
+            ${isServer && row.cwd ? `<button type="button" class="btn" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
+            ${isServer ? '<button type="button" class="btn" data-action="summarize">🔄 Rafraîchir</button>' : ''}
+            ${restButton}
+            ${parkActions}
+            ${feedbackHtml}
+          </div>
+          <div class="group">
+            ${canOrder ? `<button type="button" class="btn btn-primary" data-action="send">${sendLabel}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  const renderTeam = now => {
+    const groups = teamGroups();
+    const board = `<div class="t-board">
+      ${renderTeamZone('waiting', 'T\'attendent', 'var(--orange)', groups.waiting, now, renderTeamEmpty())}
+      ${renderTeamZone('working', 'En mission', 'var(--indigo)', groups.working, now)}
+      ${renderTeamZone('stuck', 'Bloqués', '#DC2626', groups.stuck, now)}
+      ${renderTeamZone('later', 'Plus tard', 'var(--idle-ring)', groups.later, now)}
+    </div>`;
+    const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
+    if (state.teamPopId && !popRow) state.teamPopId = null;
+    const popup = popRow ? renderTeamPopup(popRow, now) : '';
+    state.teamPopFresh = false;
+    document.getElementById('team').innerHTML = `${board}${groups.rest.length > 0 ? renderTeamRest(groups.rest, now) : ''}${popup}`;
+    document.body.style.overflow = popRow ? 'hidden' : (state.bigId === null ? '' : 'hidden');
+    return groups;
+  };
+
+  const desktop = window.cockpitDesktop || null;
+  let miniExpanded = false;
+  let miniInside = false;
+  let miniSheetHeight = 0;
+  const MINI_SIDE_ROOM = 260;
+
+  const renderMiniHead = (row, zone, isFresh) => {
+    const face = teamFaceOf(row);
+    return `<button type="button" class="mini-head ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(`${row.title} : ${face.bubble}`)}">
+      ${renderMii(row)}
+      <span class="mini-tip"><strong>${escapeHtml(row.title)}</strong>${face.emoji} ${escapeHtml(face.bubble)}</span>
+    </button>`;
+  };
+
+  const renderMini = now => {
+    const groups = teamGroups();
+    const previous = state.miniWaiting;
+    const isFresh = row => previous !== null && !previous.has(row.engineId);
+    state.miniWaiting = new Set(groups.waiting.map(row => row.engineId));
+    const count = groups.waiting.length;
+    const counter = `<button type="button" class="dock-count ${count === 0 ? 'calm' : ''}" data-mini="cockpit" title="Ouvrir le cockpit"><span class="dock-count-value">${count === 0 ? '✓' : count}</span><span class="dock-count-label">${count === 0 ? 'tranquille' : 't\'attend'}</span></button>`;
+    const waiting = groups.waiting.map(row => renderMiniHead(row, 'waiting', isFresh(row))).join('');
+    const others = [...groups.stuck, ...groups.working].map(row => renderMiniHead(row, teamZoneOf(row.status), false)).join('');
+    const separator = count > 0 && others ? '<span class="dock-sep" aria-hidden="true"></span>' : '';
+    const calm = count === 0 && !others ? '<span class="dock-calm">Personne au travail</span>' : '';
+    const newButton = isServer ? '<button type="button" class="dock-new" data-mini="new" title="Nouvelle conversation" aria-label="Nouvelle conversation">＋</button>' : '';
+    const quit = desktop ? '<button type="button" class="dock-quit" data-mini="quit" aria-label="Fermer la mini-équipe" title="Fermer">✕</button>' : '';
+    const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
+    if (state.teamPopId && !popRow) state.teamPopId = null;
+    const popup = popRow ? renderTeamPopup(popRow, now) : '';
+    state.teamPopFresh = false;
+    document.getElementById('mini').innerHTML = `<div class="dock-zone"><div class="dock" id="dock">${newButton}${counter}${waiting}${separator}${others}${calm}${quit}</div></div>${popup}`;
+    document.title = count > 0 ? `(${count}) Mini équipe` : 'Mini équipe';
+    syncDesktopWindow();
+  };
+
+  const syncDesktopWindow = () => {
+    if (!desktop) return;
+    const isOpen = state.teamPopId !== null || state.newConv !== null;
+    const sheet = document.querySelector('.t-sheet');
+    const sheetHeight = sheet ? sheet.scrollHeight + 4 : 0;
+    if (isOpen !== miniExpanded || (isOpen && sheetHeight !== miniSheetHeight)) {
+      miniExpanded = isOpen;
+      miniSheetHeight = sheetHeight;
+      desktop.setExpanded(isOpen, sheetHeight);
+      if (!isOpen) desktop.setClickThrough(!miniInside);
+    }
+    const dock = document.getElementById('dock');
+    if (dock) desktop.setDockWidth(dock.offsetWidth + MINI_SIDE_ROOM);
+  };
+
+  const renderMiniFrame = now => {
+    const scroll = captureScroll();
+    renderMini(now);
+    restoreScroll(scroll);
+    focusPendingDraft();
+  };
+
+  const newConvItem = folder => `<label class="nc-item" data-search="${escapeHtml(folder.toLowerCase())}">
+      <input type="checkbox" value="${escapeHtml(folder)}">
+      <span class="nc-item-text"><span class="nc-name">${escapeHtml(folderOf(folder))}</span><span class="nc-path">${escapeHtml(folder)}</span></span>
+    </label>`;
+
+  const renderNewConvPicked = () => {
+    const box = document.getElementById('nc-picked');
+    if (!box || state.newConv === null) return;
+    const chips = state.newConv.selected.map((folder, index) => `<span class="nc-chip">${index === 0 ? '📁' : '+'} ${escapeHtml(folderOf(folder))}</span>`).join('');
+    box.innerHTML = chips || '<span class="nc-none">Aucun dépôt choisi</span>';
+  };
+
+  const openNewConv = () => {
+    state.teamPopId = null;
+    state.newConv = { selected: [] };
+    const folders = Array.isArray(state.data.folders) ? state.data.folders : [];
+    const items = folders.map(newConvItem).join('');
+    document.getElementById('newconv').innerHTML = `<div class="t-modal">
+      <div class="t-backdrop" data-nc="close"></div>
+      <div class="t-sheet enter" role="dialog" aria-modal="true" aria-labelledby="nc-title">
+        <div class="t-sheet-head">
+          <h2 id="nc-title" class="t-sheet-title" style="flex: 1 1 auto">➕ Nouvelle conversation</h2>
+          <button type="button" class="btn btn-icon" data-nc="close" aria-label="Fermer" style="width: 40px; height: 40px; font-size: 17px">✕</button>
+        </div>
+        <span class="nc-label">Dépôt <span>(le premier coché est le dossier principal, tu peux en cocher d'autres)</span></span>
+        <input type="search" class="field nc-search" placeholder="Rechercher un dépôt…" aria-label="Rechercher un dépôt">
+        <div class="nc-list">${items || '<span class="nc-none" style="padding: 8px">Aucun dépôt connu</span>'}</div>
+        <div class="nc-picked" id="nc-picked"></div>
+        <label class="nc-label" for="nc-text">Premier message</label>
+        <textarea id="nc-text" class="field nc-text" rows="4" placeholder="Ce que tu veux lui demander… (Ctrl+Entrée pour ouvrir)"></textarea>
+        <div class="nc-note">Claude s'ouvre sur la conversation avec ton message déjà écrit : appuie sur Entrée pour l'envoyer. La première fois, l'app te demande de faire confiance au dossier. Le modèle et le mode se règlent dans l'app.</div>
+        <div class="card-actions">
+          <div class="group"><span class="feedback error" id="nc-error"></span></div>
+          <div class="group"><button type="button" class="btn btn-primary" data-nc="open">Ouvrir dans Claude</button></div>
+        </div>
+      </div>
+    </div>`;
+    renderNewConvPicked();
+    if (isMini) syncDesktopWindow();
+    document.querySelector('.nc-search')?.focus();
+  };
+
+  const closeNewConv = () => {
+    state.newConv = null;
+    document.getElementById('newconv').innerHTML = '';
+    if (isMini) syncDesktopWindow();
+  };
+
+  const filterNewConv = query => {
+    const needle = query.trim().toLowerCase();
+    for (const item of document.querySelectorAll('.nc-item')) item.style.display = item.dataset.search.includes(needle) ? '' : 'none';
+  };
+
+  const toggleNewConvFolder = (folder, checked) => {
+    if (state.newConv === null) return;
+    const others = state.newConv.selected.filter(candidate => candidate !== folder);
+    state.newConv.selected = checked ? [...others, folder] : others;
+    renderNewConvPicked();
+  };
+
+  const openAppLink = url => {
+    if (desktop) {
+      desktop.openLink(url);
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const newConvUrlOf = (folders, text) => {
+    const url = new URL('claude://code/new');
+    for (const folder of folders) url.searchParams.append('folder', folder);
+    if (text) url.searchParams.set('q', text);
+    return url.toString();
+  };
+
+  const submitNewConv = () => {
+    if (state.newConv === null) return;
+    const folders = state.newConv.selected;
+    if (folders.length === 0) {
+      document.getElementById('nc-error').textContent = 'Choisis au moins un dépôt.';
+      return;
+    }
+    const text = document.getElementById('nc-text').value.trim();
+    const url = newConvUrlOf(folders, text);
+    openAppLink(url);
+    closeNewConv();
+    showReward('➕ Nouvelle conversation', `${folderOf(folders[0])} : appuie sur Entrée dans Claude`, 'info');
+  };
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#new-conv') || event.target.closest('[data-mini="new"]')) { openNewConv(); return; }
+    const control = event.target.closest('[data-nc]');
+    if (!control) return;
+    if (control.dataset.nc === 'close') closeNewConv();
+    if (control.dataset.nc === 'open') submitNewConv();
+  });
+
+  document.addEventListener('input', event => {
+    if (event.target.matches && event.target.matches('.nc-search')) filterNewConv(event.target.value);
+  });
+
+  document.addEventListener('change', event => {
+    if (event.target.matches && event.target.matches('.nc-item input')) toggleNewConvFolder(event.target.value, event.target.checked);
+  });
+
+  const readView = () => { try { return localStorage.getItem(VIEW_KEY) === 'team' ? 'team' : 'list'; } catch { return 'list'; } };
+
+  const applyView = view => {
+    state.view = view;
+    try { localStorage.setItem(VIEW_KEY, view); } catch { }
+    document.getElementById('wrap').classList.toggle('team-mode', view === 'team');
+    for (const button of document.querySelectorAll('.view-switch [data-view]')) button.setAttribute('aria-pressed', String(button.dataset.view === view));
+    if (view !== 'team') state.teamPopId = null;
+  };
+
+  const openTeamPopup = engineId => {
+    const row = rowOf(engineId);
+    if (!row) return;
+    state.teamPopId = engineId;
+    state.teamPopFresh = true;
+    state.pendingBottom.add(engineId);
+    if (!row.isCurrent && isServer) state.focusDraft = engineId;
+    render({ force: true });
+    const needsSummary = isServer && !ACTIVE_STATUSES.includes(row.status) && !isSummaryFresh(row);
+    if (needsSummary) requestSummary(engineId);
+  };
+
+  const closeTeamPopup = () => {
+    state.teamPopId = null;
+    render({ force: true });
+  };
+
+  const renderKey = () => JSON.stringify([state.view, state.teamPopId, state.data.rows, [...state.expanded], [...state.exactThreads], state.bigId, state.othersOpen, [...state.feedback.entries()], [...state.requestedSummaries], [...state.drafts.entries()].map(([id, draft]) => [id, draft.images.length]), state.popId]);
+
+  const captureScroll = () => {
+    const anchors = [...document.querySelectorAll('.card[data-engine], .mission[data-engine], .rest-row[data-engine]')].filter(element => !element.classList.contains('big'));
+    const anchor = window.scrollY > 0 ? anchors.find(element => element.getBoundingClientRect().bottom > 0) : undefined;
+    const big = document.querySelector('.card.big');
+    const threads = new Map([...document.querySelectorAll('.thread[data-engine-thread]')].map(box => [box.dataset.engineThread, box.scrollTop]));
+    return { windowY: window.scrollY, anchorId: anchor ? anchor.dataset.engine : null, anchorTop: anchor ? anchor.getBoundingClientRect().top : 0, bigTop: big ? big.scrollTop : 0, threads };
+  };
+
+  const scrollToBottom = element => {
+    element.scrollTop = element.scrollHeight;
+    requestAnimationFrame(() => { element.scrollTop = element.scrollHeight; });
+    setTimeout(() => { element.scrollTop = element.scrollHeight; }, 120);
+  };
+
+  const restoreScroll = scroll => {
+    const anchor = scroll.anchorId ? document.querySelector(`[data-engine="${scroll.anchorId}"]:not(.big)`) : null;
+    if (anchor) {
+      const delta = anchor.getBoundingClientRect().top - scroll.anchorTop;
+      window.scrollTo({ top: window.scrollY + delta, behavior: 'instant' });
+    } else {
+      window.scrollTo({ top: scroll.windowY, behavior: 'instant' });
+    }
+    const big = document.querySelector('.card.big');
+    if (big) big.scrollTop = scroll.bigTop;
+    for (const box of document.querySelectorAll('.thread[data-engine-thread]')) {
+      const engineId = box.dataset.engineThread;
+      if (state.pendingBottom.has(engineId)) scrollToBottom(box);
+      else if (scroll.threads.has(engineId)) box.scrollTop = scroll.threads.get(engineId);
+    }
+    if (big && state.pendingBottom.has(state.bigId)) scrollToBottom(big);
+    state.pendingBottom.clear();
+  };
+
+  const prefersCalm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const movableElements = () => [
+    ...document.querySelectorAll('#s-waiting .lane > [data-engine]:not(.big), #s-working .lane > [data-engine]:not(.big), #s-parked .lane > [data-engine]:not(.big)'),
+    ...document.querySelectorAll('#crew [data-av]'),
+    ...document.querySelectorAll('#team .t-agent[data-engine]'),
+  ];
+  const keyOf = element => (element.dataset.av ? `a:${element.dataset.av}` : `e:${element.dataset.engine}`);
+
+  const capturePositions = () => new Map(movableElements().map(element => {
+    const box = element.getBoundingClientRect();
+    return [keyOf(element), { left: box.left, top: box.top }];
+  }));
+
+  const animateMoves = (before, changedIds) => {
+    if (!state.hasRendered || prefersCalm()) return;
+    for (const element of movableElements()) {
+      const key = keyOf(element);
+      const previous = before.get(key);
+      const box = element.getBoundingClientRect();
+      if (previous === undefined) {
+        element.animate([{ opacity: 0, transform: 'translateY(8px) scale(0.98)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+        continue;
+      }
+      const dx = previous.left - box.left;
+      const dy = previous.top - box.top;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        element.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 360, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+      }
+      const engineId = element.dataset.engine;
+      if (engineId && changedIds.has(engineId)) element.classList.add('changed');
+    }
+  };
+
+  const statusChanges = () => {
+    const changed = new Set();
+    for (const row of state.data.rows) {
+      const previous = state.lastStatus.get(row.engineId);
+      if (previous !== undefined && previous !== row.status) changed.add(row.engineId);
+      state.lastStatus.set(row.engineId, row.status);
+    }
+    return changed;
+  };
+
+  const focusPendingDraft = () => {
+    if (!state.focusDraft) return;
+    const textarea = document.querySelector(`[data-engine="${state.focusDraft}"] textarea[data-role="draft"]`);
+    if (textarea) {
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+    state.focusDraft = null;
+  };
+
+  const render = ({ force = false } = {}) => {
+    const key = renderKey();
+    if (!force && key === state.lastRenderedKey) return;
+    if (!force && isTyping()) return;
+    state.lastRenderedKey = key;
+    if (isMini) {
+      renderMiniFrame(Date.now());
+      return;
+    }
+    const scroll = captureScroll();
+    const positions = capturePositions();
+    const changedIds = statusChanges();
+    const now = Date.now();
+    const groups = groupRows();
+    let offset = 0;
+    for (const row of [...groups.waiting, ...groups.working, ...groups.parked]) state.shownOrder.set(row.engineId, offset++);
+
+    const avatars = [...groups.waiting.map(row => renderAvatar(row, 'waiting')), ...groups.working.map(row => renderAvatar(row, 'working'))];
+    document.getElementById('crew').innerHTML = avatars.join('');
+
+    document.getElementById('n-waiting').textContent = groups.waiting.length;
+    const waitingCards = groups.waiting.map(row => renderWaitingCard(row, now)).join('');
+    document.querySelector('#s-waiting .lane').innerHTML = groups.waiting.length === 0 ? renderEmpty() : waitingCards;
+
+    document.getElementById('n-working').textContent = groups.working.length;
+    document.getElementById('s-working').style.display = groups.working.length === 0 ? 'none' : '';
+    document.querySelector('#s-working .lane').innerHTML = groups.working.map(row => renderMissionRow(row, now)).join('');
+
+    document.getElementById('n-parked').textContent = groups.parked.length;
+    document.getElementById('s-parked').style.display = groups.parked.length === 0 ? 'none' : '';
+    document.querySelector('#s-parked .lane').innerHTML = groups.parked.map(row => renderParkedRow(row, now)).join('');
+
+    const restToggle = document.getElementById('rest-toggle');
+    restToggle.textContent = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${groups.others.length} agents au repos`;
+    restToggle.setAttribute('aria-expanded', String(state.othersOpen));
+    document.getElementById('s-others').style.display = groups.others.length === 0 ? 'none' : '';
+    document.getElementById('rest-list').innerHTML = state.othersOpen ? groups.others.map(row => renderRestRow(row, now)).join('') : '';
+
+    renderDayStats();
+    if (state.view === 'team') renderTeam(now);
+    else document.getElementById('team').innerHTML = '';
+
+    document.title = groups.waiting.length > 0 ? `(${groups.waiting.length}) Ton équipe` : 'Ton équipe';
+    restoreScroll(scroll);
+    animateMoves(positions, changedIds);
+    state.hasRendered = true;
+
+    focusPendingDraft();
+  };
+
+  const renderStats = ({ bump = false } = {}) => {
+    const stats = readStats();
+    const counter = document.getElementById('relaunched');
+    counter.textContent = stats.relaunched;
+    document.getElementById('record').textContent = Math.max(stats.record, stats.relaunched);
+    if (!bump) return;
+    counter.classList.remove('bump');
+    void counter.offsetWidth;
+    counter.classList.add('bump');
+  };
+
+  const tickAges = () => {
+    const now = Date.now();
+    for (const element of document.querySelectorAll('.mrow-age[data-updated], .rest-age[data-updated], .park-age[data-updated]')) {
+      element.textContent = formatAge(Number(element.dataset.updated), now);
+    }
+    for (const pill of document.querySelectorAll('.age-pill[data-updated]')) {
+      const bonus = ageBonus({ updatedAt: Number(pill.dataset.updated) }, now);
+      pill.textContent = bonus.label;
+      pill.style.background = bonus.bg;
+      pill.style.color = bonus.fg;
+    }
+    const freshness = document.getElementById('freshness');
+    if (state.data.generatedAt === 0) {
+      freshness.textContent = 'aucune donnée : ouvre une conversation Claude avec le mod';
+      freshness.classList.add('stale');
+      return;
+    }
+    const age = now - state.data.generatedAt;
+    const hasWorkers = state.data.rows.some(row => ACTIVE_STATUSES.includes(row.status));
+    freshness.textContent = `dernier changement il y a ${formatAge(state.data.generatedAt, now)}`;
+    freshness.classList.toggle('stale', age > STALE_AFTER_MS && hasWorkers);
+  };
+
+  const tickClock = () => {
+    const now = new Date();
+    document.getElementById('clock').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
+
+  const showReward = (badge, text, variant = '') => {
+    for (const old of document.querySelectorAll('.reward')) old.remove();
+    const reward = document.createElement('div');
+    reward.className = `reward ${variant}`;
+    reward.setAttribute('role', 'status');
+    reward.innerHTML = `<span class="reward-badge">${escapeHtml(badge)}</span><span>${escapeHtml(text)}</span>`;
+    document.body.appendChild(reward);
+    setTimeout(() => reward.classList.add('out'), 2400);
+    setTimeout(() => reward.remove(), 2750);
+  };
+
+  const showSparks = () => {
+    for (const old of document.querySelectorAll('.sparks')) old.remove();
+    const host = document.createElement('div');
+    host.className = 'sparks';
+    const seed = Date.now() % 97;
+    for (let index = 0; index < 16; index++) {
+      const angle = -Math.PI * (0.1 + 0.8 * (index / 15));
+      const distance = 80 + ((index * 37 + seed * 13) % 90);
+      const size = 6 + (index % 3) * 3;
+      const spark = document.createElement('span');
+      spark.className = 'spark';
+      spark.style.cssText = `--dx: ${Math.round(Math.cos(angle) * distance)}px; --dy: ${Math.round(Math.sin(angle) * distance) - 24}px; --rot: ${(index * 67) % 360}deg; width: ${size}px; height: ${size}px; background: ${SPARK_COLORS[index % 4]}; animation-delay: ${(index % 4) * 35}ms`;
+      host.appendChild(spark);
+    }
+    document.body.appendChild(host);
+    setTimeout(() => host.remove(), 1600);
+  };
+
+  const rewardFor = (row, waitedMinutes, combo) => {
+    if (combo >= 2) return [`🔥 Combo x${combo}`, `${row.title} repart en mission`];
+    if (waitedMinutes >= 60) return ['🛟 Sauvetage', `${row.title} n'attend plus`];
+    if (waitedMinutes < 5) return ['⚡ Éclair', 'Ordre donné en moins de 5 min'];
+    return ['🚀 +1', `${row.title} repart en mission`];
+  };
+
+  const celebrateSend = row => {
+    const now = Date.now();
+    const stats = readStats();
+    const combo = now - stats.lastSendAt < 60000 ? stats.combo + 1 : 1;
+    const waitedMinutes = Math.floor((now - row.updatedAt) / 60000);
+    stats.relaunched += 1;
+    stats.record = Math.max(stats.record, stats.relaunched);
+    stats.lastSendAt = now;
+    stats.combo = combo;
+    writeStats(stats);
+    const [badge, text] = rewardFor(row, waitedMinutes, combo);
+    showSparks();
+    showReward(badge, text);
+    renderStats({ bump: true });
+    state.popId = row.engineId;
+    setTimeout(() => {
+      if (state.popId !== row.engineId) return;
+      state.popId = null;
+      render({ force: true });
+    }, 900);
+  };
+
+  const notifyNewWaiting = rows => {
+    if (isMini) return;
+    const waiting = new Map(rows.filter(row => WAITING_STATUSES.includes(row.status)).map(row => [row.engineId, row]));
+    const snapshot = new Map([...waiting].map(([id, row]) => [id, row.updatedAt]));
+    if (state.knownWaiting === null) { state.knownWaiting = snapshot; return; }
+    const fresh = [...waiting.values()].filter(row => state.knownWaiting.get(row.engineId) !== row.updatedAt);
+    state.knownWaiting = snapshot;
+    if (fresh.length === 0 || !('Notification' in window) || Notification.permission !== 'granted' || document.hasFocus()) return;
+    for (const row of fresh) {
+      const notification = new Notification(`${KINDS[kindOf(row)].emoji} ${row.title}`, { body: awaitingOf(row) || 'attend tes ordres', tag: row.engineId });
+      notification.onclick = () => { window.focus(); expand(row.engineId); };
+    }
+  };
+
+  const updateBell = () => {
+    const bell = document.getElementById('bell');
+    const granted = 'Notification' in window && Notification.permission === 'granted';
+    bell.classList.toggle('on', granted);
+    const label = granted ? 'Notifications activées' : 'Activer les notifications';
+    bell.setAttribute('aria-label', label);
+    bell.title = label;
+  };
+
+  const loadData = () => new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = `${DATA_FILE}?t=${Date.now()}`;
+    script.onload = () => { script.remove(); resolve(true); };
+    script.onerror = () => { script.remove(); resolve(false); };
+    document.head.appendChild(script);
+  });
+
+  const isPageOutdated = () => {
+    const served = state.data && state.data.pageVersion;
+    const mine = window.__PAGE_VERSION__;
+    return Boolean(served && mine && served !== mine);
+  };
+
+  const refresh = async () => {
+    const isLoaded = await loadData();
+    if (!isLoaded && isLocalFile) {
+      if (!isTyping() && state.expanded.size === 0) location.reload();
+      return;
+    }
+    if (window.__CONVERSATIONS__) state.data = withOptimisticWorking(window.__CONVERSATIONS__);
+    if (isPageOutdated() && !isTyping() && state.expanded.size === 0 && state.bigId === null && state.teamPopId === null && state.newConv === null) {
+      location.reload();
+      return;
+    }
+    notifyNewWaiting(state.data.rows);
+    render();
+  };
+
+  const post = async (path, payload) => {
+    const response = await fetch(`${serverBase}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    if (response.ok) return;
+    const body = await response.text();
+    let reason = `HTTP ${response.status}`;
+    try { reason = JSON.parse(body).error || reason; } catch { }
+    throw new Error(reason);
+  };
+
+  const setFeedback = (engineId, text, isError = false) => {
+    state.feedback.set(engineId, { text, isError });
+    render({ force: true });
+    setTimeout(() => { state.feedback.delete(engineId); render({ force: true }); }, 6000);
+  };
+
+  const rowOf = engineId => state.data.rows.find(row => row.engineId === engineId);
+
+  const requestSummary = async engineId => {
+    state.requestedSummaries.add(engineId);
+    render({ force: true });
+    try {
+      await post('/summarize', { engineId });
+    } catch (error) {
+      state.requestedSummaries.delete(engineId);
+      setFeedback(engineId, `Résumé impossible : ${error.message}`, true);
+    }
+  };
+
+  const setSeen = async (engineId, seen) => {
+    const title = rowOf(engineId)?.title || 'Cet agent';
+    try {
+      await post('/ack', { engineId, seen });
+      state.expanded.delete(engineId);
+      if (state.teamPopId === engineId) state.teamPopId = null;
+      if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
+      render({ force: true });
+      showReward(seen ? '👁️ Au repos' : '🙋 En attente', seen ? `${title} est mis au repos` : `${title} attend de nouveau tes ordres`, 'info');
+    } catch (error) {
+      showReward('Oups', error.message, 'error');
+    }
+  };
+
+  const reposOf = row => (row.summary && Array.isArray(row.summary.repos) ? row.summary.repos : []);
+
+  const launchTerminal = async folder => {
+    closeRepoMenu();
+    try {
+      await post('/terminal', { cwd: folder });
+      showReward('🖥️ Terminal', folderOf(folder), 'info');
+    } catch (error) {
+      showReward('Terminal non ouvert', error.message, 'error');
+    }
+  };
+
+  const closeRepoMenu = () => {
+    for (const menu of document.querySelectorAll('.repo-menu')) menu.remove();
+  };
+
+  const showRepoMenu = (anchor, row, repos) => {
+    closeRepoMenu();
+    const menu = document.createElement('div');
+    menu.className = 'repo-menu';
+    menu.setAttribute('role', 'menu');
+    const items = repos.map(repo => `<button type="button" class="repo-item" role="menuitem" data-folder="${escapeHtml(repo)}"><span class="repo-name">${escapeHtml(folderOf(repo))}</span><span class="repo-path">${escapeHtml(repo)}</span></button>`).join('');
+    const origin = `<button type="button" class="repo-item muted" role="menuitem" data-folder="${escapeHtml(row.cwd)}"><span class="repo-name">Dossier d'ouverture</span><span class="repo-path">${escapeHtml(row.cwd)}</span></button>`;
+    menu.innerHTML = `<div class="repo-title">Ouvrir un terminal dans…</div>${items}${origin}`;
+    document.body.appendChild(menu);
+    const box = anchor.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menu.offsetWidth - 12, Math.max(12, box.right - menu.offsetWidth));
+    const below = box.bottom + 6;
+    const top = below + menu.offsetHeight > window.innerHeight - 12 ? box.top - menu.offsetHeight - 6 : below;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.max(12, top)}px`;
+    menu.querySelector('.repo-item')?.focus();
+  };
+
+  const openTerminal = (engineId, anchor) => {
+    const row = rowOf(engineId);
+    if (!row || !row.cwd) return;
+    const repos = reposOf(row);
+    if (repos.length === 0) { launchTerminal(row.cwd); return; }
+    if (repos.length === 1) { launchTerminal(repos[0]); return; }
+    showRepoMenu(anchor, row, repos);
+  };
+
+  const sendReply = async engineId => {
+    const row = rowOf(engineId);
+    const draft = draftOf(engineId);
+    const text = draft.text.trim();
+    if (!row || (text.length === 0 && draft.images.length === 0)) return;
+    try {
+      const images = draft.images.map(image => ({ type: image.type, base64: image.base64 }));
+      await post('/reply', { engineId, text, images });
+      state.sentAt.set(engineId, Date.now());
+      state.drafts.delete(engineId);
+      state.expanded.delete(engineId);
+      if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
+      if (state.teamPopId === engineId) state.teamPopId = null;
+      state.data = withOptimisticWorking(state.data);
+      celebrateSend(row);
+      render({ force: true });
+    } catch (error) {
+      setFeedback(engineId, `Non envoyé : ${error.message}`, true);
+      showReward('Non envoyé', `${row.title} : ${error.message}`, 'error');
+    }
+  };
+
+  const readImage = file => new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result);
+      resolve({ type: file.type || 'image/png', base64: url.split(',')[1], url });
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const keepInView = engineId => {
+    const card = document.querySelector(`[data-engine="${engineId}"]:not(.big)`);
+    if (!card) return;
+    const top = card.getBoundingClientRect().top;
+    if (top < 0 || top > window.innerHeight - 80) window.scrollBy({ top: top - 80, behavior: 'smooth' });
+  };
+
+  const syncBackdrop = () => {
+    let backdrop = document.querySelector('.backdrop');
+    if (state.bigId === null) {
+      if (backdrop) backdrop.remove();
+      document.body.style.overflow = '';
+      return;
+    }
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.className = 'backdrop';
+      backdrop.addEventListener('click', () => toggleBig(state.bigId));
+      document.body.appendChild(backdrop);
+    }
+    document.body.style.overflow = 'hidden';
+  };
+
+  const expand = (engineId, { focus = true } = {}) => {
+    state.expanded.add(engineId);
+    state.pendingBottom.add(engineId);
+    if (focus) state.focusDraft = engineId;
+    render({ force: true });
+    keepInView(engineId);
+    if (!isServer) return;
+    const row = rowOf(engineId);
+    const needsSummary = row && !ACTIVE_STATUSES.includes(row.status) && !isSummaryFresh(row);
+    if (needsSummary) requestSummary(engineId);
+  };
+
+  const collapse = engineId => {
+    if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
+    state.expanded.delete(engineId);
+    render({ force: true });
+    keepInView(engineId);
+  };
+
+  const toggle = engineId => (state.expanded.has(engineId) ? collapse(engineId) : expand(engineId));
+
+  const toggleBig = engineId => {
+    if (state.bigId === engineId) {
+      state.bigId = null;
+    } else {
+      state.bigId = engineId;
+      state.expanded.add(engineId);
+      state.pendingBottom.add(engineId);
+    }
+    render({ force: true });
+    syncBackdrop();
+  };
+
+  document.addEventListener('click', event => {
+    const parkMenu = event.target.closest('.park-menu');
+    if (parkMenu) {
+      const chip = event.target.closest('.park-chip');
+      if (chip) { submitPark(parkMenu.dataset.engine, parkMenu.dataset.kind, chip.dataset.reason); return; }
+      if (event.target.closest('.park-ok')) { submitPark(parkMenu.dataset.engine, parkMenu.dataset.kind, parkMenu.querySelector('.park-input').value.trim()); return; }
+      if (event.target.closest('.park-cancel')) closeParkMenu();
+      return;
+    }
+    if (!event.target.closest('[data-action="park"]')) closeParkMenu();
+    const repoItem = event.target.closest('.repo-item');
+    if (repoItem) { launchTerminal(repoItem.dataset.folder); return; }
+    if (!event.target.closest('.repo-menu') && !event.target.closest('[data-action="terminal"]')) closeRepoMenu();
+    const avatar = event.target.closest('[data-av]');
+    if (avatar) {
+      const row = rowOf(avatar.dataset.av);
+      if (!row || !WAITING_STATUSES.includes(row.status)) return;
+      expand(row.engineId);
+      document.querySelector(`.card[data-engine="${row.engineId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
+    if (event.target.closest('a')) return;
+    const button = event.target.closest('[data-action]');
+    const holder = event.target.closest('[data-engine]');
+    if (!button || !holder) return;
+    const engineId = holder.dataset.engine;
+    const action = button.dataset.action;
+    if (action === 'team-open') { openTeamPopup(engineId); return; }
+    if (action === 'team-close') { closeTeamPopup(); return; }
+    if (action === 'toggle') toggle(engineId);
+    if (action === 'send') sendReply(engineId);
+    if (action === 'summarize') requestSummary(engineId);
+    if (action === 'seen') setSeen(engineId, true);
+    if (action === 'unseen') setSeen(engineId, false);
+    if (action === 'terminal') openTerminal(engineId, button);
+    if (action === 'park') { const row = rowOf(engineId); if (row) showParkMenu(button, row, button.dataset.kind); }
+    if (action === 'unpark') unpark(engineId);
+    if (action === 'big') toggleBig(engineId);
+    if (action === 'exact') {
+      if (state.exactThreads.has(engineId)) {
+        state.exactThreads.delete(engineId);
+      } else {
+        state.exactThreads.add(engineId);
+        state.pendingBottom.add(engineId);
+      }
+      render({ force: true });
+    }
+    if (action === 'quick') {
+      const draft = draftOf(engineId);
+      draft.text = button.dataset.text;
+      draft.images = [];
+      sendReply(engineId);
+    }
+    if (action === 'remove-image') {
+      draftOf(engineId).images.splice(Number(button.dataset.index), 1);
+      render({ force: true });
+    }
+  });
+
+  document.addEventListener('click', event => {
+    const viewButton = event.target.closest('.view-switch [data-view]');
+    if (viewButton) { applyView(viewButton.dataset.view); render({ force: true }); return; }
+    if (event.target.closest('[data-action="team-rest"]')) { state.othersOpen = !state.othersOpen; render({ force: true }); }
+  });
+
+  document.getElementById('rest-toggle').addEventListener('click', () => {
+    state.othersOpen = !state.othersOpen;
+    render({ force: true });
+  });
+
+  document.addEventListener('input', event => {
+    if (!event.target.matches('[data-role="draft"]')) return;
+    const card = event.target.closest('[data-engine]');
+    draftOf(card.dataset.engine).text = event.target.value;
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && event.target.matches && event.target.matches('.park-input')) {
+      event.preventDefault();
+      const menu = event.target.closest('.park-menu');
+      submitPark(menu.dataset.engine, menu.dataset.kind, event.target.value.trim());
+      return;
+    }
+    if (event.key === 'Escape' && document.querySelector('.repo-menu')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeRepoMenu();
+      closeParkMenu();
+      return;
+    }
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && event.target.id === 'nc-text') {
+      event.preventDefault();
+      submitNewConv();
+      return;
+    }
+    if (event.key === 'Escape' && state.newConv !== null) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeNewConv();
+      return;
+    }
+    if (event.key === 'Escape' && state.teamPopId !== null && !document.querySelector('.park-menu')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeTeamPopup();
+      return;
+    }
+    if (event.key !== 'Escape' || state.bigId === null) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    toggleBig(state.bigId);
+  }, true);
+
+  document.addEventListener('keydown', event => {
+    if (!event.target.matches('[data-role="draft"]')) return;
+    const card = event.target.closest('[data-engine]');
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      sendReply(card.dataset.engine);
+    }
+    if (event.key === 'Escape' && state.teamPopId === null) {
+      event.target.blur();
+      collapse(card.dataset.engine);
+    }
+  });
+
+  document.addEventListener('paste', async event => {
+    if (!event.target.matches('textarea[data-role="draft"]')) return;
+    const files = [...(event.clipboardData?.items || [])].filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile());
+    if (files.length === 0) return;
+    event.preventDefault();
+    const card = event.target.closest('[data-engine]');
+    const draft = draftOf(card.dataset.engine);
+    draft.text = event.target.value;
+    for (const file of files) draft.images.push(await readImage(file));
+    state.focusDraft = card.dataset.engine;
+    render({ force: true });
+  });
+
+  document.addEventListener('focusout', event => {
+    if (event.target.matches && event.target.matches('[data-role="draft"]')) setTimeout(() => render(), 50);
+  });
+
+  const readZoom = () => { try { return Number(localStorage.getItem(ZOOM_KEY)) || 1; } catch { return 1; } };
+  const applyZoom = value => {
+    const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100));
+    document.documentElement.style.setProperty('--zoom', String(clamped));
+    try { localStorage.setItem(ZOOM_KEY, String(clamped)); } catch { }
+    return clamped;
+  };
+  let zoom = applyZoom(readZoom());
+  document.getElementById('zoom-in').addEventListener('click', () => { zoom = applyZoom(zoom + ZOOM_STEP); });
+  document.getElementById('zoom-out').addEventListener('click', () => { zoom = applyZoom(zoom - ZOOM_STEP); });
+
+  document.getElementById('bell').addEventListener('click', async () => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') await Notification.requestPermission();
+    updateBell();
+  });
+
+  if (isMini) {
+    document.documentElement.classList.add('mini-mode');
+    document.body.classList.add('mini-mode');
+    window.addEventListener('resize', () => syncDesktopWindow());
+    document.addEventListener('mouseover', event => {
+      const inside = Boolean(event.target.closest && event.target.closest('.dock, .t-sheet, .repo-menu'));
+      if (inside === miniInside) return;
+      miniInside = inside;
+      if (desktop) desktop.setClickThrough(!inside);
+    });
+    document.addEventListener('click', event => {
+      const appLink = desktop && event.target.closest('a[href^="claude:"]');
+      if (appLink) {
+        event.preventDefault();
+        desktop.openLink(appLink.href);
+        return;
+      }
+      const control = event.target.closest('[data-mini]');
+      if (!control) return;
+      if (control.dataset.mini === 'cockpit') { if (desktop) desktop.openCockpit(); else window.open('/', 'cockpit'); }
+      if (control.dataset.mini === 'quit' && desktop) desktop.quit();
+    });
+  }
+  else applyView(readView());
+  document.getElementById('banner').classList.toggle('show', !isServer);
+  updateBell();
+  renderStats();
+  tickClock();
+  setInterval(tickClock, 1000);
+  setInterval(tickAges, 1000);
+  render({ force: true });
+  tickAges();
+  notifyNewWaiting(state.data.rows);
+  setInterval(refresh, 3000);
+</script>
+</body>
+</html>

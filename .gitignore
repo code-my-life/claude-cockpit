@@ -1,0 +1,6 @@
+/conversations.html
+/conversations-data.js
+/stats-job-*.json
+/inbox/
+mod/.claude-plugin/types/
+desktop/node_modules/
