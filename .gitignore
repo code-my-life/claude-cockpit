@@ -4,3 +4,9 @@
 /inbox/
 mod/.claude-plugin/types/
 desktop/node_modules/
+/session-index.json
+/session-index.json.tmp
+/session-cache.json
+/session-cache.json.tmp
+/search-cache.json
+/search-cache.json.tmp

@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type {
+  ConversationContext,
   ConversationRow,
   HostSession,
   RowStatus,
@@ -68,10 +69,10 @@ const summaries = atom({ plugin: 'sessions', key: 'summaries' } as const, {})
 type Section = { id: SectionId; title: string; emoji: string; statuses: RowStatus[]; hex: string }
 
 const SECTIONS: Section[] = [
-  { id: 'waiting', title: "T'attendent", emoji: '🙋', statuses: ['done', 'permission'], hex: '#3fb950' },
-  { id: 'working', title: 'Travaillent', emoji: '⚙️', statuses: ['thinking', 'writing', 'tool', 'working', 'external'], hex: '#e3b341' },
-  { id: 'others', title: 'Autres', emoji: '💤', statuses: ['blocked', 'later', 'seen', 'opened', 'idle', 'aborted', 'error', 'closed'], hex: '#8b949e' },
-  { id: 'archived', title: 'Archivées', emoji: '📦', statuses: ['archived'], hex: '#6e7681' },
+  { id: 'waiting', title: "T'attendent", emoji: '🙋', statuses: ['done', 'permission', 'external'], hex: '#3fb950' },
+  { id: 'working', title: 'Travaillent', emoji: '⚙️', statuses: ['thinking', 'writing', 'tool', 'working'], hex: '#e3b341' },
+  { id: 'others', title: 'Autres', emoji: '💤', statuses: ['blocked', 'later', 'seen', 'opened', 'idle', 'aborted', 'error'], hex: '#8b949e' },
+  { id: 'archived', title: 'Fermées et archivées', emoji: '📦', statuses: ['closed', 'archived'], hex: '#6e7681' },
 ]
 
 type StatusStyle = { emoji: string; label: string; hex: string }
@@ -118,7 +119,7 @@ let isCountingStats = false
 let repoFolders: string[] = []
 let repoFoldersReadAt = 0
 const SEED_MARKER = '<!--SEED-->'
-const hostCache = new Map<string, { mtimeMs: number; session: HostSession | null }>()
+const INDEX_FILE = 'session-index.json'
 const transcriptCache = new Map<string, string>()
 
 const styleOf = (row: Pick<ConversationRow, 'status' | 'tool'>): StatusStyle => {
@@ -188,33 +189,6 @@ const toggleFilter = async ($: EngineInterface, id: SectionId) => {
   await $.store.set(FILTERS_STORE_KEY, next)
 }
 
-const parseHostSession = (text: string): HostSession | null => {
-  const data = JSON.parse(text) as Record<string, unknown>
-  if (typeof data.sessionId !== 'string' || typeof data.cliSessionId !== 'string') return null
-  return {
-    hostId: data.sessionId,
-    engineId: data.cliSessionId,
-    title: typeof data.title === 'string' ? data.title : '(sans titre)',
-    cwd: typeof data.cwd === 'string' ? data.cwd : '',
-    lastActivityAt: typeof data.lastActivityAt === 'number' ? data.lastActivityAt : 0,
-    isArchived: data.isArchived === true,
-  }
-}
-
-const readHostSessionFile = async ($: EngineInterface, path: string, mtimeMs: number) => {
-  const cached = hostCache.get(path)
-  if (cached !== undefined && cached.mtimeMs === mtimeMs) return cached.session
-  let session: HostSession | null = null
-  try {
-    const text = await $.fs.read(path)
-    session = parseHostSession(text)
-  } catch {
-    session = null
-  }
-  hostCache.set(path, { mtimeMs, session })
-  return session
-}
-
 const listSubdirs = async ($: EngineInterface, path: string) => {
   const exists = await $.fs.exists(path)
   if (!exists) return []
@@ -247,45 +221,30 @@ const knownFoldersOf = async ($: EngineInterface, rows: ConversationRow[]) => {
   return [...new Set([...recent, ...repos])]
 }
 
-const readHostSessions = async ($: EngineInterface): Promise<HostSession[]> => {
-  const appData = await $.env.get('APPDATA')
-  if (appData === undefined) return []
-  const root = `${appData}/Claude/claude-code-sessions`
-  const accountDirs = await listSubdirs($, root)
-  const sessions: HostSession[] = []
-  for (const accountDir of accountDirs) {
-    const orgDirs = await listSubdirs($, accountDir)
-    for (const orgDir of orgDirs) {
-      const entries = await $.fs.list(orgDir)
-      const files = entries.filter(entry => entry.kind === 'file' && entry.name.endsWith('.json'))
-      for (const file of files) {
-        const session = await readHostSessionFile($, `${orgDir}/${file.name}`, file.mtimeMs)
-        if (session !== null) sessions.push(session)
-      }
-    }
-  }
-  return sessions
+type SessionIndexFile = { live?: string[]; hosts?: HostSession[] }
+type SessionIndex = { mtimeMs: number; hosts: HostSession[]; liveEngineIds: Set<string> }
+
+const EMPTY_INDEX: SessionIndex = { mtimeMs: 0, hosts: [], liveEngineIds: new Set() }
+let sessionIndex: SessionIndex = EMPTY_INDEX
+
+const parseSessionIndex = (text: string, mtimeMs: number): SessionIndex => {
+  const data = JSON.parse(text) as SessionIndexFile
+  const hosts = data.hosts ?? []
+  const liveEngineIds = new Set(data.live ?? [])
+  return { mtimeMs, hosts, liveEngineIds }
 }
 
-const readLiveEngineIds = async ($: EngineInterface): Promise<Set<string>> => {
-  const home = await $.env.get('USERPROFILE')
-  if (home === undefined) return new Set()
-  const dir = `${home}/.claude/sessions`
-  const exists = await $.fs.exists(dir)
-  if (!exists) return new Set()
-  const entries = await $.fs.list(dir)
-  const files = entries.filter(entry => entry.kind === 'file' && entry.name.endsWith('.json'))
-  const ids = new Set<string>()
-  for (const file of files) {
-    try {
-      const text = await $.fs.read(`${dir}/${file.name}`)
-      const data = JSON.parse(text) as Record<string, unknown>
-      if (typeof data.sessionId === 'string') ids.add(data.sessionId)
-    } catch {
-      continue
-    }
+const readSessionIndex = async ($: EngineInterface): Promise<SessionIndex> => {
+  const file = `${pageDir($)}/${INDEX_FILE}`
+  try {
+    const stat = await $.fs.stat(file)
+    if (stat.mtimeMs === sessionIndex.mtimeMs) return sessionIndex
+    const text = await $.fs.read(file)
+    sessionIndex = parseSessionIndex(text, stat.mtimeMs)
+  } catch {
+    return sessionIndex
   }
-  return ids
+  return sessionIndex
 }
 
 type ParkEntry = { kind: ParkKind; reason: string; at: number; updatedAt: number }
@@ -337,7 +296,7 @@ const sectionOf = (status: RowStatus) => SECTIONS.find(section => section.status
 
 const sectionRank = (status: RowStatus) => SECTIONS.indexOf(sectionOf(status))
 
-const WAITING_STATUSES: RowStatus[] = ['done', 'permission']
+const WAITING_STATUSES: RowStatus[] = ['done', 'permission', 'external']
 
 const withAck = (status: RowStatus, acks: Acks, engineId: string, updatedAt: number): RowStatus => {
   if (!WAITING_STATUSES.includes(status)) return status
@@ -355,6 +314,13 @@ const withExternal = (status: RowStatus, summary: RowSummary | undefined, update
   const isCurrentOrPending = summary.updatedAt <= updatedAt
   return isCurrentOrPending && summary.kind === 'external' ? 'external' : status
 }
+
+const contextOf = (host: HostSession): ConversationContext => ({
+  repo: host.repo ?? null,
+  branch: host.branch ?? null,
+  ticket: host.ticket ?? null,
+  prs: host.prs ?? [],
+})
 
 const buildRows = (
   live: Record<string, SessionEntry>,
@@ -388,6 +354,7 @@ const buildRows = (
       isCurrent: host.engineId === ownEngineId,
       isLive,
       park: parkInfoOf(parked[host.engineId], updatedAt),
+      context: contextOf(host),
     })
   }
   for (const entry of Object.values(live)) {
@@ -404,6 +371,7 @@ const buildRows = (
       isCurrent: entry.id === ownEngineId,
       isLive: true,
       park: parkInfoOf(parked[entry.id], entry.updatedAt),
+      context: null,
     })
   }
   return rows.sort((a, b) => {
@@ -414,12 +382,13 @@ const buildRows = (
   })
 }
 
-const urgencyOf = (status: RowStatus) => (status === 'permission' ? 0 : 1)
+const URGENCY: Partial<Record<RowStatus, number>> = { permission: 0, external: 2 }
+
+const urgencyOf = (status: RowStatus) => URGENCY[status] ?? 1
 
 const refresh = async ($: EngineInterface) => {
   const live = await readAll($)
-  const hosts = await readHostSessions($)
-  const liveEngineIds = await readLiveEngineIds($)
+  const { hosts, liveEngineIds } = await readSessionIndex($)
   const acks = await readAcks($)
   const shared = await readSharedSummaries($)
   const parked = await readParked($)
@@ -427,7 +396,7 @@ const refresh = async ($: EngineInterface) => {
   const rows = buildRows(live, hosts, liveEngineIds, acks, shared, parked)
   await update($, list, () => rows)
   await update($, summaries, current => mergeSummaries(shared, current))
-  await writeDataFile($, rows, shared, stats)
+  if (isServing) await writeDataFile($, rows, shared, stats)
 }
 
 const mergeSummaries = (shared: Record<string, RowSummary>, local: Record<string, RowSummary>) => {
@@ -1005,6 +974,18 @@ const pageDir = ($: EngineInterface) => $.plugin.root.replace(/[\\/][^\\/]+$/, '
 
 const readPageTemplate = ($: EngineInterface) => $.fs.read(`${$.plugin.root}/assets/${PAGE_FILE}`)
 
+const PAGE_ASSETS = ['identity.js', 'dock.js', 'liquid-paper/theme.css', 'liquid-paper/bundle.css', 'liquid-paper/bundle.js']
+
+let pageAssets: string | null = null
+
+const readPageAssets = async ($: EngineInterface) => {
+  if (pageAssets !== null) return pageAssets
+  const reads = PAGE_ASSETS.map(name => $.fs.read(`${$.plugin.root}/assets/${name}`).catch(() => ''))
+  const contents = await Promise.all(reads)
+  pageAssets = contents.join('\n')
+  return pageAssets
+}
+
 const versionOf = (text: string) => {
   let hash = 0
   for (let index = 0; index < text.length; index++) hash = (hash * 31 + text.charCodeAt(index)) | 0
@@ -1031,9 +1012,12 @@ const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared
     summary: shared[row.engineId],
     park: row.park,
     stats: rowStatsOf(stats[row.engineId]),
+    context: row.context,
   }))
   const template = await readPageTemplate($)
-  const pageVersion = versionOf(template)
+  const assets = await readPageAssets($)
+  const versionSource = `${template}\n${assets}`
+  const pageVersion = versionOf(versionSource)
   const exportedJson = JSON.stringify(exported)
   const folders = await knownFoldersOf($, shown)
   const json = `${pageVersion}:${exportedJson}:${folders.join('|')}`
@@ -1181,7 +1165,7 @@ export const register: Register = on => {
           </Box>
         )
       }
-      if (row.status !== 'external' && sectionOf(row.status).id === 'working') return null
+      if (sectionOf(row.status).id === 'working') return null
       const entry = known[row.engineId]
       if (entry === undefined || entry.isLoading) return null
       const awaiting = awaitingOf(entry)

@@ -28,6 +28,10 @@ export type SessionEntry = {
   updatedAt: number
 }
 
+export type PullRequest = { number: number; repo: string | null; url: string; state: string }
+
+export type ConversationContext = { repo: string | null; branch: string | null; ticket: string | null; prs: PullRequest[] }
+
 export type HostSession = {
   hostId: string
   engineId: string
@@ -35,6 +39,10 @@ export type HostSession = {
   cwd: string
   lastActivityAt: number
   isArchived: boolean
+  branch?: string | null
+  ticket?: string | null
+  repo?: string | null
+  prs?: PullRequest[]
 }
 
 export type ConversationRow = {
@@ -48,6 +56,7 @@ export type ConversationRow = {
   isCurrent: boolean
   isLive: boolean
   park?: ParkInfo
+  context: ConversationContext | null
 }
 
 export type DayStats = { day: string; prompts: number; delays: number[] }

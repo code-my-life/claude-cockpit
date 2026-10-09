@@ -4,5 +4,8 @@
   "main": "main.js",
   "devDependencies": {
     "electron": "^44.7.0"
+  },
+  "dependencies": {
+    "koffi": "^2.16.3"
   }
 }

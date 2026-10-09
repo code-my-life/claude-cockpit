@@ -1,406 +1,410 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ton équipe</title>
 <!--SEED-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="mod/assets/liquid-paper/theme.css">
+<link rel="stylesheet" href="mod/assets/liquid-paper/bundle.css">
 <style>
   :root {
-    --bg: #F7F7F8;
-    --surface: #FFFFFF;
-    --line: #E6E7EA;
-    --field: #E1E2E6;
-    --ink: #15161A;
-    --ink-2: #3F424A;
-    --muted: #6B6F7A;
-    --indigo: #4338CA;
-    --indigo-hover: #3730A3;
-    --indigo-tint: #EEF0FF;
-    --orange: #F97316;
-    --orange-ink: #C2410C;
-    --orange-line: #FAD9B8;
-    --blue: #2563EB;
-    --idle-ring: #D4D5DA;
-    --green-ink: #15803D;
-    --gold: #FFC93C;
-    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ep-i-layout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z'/%3E%3C/svg%3E");
+  --ep-i-plus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M8 3v10M3 8h10'/%3E%3C/svg%3E");
+    --ep-i-bell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M4 11.5V7a4 4 0 0 1 8 0v4.5l1.5 1.5h-11z'/%3E%3Cpath d='M6.5 14.5h3'/%3E%3C/svg%3E");
+    --ep-i-terminal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M3 4.5l3.5 3.5L3 11.5'/%3E%3Cpath d='M8.5 12h4.5'/%3E%3C/svg%3E");
+    --ep-i-open: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M9 3h4v4'/%3E%3Cpath d='M13 3L7.5 8.5'/%3E%3Cpath d='M11 9.5V13H3V5h3.5'/%3E%3C/svg%3E");
+    --ep-i-eye: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M1.8 8C3.3 5.2 5.5 3.8 8 3.8s4.7 1.4 6.2 4.2c-1.5 2.8-3.7 4.2-6.2 4.2S3.3 10.8 1.8 8z'/%3E%3Ccircle cx='8' cy='8' r='1.9'/%3E%3C/svg%3E");
+    --ep-i-block: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Ccircle cx='8' cy='8' r='6'/%3E%3Cpath d='M3.8 12.2l8.4-8.4'/%3E%3C/svg%3E");
+    --ep-i-later: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M6 4v8M10 4v8'/%3E%3C/svg%3E");
+    --ep-i-refresh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M13 8a5 5 0 1 1-1.5-3.6'/%3E%3Cpath d='M13 2.5V5h-2.5'/%3E%3C/svg%3E");
+    --ep-i-expand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M9.5 2.5h4v4'/%3E%3Cpath d='M6.5 13.5h-4v-4'/%3E%3Cpath d='M13.5 2.5L9 7'/%3E%3Cpath d='M2.5 13.5L7 9'/%3E%3C/svg%3E");
+    --ep-i-collapse: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M13 7H9V3'/%3E%3Cpath d='M3 9h4v4'/%3E%3Cpath d='M9 7l4.5-4.5'/%3E%3Cpath d='M7 9l-4.5 4.5'/%3E%3C/svg%3E");
   }
+  .ep-icon--plus { --ep-icon: var(--ep-i-plus); } .ep-icon--layout { --ep-icon: var(--ep-i-layout); } .ep-icon--bell { --ep-icon: var(--ep-i-bell); } .ep-icon--terminal { --ep-icon: var(--ep-i-terminal); } .ep-icon--open { --ep-icon: var(--ep-i-open); } .ep-icon--eye { --ep-icon: var(--ep-i-eye); } .ep-icon--block { --ep-icon: var(--ep-i-block); } .ep-icon--later { --ep-icon: var(--ep-i-later); } .ep-icon--refresh { --ep-icon: var(--ep-i-refresh); } .ep-icon--expand { --ep-icon: var(--ep-i-expand); } .ep-icon--collapse { --ep-icon: var(--ep-i-collapse); }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
-  a { color: var(--indigo); }
-  a:hover { color: var(--indigo-hover); }
+  html, body { margin: 0; min-height: 100%; }
+  body { font-size: 15px; line-height: 1.55; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
   button { font-family: inherit; }
+  .ep-icon { width: 14px; height: 14px; }
 
-  .wrap { zoom: var(--zoom, 1); max-width: 920px; margin: 0 auto; padding: 36px 32px 96px; display: flex; flex-direction: column; gap: 36px; }
-  .display { font-weight: 800; letter-spacing: -0.03em; }
-
-  .btn { font-family: var(--font); font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; background: transparent; border: 1px solid transparent; color: var(--ink-2); transition: background 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, transform 140ms ease-out; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
-  .btn:hover { background: #EDEDF0; color: var(--ink); }
-  .btn:active { transform: scale(0.96); }
-  .btn-line { border-color: var(--field); background: var(--surface); }
-  .btn-line:hover { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-tint); }
-  .btn-primary { background: var(--indigo); border-color: var(--indigo); color: #FFFFFF; }
-  .btn-primary:hover { background: var(--indigo-hover); color: #FFFFFF; }
-  .btn-icon { width: 36px; height: 36px; padding: 0; }
-  .btn:focus-visible, .field:focus-visible, .av:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px; }
-  .field { font-family: var(--font); font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--field); border-radius: 10px; }
-  .field::placeholder { color: var(--muted); }
-  .field:focus { border-color: var(--indigo); outline: none; }
+  .wrap { zoom: var(--zoom, 1); max-width: 960px; margin: 0 auto; padding: var(--space-10) var(--space-8) var(--space-24); display: flex; flex-direction: column; gap: var(--space-10); }
+  .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.02em; }
   .trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  :is(.av, .t-agent, .mini-head, .dock-count):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
-  header { display: flex; flex-direction: column; gap: 24px; }
-  .topbar { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .topbar-left { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-  .topbar h1 { margin: 0; font-size: 30px; }
-  .stats { font-size: 14px; color: var(--muted); }
-  .stats .count { display: inline-block; font-weight: 700; color: var(--indigo); }
-  #day-stats { font-size: 12px; color: #8A8D96; }
-  .tools { display: flex; align-items: center; gap: 4px; }
-  .tools .btn { height: 36px; min-width: 40px; padding: 0 8px; color: var(--muted); }
-  .tools .bell.on { color: var(--indigo); }
-  .clock { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; padding-left: 10px; }
-  .fresh-note { font-size: 13px; color: var(--muted); margin-top: -16px; }
-  .fresh-note.stale { color: var(--orange-ink); }
+  header { display: flex; flex-direction: column; gap: var(--space-6); }
+  .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
+  .topbar-left { display: flex; flex-direction: column; gap: var(--space-2); }
+  .topbar h1 { margin: 0; font-size: clamp(40px, 6vw, 56px); line-height: 1; }
+  .stats { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  .stats .count { display: inline-block; color: var(--ink); font-weight: 500; }
+  .tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .tools .bell.on { color: var(--accent); }
+  .clock { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; padding-left: var(--space-3); }
+  .fresh-note { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); margin-top: calc(var(--space-4) * -1); }
+  .fresh-note.stale { color: var(--warning); }
 
-  .banner { display: none; background: #FFF4CC; border: 1px solid #F1D58A; color: #7A5200; border-radius: 14px; padding: 12px 16px; font-size: 14px; }
+  .banner { display: none; padding: var(--space-3) var(--space-4); font-size: 14px; }
   .banner.show { display: block; }
+  .ds-banner { position: fixed; left: 16px; right: 16px; top: 16px; z-index: 90; display: none; padding: 14px 18px; font: 500 15px/1.5 system-ui, sans-serif; color: #ecece6; background: #3d1f1d; border: 1px solid #ff8a80; border-radius: 14px; }
+  .ds-banner.show { display: block; }
 
-  .crew { display: flex; flex-wrap: wrap; gap: 16px; }
-  .av { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 64px; transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-  .av:hover { transform: translateY(-4px) rotate(-3deg); }
+  .ident { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--ident-size, 48px); height: var(--ident-size, 48px); border-radius: 50%; color: var(--ink); }
+  .ident-canvas { display: block; width: 100%; height: 100%; }
+  .ident-fallback { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--ink-2); border: 1px solid var(--line); border-radius: 50%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .ident-badge { position: absolute; right: -4px; top: -4px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink); background: var(--glass-strong); border: 1px solid var(--glass-edge); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .ident-badge .ep-icon { width: 12px; height: 12px; }
+  .ident-badge.waiting { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 60%, transparent); }
+  .ident-badge.stuck { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+
+  .crew { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+  .av { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); width: 72px; border-radius: var(--radius-glass-s); padding: var(--space-1) 0; transition: transform 150ms ease-out; }
+  .av:hover { transform: translateY(-3px); }
   .av.inert { cursor: default; }
-  .av-face { position: relative; width: 54px; height: 54px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ring); }
-  .av-emoji { position: absolute; right: -9px; top: -9px; width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 0 0 2px var(--ring); display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
-  .av-level { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; }
-  .t-stats { display: flex; flex-wrap: wrap; gap: 6px; }
-  .t-stat { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #F2F2F5; font-size: 12.5px; color: var(--muted); }
-  .t-stat-value { font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .av.inert:hover { transform: none; }
+  .av-level { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); white-space: nowrap; }
 
   section { display: flex; flex-direction: column; }
-  section h2 { margin: 0 0 10px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
-  .lane { display: flex; flex-direction: column; gap: 10px; }
+  section h2 { margin: 0 0 var(--space-4); font-size: 30px; line-height: 1.1; display: flex; align-items: baseline; gap: var(--space-3); }
+  .count-tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; color: var(--ink-2); }
+  .lane { display: flex; flex-direction: column; gap: var(--space-3); }
 
-  .card { border-radius: 18px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 1px 2px rgba(21, 22, 26, 0.04); }
-  .card.permission { border-color: var(--orange-line); }
-  .card-head { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: start; gap: 14px; padding: 16px 16px 12px; }
-  .card-av { width: 46px; height: 46px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; }
-  .card-main { all: unset; cursor: pointer; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-  .card-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; color: var(--muted); }
-  .card-title { font-size: 14px; font-weight: 700; color: var(--ink-2); }
-  .card-ask { font-size: 18px; line-height: 1.4; font-weight: 500; color: var(--ink); }
-  .card-ask.stale { color: var(--muted); }
-  .card-side { display: flex; align-items: center; gap: 2px; }
-  .pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; margin-right: 6px; white-space: nowrap; }
-  .card-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 16px 16px 76px; }
-  .card-quick .btn { height: 36px; padding: 0 14px; }
-  .card-quick .order { color: var(--indigo); padding: 0 12px; }
-  .card-body { display: flex; flex-direction: column; gap: 14px; padding: 0 18px 18px 76px; }
-  .plain { font-size: 16px; line-height: 1.6; color: var(--ink-2); max-width: 66ch; }
+  .card { padding: 0; }
+  .card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--space-4); padding: var(--space-5) var(--space-5) var(--space-3); }
+  .card-main { all: unset; cursor: pointer; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .card-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); min-width: 0; }
+  .card-title { font-family: var(--font-display); font-size: 22px; line-height: 1.15; color: var(--ink); max-width: 100%; }
+  .card-kind { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  .card-stats { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); }
+  .card-ask { display: flex; gap: var(--space-2); align-items: baseline; font-size: 17px; line-height: 1.45; color: var(--ink); }
+  .card-ask .ep-icon { flex: none; transform: translateY(2px); color: var(--ink-2); }
+  .card-ask.stale { color: var(--ink-2); }
+  .card-side { display: flex; align-items: center; gap: var(--space-1); }
+  .card-quick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: 0 var(--space-5) var(--space-5) calc(52px + var(--space-4) + var(--space-5)); }
+  .card-body { display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-5) var(--space-5) calc(52px + var(--space-4) + var(--space-5)); }
+  .plain { font-size: 16px; line-height: 1.6; color: var(--ink); max-width: 68ch; }
   .plain p { margin: 4px 0; }
-  .plain.stale { opacity: 0.7; }
-  .link-btn { align-self: flex-start; height: 32px; padding: 0 8px; margin-left: -8px; color: var(--indigo); }
-  .thread { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+  .plain.stale { color: var(--ink-2); }
+  .link-btn { align-self: flex-start; }
+  .thread { display: flex; flex-direction: column; gap: var(--space-2); max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
   .bubble-row { display: flex; }
   .bubble-row.user { justify-content: flex-end; }
-  .bubble { max-width: 80%; padding: 10px 14px; font-size: 15px; line-height: 1.55; }
-  .bubble.user { background: var(--indigo); color: #FFFFFF; border-radius: 16px 16px 4px 16px; }
-  .bubble.user a { color: #FFFFFF; }
-  .bubble.assistant { background: #F1F1F3; color: var(--ink); border-radius: 16px 16px 16px 4px; }
+  .bubble { max-width: 80%; padding: 10px 14px; font-size: 15px; line-height: 1.55; border: 1px solid var(--glass-edge); }
+  .bubble.user { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink); border-radius: 18px 18px 4px 18px; }
+  .bubble.assistant { background: var(--glass-nested); color: var(--ink); border-radius: 18px 18px 18px 4px; }
   .bubble p { margin: 3px 0; }
-  .note { font-size: 13px; color: var(--muted); font-style: italic; }
-  textarea.field { width: 100%; padding: 12px 14px; line-height: 1.5; resize: vertical; min-height: 84px; }
-  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
-  .thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .note { font-size: 13px; color: var(--ink-2); font-style: italic; }
+  .thumbs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .thumb { position: relative; width: 84px; height: 84px; border-radius: var(--radius-glass-s); overflow: hidden; border: 1px solid var(--glass-edge); }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .thumb button { position: absolute; top: 3px; right: 3px; border: 0; background: rgba(0, 0, 0, 0.6); color: #FFFFFF; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; padding: 0; cursor: pointer; }
-  .card-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
-  .card-actions .group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .card-actions .btn { height: 40px; padding: 0 14px; }
-  .feedback { font-size: 13px; color: var(--green-ink); }
-  .feedback.error { color: #B91C1C; }
+  .thumb button { position: absolute; top: 4px; right: 4px; border: 1px solid var(--glass-edge); background: var(--scrim); color: var(--ink); border-radius: 50%; width: 22px; height: 22px; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .card-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); }
+  .card-actions .group { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+  .feedback { font-size: 13px; color: var(--success); }
+  .feedback.error { color: var(--danger); }
 
-  h3.md, h4.md, h5.md, h6.md { margin: 10px 0 4px; font-weight: 700; }
-  h3.md { font-size: 16px; } h4.md { font-size: 15px; } h5.md, h6.md { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  h3.md, h4.md, h5.md, h6.md { margin: 10px 0 4px; font-family: var(--font-sans); font-weight: 600; }
+  h3.md { font-size: 16px; } h4.md { font-size: 15px; } h5.md, h6.md { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
   ul.md, ol.md { margin: 4px 0 6px; padding-left: 20px; }
   ul.md li, ol.md li { margin: 2px 0; }
-  ul.md li::marker, ol.md li::marker { color: var(--indigo); }
-  .bubble.user ul.md li::marker, .bubble.user ol.md li::marker { color: #FFFFFF; }
-  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.9em; background: rgba(67, 56, 202, 0.07); border-radius: 5px; padding: 0 4px; }
-  pre.md { background: #EEEEF1; border-radius: 8px; padding: 8px 10px; overflow-x: auto; margin: 6px 0; }
+  ul.md li::marker, ol.md li::marker { color: var(--ink-2); }
+  code { font-family: var(--font-mono); font-size: 0.88em; background: var(--glass-nested); border-radius: 6px; padding: 0 4px; }
+  pre.md { background: var(--paper-deep); border-radius: var(--radius-glass-s); padding: 10px 12px; overflow-x: auto; margin: 6px 0; }
   pre.md code { background: none; padding: 0; font-size: 12.5px; }
-  blockquote.md { margin: 6px 0; padding: 2px 10px; border-left: 3px solid var(--field); color: var(--muted); }
-  hr.md { border: 0; border-top: 1px solid var(--field); margin: 8px 0; }
+  blockquote.md { margin: 6px 0; padding: 2px 12px; border-left: 1px solid var(--rule); color: var(--ink-2); }
+  hr.md { border: 0; border-top: 1px solid var(--rule); margin: 8px 0; }
   table.md { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
-  table.md th, table.md td { border: 1px solid var(--field); padding: 4px 8px; text-align: left; vertical-align: top; }
-  table.md th { background: var(--bg); }
+  table.md th, table.md td { border: 1px solid var(--rule); padding: 4px 8px; text-align: left; vertical-align: top; }
+  table.md th { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 
-  .empty { display: flex; align-items: center; gap: 18px; padding: 24px 28px; border-radius: 22px; background: var(--indigo); color: #FFFFFF; }
-  .empty-icon { width: 54px; height: 54px; border-radius: 18px; background: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 28px; flex: none; }
-  .empty-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
-  .empty-line { font-size: 15px; color: #E0E7FF; }
+  .empty { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-6); }
+  .empty-mark { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--ink); display: flex; align-items: center; justify-content: center; flex: none; color: var(--success); }
+  .empty-mark .ep-icon { width: 22px; height: 22px; }
+  .empty-title { font-family: var(--font-display); font-size: 30px; line-height: 1.1; }
+  .empty-line { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
 
-  .mrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 8px 14px; border-radius: 12px; transition: background 140ms ease-out; }
-  .mrow:hover { background: #FFFFFF; }
-  .mrow-av { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
-  .mrow-main { all: unset; cursor: pointer; min-width: 0; display: flex; align-items: baseline; gap: 10px; }
-  .mrow-tools { display: flex; gap: 2px; }
-  .card.mission { margin: 6px 0; }
-  .card.mission .mrow { padding: 12px 16px 8px; }
+  .mrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-4); padding: var(--space-2) var(--space-4); border-radius: var(--radius-glass-s); transition: background-color 150ms ease-out; }
+  .mrow:hover { background: var(--glass-nested); }
+  .mrow-main { all: unset; cursor: pointer; min-width: 0; display: flex; align-items: baseline; gap: var(--space-3); }
+  .mrow-tools { display: flex; gap: var(--space-1); align-items: center; }
+  .lane-plate { padding: var(--space-2); --glass-bezel: 18px; }
+  .card.mission { margin: var(--space-2) 0; border-radius: var(--radius-glass-s); background: var(--glass-nested); border: 1px solid var(--glass-edge); }
+  .card.mission.big { background: var(--plate); box-shadow: var(--shadow-glass-pop); }
+  .card.mission .mrow { padding: var(--space-4) var(--space-5) var(--space-2); }
   .card.mission .mrow:hover { background: transparent; }
-  .card.mission .card-body { padding-left: 64px; }
-  .mrow-title { font-size: 15px; font-weight: 600; color: var(--ink); }
-  .mrow-activity { font-size: 14px; }
-  .mrow-age { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
-  .mrow .btn-icon { width: 30px; height: 30px; opacity: 0; }
-  .mrow:hover .btn-icon, .mrow .btn-icon:focus-visible, .card.mission .btn-icon { opacity: 1; }
-  .blocked .mrow-av { opacity: 0.6; }
-  .blocked .mrow-title { color: var(--ink-2); }
+  .card.mission .card-body { padding-left: calc(40px + var(--space-4) + var(--space-5)); }
+  .mrow-title { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .mrow-activity { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+  .mrow-activity.blocked-kind { color: var(--danger); }
+  .mrow-age { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .mrow .mrow-tools .ep-btn--icon { opacity: 0; }
+  .mrow:hover .mrow-tools .ep-btn--icon, .mrow .mrow-tools .ep-btn--icon:focus-visible, .card.mission .mrow-tools .ep-btn--icon { opacity: 1; }
 
-  .rest-toggle { align-self: flex-start; height: 36px; padding: 0 10px; margin-left: -10px; color: var(--muted); font-weight: 500; }
-  .rest-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0 7px 14px; font-size: 14px; color: var(--ink-2); }
+  .rest-toggle { align-self: flex-start; }
+  .rest-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: 7px 0 7px var(--space-4); font-size: 14px; color: var(--ink-2); border-bottom: 1px solid var(--rule); }
   .rest-row a { color: inherit; text-decoration: none; }
-  .rest-row a:hover { color: var(--indigo); }
-  .rest-side { flex: none; color: var(--muted); display: flex; align-items: baseline; gap: 8px; }
-  .rest-side .btn { height: 28px; padding: 0 8px; font-size: 12.5px; }
+  .rest-row a:hover { color: var(--ink); }
+  .rest-side { flex: none; display: flex; align-items: baseline; gap: var(--space-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: var(--ink-2); }
 
   .changed { animation: changed 1200ms ease-out; }
-  @keyframes changed { 0% { background-color: #EEF0FF; } 100% { background-color: var(--surface); } }
+  @keyframes changed { 0% { outline: 1px solid var(--ink); outline-offset: 2px; } 100% { outline: 1px solid transparent; outline-offset: 2px; } }
   .mission.changed { animation-name: changedRow; }
-  @keyframes changedRow { 0% { background-color: #EEF0FF; } 100% { background-color: transparent; } }
-  .repo-menu { position: fixed; z-index: 50; min-width: 280px; max-width: 460px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(21, 22, 26, 0.16); padding: 6px; display: flex; flex-direction: column; }
-  .repo-title { font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 10px 4px; text-transform: uppercase; letter-spacing: 0.6px; }
-  .repo-item { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 10px; }
-  .repo-item:hover, .repo-item:focus-visible { background: var(--indigo-tint); }
-  .repo-item.muted .repo-name { color: var(--muted); font-weight: 500; }
-  .repo-name { font-size: 14px; font-weight: 700; color: var(--ink); }
-  .repo-path { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .park-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 10px 8px; }
-  .park-chips .btn { height: 30px; padding: 0 10px; font-size: 13px; }
-  .park-input { margin: 0 10px; padding: 8px 10px; width: calc(100% - 20px); }
-  .park-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 10px; }
-  .park-actions .btn { height: 34px; padding: 0 12px; }
-  .parked { border-left: 4px solid transparent; border-radius: 12px; }
-  .parked.parked-blocked { border-left-color: #DC2626; background: #FEF2F2; }
-  .parked.parked-later { border-left-color: var(--idle-ring); }
-  .card.parked.parked-blocked { border-color: #FCA5A5; border-left-color: #DC2626; background: var(--surface); }
-  .parked .resume { height: 30px; padding: 0 10px; font-size: 13px; }
-  .moved { font-size: 12px; font-weight: 700; color: var(--indigo); margin-right: 6px; white-space: nowrap; }
-  .backdrop { position: fixed; inset: 0; background: rgba(21, 22, 26, 0.35); z-index: 25; }
-  .card.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: 30; overflow-y: auto; box-shadow: 0 20px 60px rgba(21, 22, 26, 0.3); }
+  @keyframes changedRow { 0% { background-color: var(--glass-strong); } 100% { background-color: transparent; } }
+  .repo-menu { position: fixed; z-index: var(--z-modal); min-width: 300px; max-width: 460px; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; --glass-bezel: 14px; border-radius: 22px; }
+  .repo-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); padding: var(--space-2) var(--space-3) var(--space-1); display: flex; align-items: center; gap: 6px; }
+  .repo-item { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 1px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-glass-s); }
+  .repo-item:hover, .repo-item:focus-visible { background: var(--glass-nested); }
+  .repo-item.muted .repo-name { color: var(--ink-2); font-weight: 400; }
+  .repo-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .repo-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .park-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-3); }
+  .park-input { margin: 0 var(--space-3); width: calc(100% - 2 * var(--space-3)); }
+  .park-actions { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3); }
+  .moved { margin-right: var(--space-1); }
+  .backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--scrim) 60%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 25; }
+  .card.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: 30; overflow-y: auto; }
   .card.big .thread { max-height: none; overflow: visible; }
 
-  .wave { animation: wave 1.8s ease-in-out infinite; transform-origin: 70% 80%; }
-  @keyframes wave { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-16deg); } 80% { transform: rotate(12deg); } 90% { transform: rotate(-6deg); } }
-  .pop { animation: pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-  @keyframes pop { 0% { transform: scale(0.4) rotate(-12deg); } 100% { transform: scale(1) rotate(0); } }
-  .bump { animation: bump 460ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
-  .reward { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 10px 20px 10px 10px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: 15px; box-shadow: 0 16px 40px rgba(21, 22, 26, 0.22); white-space: nowrap; z-index: 40; animation: toastIn 380ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-  .reward-badge { font-weight: 800; font-size: 15px; padding: 5px 12px; border-radius: 999px; background: var(--gold); color: var(--ink); }
-  .reward.error .reward-badge { background: #FCA5A5; }
-  .reward.info .reward-badge { background: #E0E7FF; }
+  .pop { animation: pop 420ms cubic-bezier(0.3, 1.35, 0.45, 1); }
+  @keyframes pop { 0% { transform: scale(0.85); } 100% { transform: scale(1); } }
+  .bump { animation: bump 300ms ease-out; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .reward { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-3); padding: 10px 20px 10px 10px; border-radius: var(--radius-pill); font-size: 15px; white-space: nowrap; z-index: var(--z-toast); animation: toastIn 260ms ease-out; --glass-bezel: 14px; }
   .reward.out { opacity: 0; transition: opacity 300ms ease-in; }
-  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 24px) scale(0.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
-  .sparks { position: fixed; left: 50%; bottom: 40px; width: 0; height: 0; pointer-events: none; z-index: 39; }
-  .spark { position: absolute; left: 0; top: 0; border-radius: 3px; animation: fly 1100ms cubic-bezier(0.22, 1, 0.36, 1) forwards; opacity: 0; }
-  @keyframes fly { 0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(0.4); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1); } }
-  @media (prefers-reduced-motion: reduce) { .wave, .pop, .bump, .reward, .changed { animation: none !important; } .av, .btn { transition: none !important; } .spark { display: none; } }
-  .view-switch { display: inline-flex; padding: 3px; border-radius: 12px; background: #EDEDF0; gap: 2px; margin-right: 6px; }
-  .tools .view-switch .btn { height: 30px; min-width: 0; padding: 0 12px; color: var(--muted); border-radius: 9px; }
-  .tools .view-switch .btn[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(21, 22, 26, 0.08); }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .trace { position: fixed; left: 50%; bottom: 72px; width: 240px; height: 90px; margin-left: -120px; pointer-events: none; z-index: var(--z-toast); color: var(--ink); }
+  .trace svg { display: block; width: 100%; height: 100%; }
+  .trace path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: traceDraw 900ms ease-out forwards, traceFade 500ms ease-in 1100ms forwards; }
+  @keyframes traceDraw { to { stroke-dashoffset: 0; } }
+  @keyframes traceFade { to { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .pop, .bump, .reward, .changed, .trace path { animation: none !important; } .av { transition: none !important; } .trace { display: none; } }
+
+  .view-switch { margin-right: var(--space-1); }
   .wrap.team-mode { max-width: 1600px; }
   .wrap.team-mode #crew, .wrap.team-mode > section { display: none !important; }
-  #team { display: none; flex-direction: column; gap: 20px; }
+  #team { display: none; flex-direction: column; gap: var(--space-5); }
   .wrap.team-mode #team { display: flex; }
-  .t-board { display: flex; flex-direction: column; background: var(--surface); border-radius: 28px; box-shadow: 0 1px 2px rgba(21, 22, 26, 0.04), 0 12px 32px rgba(21, 22, 26, 0.05); overflow: hidden; }
-  .t-zone { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 24px 10px; }
-  .t-zone + .t-zone { border-top: 1px solid #F0F0F3; }
-  .t-zone.stuck { background: #FFFBFB; }
-  .t-zone.later { background: #FAFAFB; }
-  .t-zone-head { display: flex; align-items: center; gap: 10px; }
-  .t-dot { width: 10px; height: 10px; border-radius: 999px; }
-  .t-zone-title { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
-  .t-zone-count { font-size: 14px; font-weight: 600; color: var(--muted); }
-  .t-grid { height: 112px; display: flex; align-items: center; gap: 14px; overflow-x: auto; overflow-y: hidden; padding: 6px 2px; overscroll-behavior-x: contain; }
-  .t-grid .t-agent { flex: none; width: 300px; display: grid; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 14px; row-gap: 4px; align-items: center; padding: 6px 10px 6px 4px; border-radius: 16px; }
-  .t-grid .t-agent:hover { transform: translateY(-3px); background: #F7F7F9; }
-  .t-grid .t-agent .t-mii { grid-column: 1; grid-row: 1 / span 2; zoom: 0.8; }
-  .t-grid .t-agent .t-bubble { grid-column: 2; grid-row: 1; text-align: left; padding: 7px 10px; font-size: 13.5px; border-radius: 12px; }
+  .t-board { display: flex; flex-direction: column; gap: var(--space-4); }
+  .t-zone { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4) var(--space-6) var(--space-3); }
+  .t-zone-head { display: flex; align-items: center; gap: var(--space-3); }
+  .t-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .t-zone-title { font-family: var(--font-display); font-size: 26px; line-height: 1.1; }
+  .t-zone-count { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; color: var(--ink-2); }
+  .t-grid { min-height: 120px; display: flex; align-items: center; gap: var(--space-4); overflow-x: auto; overflow-y: hidden; padding: var(--space-2) 2px; overscroll-behavior-x: contain; }
+  .t-grid .t-agent { flex: none; width: 320px; display: grid; grid-template-columns: 80px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: var(--space-4); row-gap: var(--space-1); align-items: center; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1); }
+  .t-grid .t-agent:hover { transform: translateY(-3px); background: var(--glass-nested); }
+  .t-grid .t-agent .t-face { grid-column: 1; grid-row: 1 / span 2; }
+  .t-grid .t-agent .t-bubble { grid-column: 2; grid-row: 1; text-align: left; padding: 8px 12px; font-size: 13.5px; }
   .t-grid .t-agent .t-clamp { -webkit-line-clamp: 2; }
-  .t-grid .t-agent .t-tail { left: -6px; top: 50%; bottom: auto; margin-left: 0; margin-top: -5.5px; border-right: 0; border-bottom: 1px solid var(--b-line); border-left: 1px solid var(--b-line); border-radius: 0 0 0 3px; }
-  .t-grid .t-agent .t-name { grid-column: 2; grid-row: 2; flex-direction: row; justify-content: space-between; gap: 8px; min-width: 0; }
-  .t-grid .t-agent .t-title { max-width: none; min-width: 0; font-size: 13px; }
+  .t-grid .t-agent .t-name { grid-column: 2; grid-row: 2; flex-direction: row; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+  .t-grid .t-agent .t-title { max-width: none; min-width: 0; }
   .t-grid .t-agent .t-meta { flex: none; white-space: nowrap; }
-  .t-empty { height: 112px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; padding: 24px 8px; text-align: center; }
-  .t-empty-icon { font-size: 30px; }
-  .t-empty-title { font-size: 19px; font-weight: 800; }
-  .t-empty-line { font-size: 14px; color: var(--muted); }
-  .t-agent { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 16px; transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-  .t-agent:hover { transform: translateY(-6px); }
-  .t-agent:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px; }
+  .t-empty { min-height: 120px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: var(--space-4); padding: var(--space-6) var(--space-2); }
+  .t-empty-text { display: flex; flex-direction: column; gap: 2px; }
+  .t-agent { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: var(--space-3); border-radius: var(--radius-glass-s); transition: transform 150ms ease-out, background-color 150ms ease-out; }
   .t-agent.is-current { cursor: default; }
   .t-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .t-bubble { position: relative; width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; text-align: center; box-shadow: 0 2px 10px rgba(21, 22, 26, 0.06); background: var(--b-bg); color: var(--b-fg); border: 1px solid var(--b-line); font-weight: var(--b-weight, 400); }
-  .t-tail { position: absolute; left: 50%; bottom: -6px; width: 11px; height: 11px; margin-left: -5.5px; transform: rotate(45deg); border-radius: 0 0 3px 0; background: var(--b-bg); border-right: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line); }
-  .t-mii { position: relative; display: block; width: 72px; height: 90px; flex: none; }
-  .t-spot { position: absolute; left: 8px; bottom: -6px; width: 56px; height: 12px; border-radius: 50%; }
-  .t-body { position: absolute; left: 11px; bottom: 0; width: 50px; height: 33px; border-radius: 25px 25px 12px 12px; box-shadow: inset -5px -4px 0 rgba(0, 0, 0, 0.08); }
-  .t-neck { position: absolute; left: 29px; bottom: 27px; width: 14px; height: 10px; border-radius: 0 0 7px 7px; }
-  .t-ear { position: absolute; top: 28px; width: 9px; height: 12px; border-radius: 50%; }
-  .t-head { position: absolute; left: 13px; top: 6px; width: 46px; height: 50px; border-radius: 50% 50% 46% 46%; box-shadow: inset -5px -5px 0 rgba(0, 0, 0, 0.05); }
-  .t-hair { position: absolute; left: -3px; top: -5px; width: 52px; height: 22px; border-radius: 26px 26px 8px 8px; }
-  .t-fringe { position: absolute; left: 3px; top: 10px; width: 24px; height: 11px; border-radius: 0 0 16px 4px; }
-  .t-eye { position: absolute; top: 24px; width: 6px; height: 8px; border-radius: 3px; background: #2A2320; animation: tBlink 5s infinite; }
-  .t-eye::after { content: ''; position: absolute; top: 1px; left: 1px; width: 2px; height: 2px; border-radius: 50%; background: #FFFFFF; }
-  @keyframes tBlink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
-  .t-cheek { position: absolute; top: 33px; width: 8px; height: 4px; border-radius: 50%; background: #F28C8C; opacity: 0.35; }
-  .t-mouth { position: absolute; left: 50%; top: 37px; transform: translateX(-50%); box-sizing: border-box; }
-  .m-smile { width: 12px; height: 6px; border: 2px solid #2A2320; border-top: none; border-radius: 0 0 10px 10px; }
-  .m-o { width: 7px; height: 8px; border-radius: 50%; background: #2A2320; top: 36px; }
-  .m-flat { width: 9px; height: 2px; border-radius: 2px; background: #2A2320; top: 40px; }
-  .m-frown { width: 12px; height: 6px; border: 2px solid #2A2320; border-bottom: none; border-radius: 10px 10px 0 0; top: 39px; }
-  .t-badge { position: absolute; right: -6px; top: -2px; width: 28px; height: 28px; border-radius: 999px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 2px 8px rgba(21, 22, 26, 0.12); }
+  .t-bubble { position: relative; width: 100%; padding: 11px 14px; border-radius: var(--radius-glass-s); font-size: 14.5px; line-height: 1.4; background: var(--b-bg); color: var(--b-fg); border: 1px solid var(--b-line); font-weight: var(--b-weight, 400); }
+  .t-face { position: relative; display: inline-flex; }
+  .t-face.face-glass { padding: 7px; border-radius: 50% !important; --glass-bezel: 12px; --glass-thickness: 28px; }
+  .card.mission { background: color-mix(in srgb, var(--conv-tint, transparent) 20%, transparent); border-radius: var(--radius-glass-s); }
   .t-name { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  .t-title { max-width: 190px; font-size: 14px; font-weight: 700; color: var(--ink); }
-  .t-meta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
-  .t-meta .pill { margin: 0; font-size: 11.5px; padding: 2px 8px; }
-  .t-floor { height: 6px; border-radius: 999px; background: #EDEDF2; }
-  .t-floor.run { background-image: repeating-linear-gradient(90deg, #DCDDFB 0 10px, #EDEDF2 10px 20px); background-size: 20px 100%; animation: tBelt 1.4s linear infinite; }
-  @keyframes tBelt { from { background-position: 0 0; } to { background-position: 20px 0; } }
-  .t-bob { animation: tBob 2.6s ease-in-out infinite; }
-  @keyframes tBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-  .t-shake { animation: tShake 2.8s ease-in-out infinite; }
-  @keyframes tShake { 0%, 86%, 100% { transform: translateX(0); } 89% { transform: translateX(-3px); } 93% { transform: translateX(3px); } 97% { transform: translateX(-2px); } }
-  .t-rest { display: flex; flex-direction: column; gap: 10px; }
-  .t-rest .rest-toggle { margin-left: -12px; }
-  .t-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .t-chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px; background: var(--surface); font-size: 13px; color: var(--ink-2); box-shadow: 0 1px 2px rgba(21, 22, 26, 0.05); text-decoration: none; max-width: 100%; }
-  a.t-chip:hover { color: var(--indigo); }
-  .t-chip-state { color: var(--muted); white-space: nowrap; }
-  .t-modal { position: fixed; left: 0; top: 0; width: calc(100vw / var(--zoom, 1)); height: calc(100vh / var(--zoom, 1)); z-index: 30; display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
-  .t-backdrop { position: absolute; inset: 0; background: rgba(21, 22, 26, 0.38); }
-  .t-sheet { position: relative; width: 100%; max-width: min(1500px, calc(96vw / var(--zoom, 1))); max-height: calc(96vh / var(--zoom, 1)); overflow-x: hidden; overflow-y: auto; border-radius: 28px; background: var(--surface); box-shadow: 0 24px 64px rgba(21, 22, 26, 0.25); display: flex; flex-direction: column; gap: 16px; padding: 22px 24px 24px; }
+  .t-title { max-width: 200px; font-size: 14px; font-weight: 500; color: var(--ink); }
+  .t-meta { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: var(--ink-2); }
+  .t-rest { display: flex; flex-direction: column; gap: var(--space-3); }
+  .t-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .t-chip { display: inline-flex; align-items: center; gap: var(--space-2); max-width: 100%; text-decoration: none; }
+  .t-chip-title { font-family: var(--font-sans); font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+  .t-chip-state { color: var(--ink-2); white-space: nowrap; }
+  .t-modal { position: fixed; left: 0; top: 0; width: calc(100vw / var(--zoom, 1)); height: calc(100vh / var(--zoom, 1)); z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
+  .t-backdrop { position: absolute; inset: 0; background: color-mix(in srgb, var(--scrim) 55%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .t-sheet { position: relative; width: 100%; max-width: min(1500px, calc(96vw / var(--zoom, 1))); max-height: calc(96vh / var(--zoom, 1)); overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); --glass-bezel: 26px; --glass-thickness: 56px; --glass-blur: 18px; border-radius: 28px; }
   .t-sheet > * { flex-shrink: 0; }
   .t-sheet .thread { max-height: calc(70vh / var(--zoom, 1)); }
   .t-sheet .plain { max-width: none; }
-  .t-sheet.enter { animation: tSheetIn 260ms cubic-bezier(0.34, 1.56, 0.64, 1); }
-  @keyframes tSheetIn { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: none; } }
-  .t-sheet-head { display: flex; align-items: center; gap: 16px; }
-  .t-sheet-title { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
-  .t-sheet-sub { font-size: 13px; color: var(--muted); }
-  .t-ask { padding: 14px 16px; border-radius: 16px; font-size: 18px; line-height: 1.45; font-weight: 500; }
-  .t-quick { display: flex; flex-wrap: wrap; gap: 6px; }
-  .t-quick .btn { height: 38px; padding: 0 16px; }
-  .t-sheet .card-actions .btn { height: 38px; padding: 0 10px; }
-  .t-sheet .card-actions .btn-primary { height: 44px; padding: 0 20px; }
-  @media (prefers-reduced-motion: reduce) { .t-eye, .t-floor.run, .t-bob, .t-shake, .t-sheet.enter { animation: none !important; } .t-agent { transition: none !important; } }
+  .t-sheet.enter { animation: tSheetIn 220ms ease-out; }
+  @keyframes tSheetIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .t-sheet-head { display: flex; align-items: center; gap: var(--space-5); }
+  .t-sheet-title { margin: 0; font-family: var(--font-display); font-size: 32px; line-height: 1.1; font-weight: 400; }
+  .t-sheet-sub { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+  .t-ask { display: flex; gap: var(--space-3); align-items: baseline; padding: var(--space-4) var(--space-5); border-radius: var(--radius-glass-s); font-size: 18px; line-height: 1.45; border: 1px solid var(--b-line, var(--glass-edge)); background: var(--b-bg, var(--glass-nested)); color: var(--b-fg, var(--ink)); }
+  .t-ask .ep-icon { flex: none; transform: translateY(2px); }
+  .t-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .t-stats { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+  .t-stat { display: flex; flex-direction: column; gap: 4px; }
+  .t-stat-value { font-family: var(--font-display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .t-stat-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  @media (prefers-reduced-motion: reduce) { .t-sheet.enter { animation: none !important; } .t-agent { transition: none !important; } }
+
   #mini { display: none; }
-  html.mini-mode, html.mini-mode body { background: transparent; overflow: hidden; }
+  body.mini-mode { --dock-room: 170px; }
+  html.mini-mode, html.mini-mode body { background: transparent !important; background-image: none !important; overflow: hidden; }
+  html.mini-mode .ep-scene__bg { display: none; }
+  html.os-glass, html.os-glass body { background: transparent !important; background-image: none !important; }
+  html.os-glass .ep-scene__bg { display: none; }
+  .drag-strip { display: none; }
+  html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: 1000; }
   body.mini-mode .wrap { display: none; }
   body.mini-mode #mini { display: block; }
   .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 6px 6px 0; pointer-events: none; }
-  .dock { pointer-events: auto; position: relative; display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-radius: 24px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 10px 30px rgba(21, 22, 26, 0.22), 0 0 0 1px rgba(21, 22, 26, 0.06); -webkit-app-region: drag; }
+  .dock { --head: 56px; --pad: 8px; pointer-events: auto; position: relative; flex: none; display: flex; border-radius: 30px; overflow: hidden; background: var(--paper-deep); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-glass); }
+  .dock[data-size="small"] { --head: 40px; --pad: 6px; border-radius: 24px; }
+  .dock[data-size="large"] { --head: 72px; --pad: 10px; border-radius: 36px; }
+  .dock-items { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--pad); padding: var(--pad) calc(var(--pad) + 6px); -webkit-app-region: drag; }
+  .dock-tools { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: var(--space-1); }
+  .dock-heads { display: flex; align-items: center; gap: var(--pad); }
+  .dock[data-layout="column"] .dock-items { flex-direction: column; }
+  .dock[data-layout="column"] .dock-tools { grid-auto-flow: row; grid-template-columns: repeat(2, auto); grid-template-rows: none; }
+  .dock[data-layout="column"] .dock-heads { flex-direction: column; }
+  .dock[data-layout="grid"] .dock-heads { display: grid; grid-template-columns: repeat(var(--grid-columns, 1), auto); }
   .dock button { -webkit-app-region: no-drag; }
-  .dock-count { all: unset; cursor: pointer; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 17px; background: var(--orange); color: #FFFFFF; box-shadow: 0 6px 14px rgba(249, 115, 22, 0.35); margin-right: 4px; }
-  .dock-count.calm { background: #DCFCE7; color: var(--green-ink); box-shadow: none; }
-  .dock-count-value { font-size: 22px; font-weight: 800; line-height: 1; }
-  .dock-count-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
-  .dock-sep { flex: none; width: 1px; height: 44px; background: var(--line); margin: 0 4px; }
-  .mini-head { all: unset; cursor: pointer; flex: none; position: relative; display: flex; align-items: flex-end; justify-content: center; width: 50px; height: 58px; border-radius: 14px; transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background 140ms ease-out; }
-  .mini-head:hover { transform: translateY(-4px); background: #F2F2F5; }
-  .mini-head .t-mii { zoom: 0.6; }
-  .mini-head.working, .mini-head.later { opacity: 0.5; }
+  .dock .dock-count.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: calc(var(--head) / 2.4); --glass-bezel: 14px; --glass-thickness: 34px; }
+  .dock-count-value { font-family: var(--font-display); font-size: calc(var(--head) * 0.5); line-height: 1; color: var(--ink); display: flex; align-items: center; justify-content: center; }
+  .dock-count.calm .dock-count-value { color: var(--success); }
+  .dock-count-value .ep-icon { width: calc(var(--head) * 0.36); height: calc(var(--head) * 0.36); }
+  .dock-count-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin-top: 3px; }
+  .dock-sep { flex: none; width: 1px; height: var(--head); background: var(--rule); }
+  .dock[data-layout="column"] .dock-sep { width: var(--head); height: 1px; }
+  .dock .mini-head.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: 50%; --glass-bezel: 12px; --glass-thickness: 28px; transition: transform 150ms ease-out; }
+  .dock .mini-head.ep-glass:hover { transform: translateY(-2px); }
+  .dock[data-layout="column"] .mini-head.ep-glass:hover { transform: translateX(-2px); }
+  .mini-head.working, .mini-head.later { opacity: 0.6; }
   .mini-head.working:hover { opacity: 1; }
-  .mini-tip { position: absolute; right: -6px; bottom: calc(100% + 10px); width: 230px; padding: 8px 11px; border-radius: 12px; background: #15161A; color: #FFFFFF; font-size: 12px; line-height: 1.4; text-align: left; opacity: 0; transform: translateY(4px); transition: opacity 140ms ease-out, transform 140ms ease-out; pointer-events: none; }
-  .mini-tip strong { display: block; font-size: 12.5px; margin-bottom: 2px; }
-  .mini-head:hover .mini-tip { opacity: 1; transform: none; }
-  .mini-head.fresh { animation: miniHop 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 2; }
-  @keyframes miniHop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } }
-  .dock-quit { all: unset; cursor: pointer; position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 999px; background: #FFFFFF; color: var(--muted); font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(21, 22, 26, 0.2); opacity: 0; transition: opacity 140ms ease-out; }
+  .mini-head.fresh { animation: miniHop 900ms ease-in-out 2; }
+  @keyframes miniHop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+  .dock-quit { opacity: 0; transition: opacity 140ms ease-out; }
   .dock:hover .dock-quit { opacity: 1; }
-  .dock-calm { font-size: 12.5px; color: var(--muted); padding: 0 6px; white-space: nowrap; }
-  body.mini-mode .t-modal { padding: 0; }
-  body.mini-mode .reward { left: auto; right: 8px; bottom: 96px; transform: none; white-space: normal; max-width: calc(100vw - 16px); animation: miniToastIn 280ms ease-out; }
+  .dock-calm { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); padding: 0 var(--space-2); white-space: nowrap; }
+  body.mini-mode .t-modal { padding: 0 6px 0 0; align-items: flex-end; justify-content: flex-end; height: calc(100vh - var(--dock-room)); }
+  body.mini-mode .reward { left: auto; right: 8px; bottom: 96px; transform: none; white-space: normal; max-width: calc(100vw - 16px); animation: miniToastIn 240ms ease-out; }
   @keyframes miniToastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  body.mini-mode .sparks { left: auto; right: 120px; bottom: 60px; }
-  body.mini-mode .t-backdrop { background: transparent; pointer-events: none; }
-  body.mini-mode .t-modal { align-items: flex-end; }
-  body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; border-radius: 22px; box-shadow: 0 10px 30px rgba(21, 22, 26, 0.25), 0 0 0 1px rgba(21, 22, 26, 0.06); }
+  body.mini-mode .trace { left: auto; right: 120px; bottom: 60px; margin-left: 0; }
+  body.mini-mode .t-backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
+  body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
+  .t-sheet { --panel-width: 1100; }
+  .dock-menu { --panel-width: 380; }
+  html.os-glass .dock-zone { padding: 0; }
+  html.os-glass .dock { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  html.os-glass body.mini-mode .t-modal { padding: 0; border-bottom: 1px solid var(--rule); }
+  html.os-glass body.mini-mode .t-sheet { width: 100%; max-width: none !important; border-radius: 0; background: color-mix(in srgb, var(--conv-tint, transparent) 20%, transparent) !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  html.os-glass body.mini-mode .reward { inset: auto 0 0 0; height: var(--dock-room); max-width: none; border-radius: 0; justify-content: center; background: color-mix(in srgb, var(--paper-deep) 92%, transparent) !important; }
   @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } }
   body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
-  .nc-label { font-size: 13px; font-weight: 700; color: var(--ink-2); }
-  .nc-label span { font-weight: 400; color: var(--muted); }
-  .nc-search { width: 100%; padding: 10px 12px; }
-  .nc-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
-  .nc-item { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; column-gap: 8px; padding: 7px 10px; border-radius: 9px; cursor: pointer; }
-  .nc-item:hover { background: var(--indigo-tint); }
-  .nc-item input { margin: 0; accent-color: var(--indigo); }
-  .nc-item-text { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
-  .nc-name { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
-  .nc-path { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .nc-picked { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; align-items: center; }
-  .nc-chip { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--indigo-tint); color: var(--indigo); }
-  .nc-none { font-size: 12.5px; color: var(--muted); }
-  .nc-note { font-size: 12.5px; color: var(--muted); }
-  .nc-text { min-height: 100px; }
-  .dock-new { all: unset; cursor: pointer; flex: none; width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: var(--indigo); background: var(--indigo-tint); margin-right: 4px; }
-  .dock-new:hover { background: #E0E4FF; }
+  .search-bar { margin-top: var(--space-4); min-height: 46px; }
+  .search-bar[hidden] { display: none !important; }
+  body.launcher-mode .wrap { zoom: 1; max-width: none; padding: 10px; gap: 8px; }
+  body.launcher-mode #wrap > header > :not(.search-bar), body.launcher-mode #wrap > section, body.launcher-mode #team, body.launcher-mode #mini, body.launcher-mode #newconv, body.launcher-mode .banner, body.launcher-mode .ds-banner, body.launcher-mode .drag-strip { display: none !important; }
+  body.launcher-mode .search-bar { margin: 0; -webkit-app-region: drag; }
+  body.launcher-mode .search-bar input { -webkit-app-region: no-drag; }
+  body.launcher-mode .search-results { display: flex; margin: 0; gap: 6px; }
+  body.launcher-mode .search-row { padding: 8px 12px; }
+  .search-row.selected { border-color: var(--ink) !important; box-shadow: 0 0 0 1px var(--ink) inset; }
+  .search-results { display: none; flex-direction: column; gap: 8px; margin-top: var(--space-4); }
+  body.searching .search-results { display: flex; }
+  body.searching #wrap > section, body.searching #team { display: none; }
+  .search-status { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+  .search-row { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 12px 16px; text-decoration: none; color: inherit; border-radius: 20px; }
+  a.search-row:hover { border-color: var(--ink-2); }
+  .search-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .search-title { font-weight: 600; }
+  .search-snippet { color: var(--ink-2); font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+  .search-snippet mark { background: color-mix(in srgb, var(--warning) 35%, transparent); color: var(--ink); border-radius: 3px; padding: 0 1px; }
+  .search-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  .nc-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  .nc-label span { text-transform: none; letter-spacing: 0; font-family: var(--font-sans); font-size: 13px; }
+  .nc-search { width: 100%; }
+  .nc-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); padding: var(--space-1); background: var(--glass-nested); }
+  .nc-item { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: var(--space-2); padding: 7px 10px; border-radius: 10px; cursor: pointer; }
+  .nc-item:hover { background: var(--glass); }
+  .nc-item input { margin: 0; accent-color: var(--ink); }
+  .nc-item-text { min-width: 0; display: flex; align-items: baseline; gap: var(--space-3); }
+  .nc-name { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .nc-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nc-picked { display: flex; flex-wrap: wrap; gap: var(--space-2); min-height: 28px; align-items: center; }
+  .nc-none { font-size: 13px; color: var(--ink-2); }
+  .nc-note { font-size: 13px; color: var(--ink-2); }
+  .nc-text { width: 100%; }
+  .ctx { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .ctx-tag { flex: none; white-space: nowrap; text-decoration: none; text-transform: none; letter-spacing: .02em; padding: 4px 8px; }
+  a.ctx-tag, button.ctx-tag { cursor: pointer; }
+  a.ctx-tag:hover, button.ctx-tag:hover { border-color: var(--ink-2); color: var(--ink); }
+  .ctx-tag .ep-icon { width: 11px; height: 11px; }
+  .ctx-quiet { color: var(--ink-2); }
+  .card-text, .mrow-text { min-width: 0; display: flex; flex-direction: column; }
+  .t-grid .t-agent .t-ctx { grid-column: 2; grid-row: 3; min-width: 0; }
+  .t-grid .t-agent .t-ctx .ctx { margin-top: 0; flex-wrap: nowrap; overflow: hidden; }
+  .dock-menu { max-width: 380px !important; }
+  .dock-menu-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 </style>
 </head>
-<body>
+<body class="ep-root">
+<div class="ds-banner" id="ds-banner" role="alert">Le cockpit a été mis à jour : redémarre Claude Desktop pour charger le nouveau style.</div>
+<div class="drag-strip" aria-hidden="true"></div>
+<div class="ep-scene__bg" aria-hidden="true"><ep-flow-bg fill tone="paper" seed="cockpit" disc="none" animate="none"></ep-flow-bg></div>
 <div class="wrap" id="wrap">
   <header>
     <div class="topbar">
       <div class="topbar-left">
-        <h1 class="display">Ton équipe</h1>
+        <h1 class="display">Ton <em>équipe</em></h1>
         <span class="stats"><span class="count" id="relaunched">0</span> relances aujourd'hui · record <span id="record">0</span><span id="day-stats"></span></span>
       </div>
       <div class="tools">
-        <button type="button" class="btn" id="new-conv" title="Nouvelle conversation" aria-label="Nouvelle conversation">➕</button>
-        <div class="view-switch" role="group" aria-label="Vue">
-          <button type="button" class="btn" data-view="list" aria-pressed="true">Liste</button>
-          <button type="button" class="btn" data-view="team" aria-pressed="false">Équipe</button>
+        <button type="button" class="ep-btn ep-btn--icon" id="new-conv" title="Nouvelle conversation" aria-label="Nouvelle conversation"><span class="ep-icon ep-icon--plus" aria-hidden="true"></span></button>
+        <div class="view-switch ep-toggle" role="group" aria-label="Vue">
+          <button type="button" data-view="list" aria-pressed="true">Liste</button>
+          <button type="button" data-view="team" aria-pressed="false">Équipe</button>
         </div>
-        <button type="button" class="btn" id="zoom-out" aria-label="Réduire le texte">A−</button>
-        <button type="button" class="btn" id="zoom-in" aria-label="Agrandir le texte">A+</button>
-        <button type="button" class="btn bell" id="bell" aria-label="Activer les notifications" style="width: 40px">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
-        </button>
+        <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" id="zoom-out" aria-label="Réduire le texte">A−</button>
+        <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" id="zoom-in" aria-label="Agrandir le texte">A+</button>
+        <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon bell" id="bell" aria-label="Activer les notifications"><span class="ep-icon ep-icon--bell" aria-hidden="true"></span></button>
         <span class="clock display" id="clock">--:--</span>
       </div>
     </div>
     <div class="fresh-note" id="freshness">en attente des données…</div>
-    <div class="banner" id="banner">Version lecture seule. Pour donner des ordres depuis cette page, ouvre <a href="http://127.0.0.1:48123/">http://127.0.0.1:48123/</a> (une conversation avec le mod doit être ouverte).</div>
+    <div class="banner ep-alert ep-tone-info" id="banner">Version lecture seule. Pour donner des ordres depuis cette page, ouvre <a href="http://127.0.0.1:48123/">http://127.0.0.1:48123/</a> (une conversation avec le mod doit être ouverte).</div>
     <div class="crew" id="crew"></div>
+    <label class="ep-search search-bar" id="search-bar"><span class="ep-icon ep-icon--search" aria-hidden="true"></span><input class="ep-search__input" id="search-input" type="search" placeholder="Rechercher dans toutes les conversations   Ctrl+K" autocomplete="off" spellcheck="false" aria-label="Rechercher dans toutes les conversations"></label>
   </header>
+  <div class="search-results" id="search-results" aria-live="polite"></div>
 
   <section id="s-waiting" aria-labelledby="h-waiting">
-    <h2 id="h-waiting" class="display">Attendent tes ordres <span style="color: var(--orange-ink)" id="n-waiting">0</span></h2>
+    <h2 id="h-waiting" class="display">Attendent tes ordres <span class="count-tag" id="n-waiting">0</span></h2>
     <div class="lane"></div>
   </section>
 
   <section id="s-working" aria-labelledby="h-working">
-    <h2 id="h-working" class="display">En mission <span style="color: var(--blue)" id="n-working">0</span></h2>
-    <div class="lane" style="gap: 2px"></div>
+    <h2 id="h-working" class="display">En mission <span class="count-tag" id="n-working">0</span></h2>
+    <div class="lane lane-plate ep-plate" style="gap: 2px"></div>
   </section>
 
   <section id="s-parked" aria-labelledby="h-parked">
-    <h2 id="h-parked" class="display">Mis de côté <span style="color: var(--muted)" id="n-parked">0</span></h2>
-    <div class="lane" style="gap: 6px"></div>
+    <h2 id="h-parked" class="display">Mis de côté <span class="count-tag" id="n-parked">0</span></h2>
+    <div class="lane lane-plate ep-plate" style="gap: 6px"></div>
   </section>
 
   <section id="s-others" style="gap: 6px">
-    <button type="button" class="btn rest-toggle" id="rest-toggle" aria-expanded="false"></button>
+    <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm rest-toggle" id="rest-toggle" aria-expanded="false"></button>
     <div class="lane" style="gap: 0" id="rest-list"></div>
   </section>
 
   <div id="team"></div>
 </div>
-<div id="mini"></div>
+<div id="mini">
+  <div class="dock-zone"><div class="dock" id="dock"><div class="dock-items" id="dock-items"></div></div></div>
+  <div id="mini-pop"></div>
+</div>
 <div id="newconv"></div>
 
+<script src="mod/assets/liquid-paper/bundle.js"></script>
+<script src="mod/assets/identity.js"></script>
+<script src="mod/assets/dock.js"></script>
 <script>
   const DATA_FILE = 'conversations-data.js';
   const DEEP_LINK_PREFIX = 'claude://claude.ai/epitaxy/';
@@ -416,39 +420,38 @@
   const QUICK_REPLIES = ['OK', 'GO', 'Non'];
 
   const ACTIVE_STATUSES = ['thinking', 'writing', 'tool', 'working'];
-  const WAITING_STATUSES = ['permission', 'done'];
+  const WAITING_STATUSES = ['permission', 'done', 'external'];
   const REST_LABELS = {
     seen: 'vue, au repos', opened: 'ouverte, rien de nouveau', idle: 'hors radar', closed: 'fermée',
     aborted: 'interrompue', error: 'en erreur',
   };
   const ACTIVITY = {
-    thinking: ['🤔', 'réfléchit'],
-    writing: ['💬', 'rédige'],
-    working: ['⚙️', 'travaille'],
-    tool: ['🔧', 'utilise un outil'],
+    thinking: ['info', 'réfléchit'],
+    writing: ['info', 'rédige'],
+    working: ['info', 'travaille'],
+    tool: ['info', 'utilise un outil'],
   };
   const TOOL_FLAVORS = [
-    [/^(Read|Grep|Glob)$/, '🔎', 'fouille le code'],
-    [/^(Edit|Write|NotebookEdit)$/, '📝', 'modifie le code'],
-    [/^Bash$/, '🖥️', 'lance une commande'],
-    [/^Agent$/, '🤖', 'délègue à un sous-agent'],
-    [/^(WebFetch|WebSearch)$/, '🌐', 'va sur le web'],
-    [/^AskUserQuestion$/, '❓', 'te pose une question'],
-    [/^mcp__/, '🔌', 'interroge un service'],
+    [/^(Read|Grep|Glob)$/, 'search', 'fouille le code'],
+    [/^(Edit|Write|NotebookEdit)$/, 'arrow', 'modifie le code'],
+    [/^Bash$/, 'terminal', 'lance une commande'],
+    [/^Agent$/, 'arrow', 'délègue à un sous-agent'],
+    [/^(WebFetch|WebSearch)$/, 'open', 'va sur le web'],
+    [/^AskUserQuestion$/, 'info', 'te pose une question'],
+    [/^mcp__/, 'arrow', 'interroge un service'],
   ];
   const KINDS = {
-    permission: { label: '✋ Permission', emoji: '✋', color: 'var(--orange-ink)', rank: 0 },
-    question: { label: '💬 Question', emoji: '💬', color: 'var(--indigo)', rank: 1 },
-    unknown: { label: '✅ A fini', emoji: '✅', color: 'var(--ink-2)', rank: 2 },
-    delivered: { label: '📦 Mission livrée', emoji: '📦', color: 'var(--green-ink)', rank: 3 },
+    permission: { label: 'Permission', icon: 'alert', color: 'var(--warning)', rank: 0 },
+    question: { label: 'Question', icon: 'info', color: 'var(--accent)', rank: 1 },
+    unknown: { label: 'A fini', icon: 'check', color: 'var(--ink-2)', rank: 2 },
+    delivered: { label: 'Mission livrée', icon: 'check', color: 'var(--success)', rank: 3 },
+    external: { label: 'Attend autre chose', icon: 'later', color: 'var(--ink-2)', rank: 4 },
   };
-  const TONES = [
-    ['#E0E7FF', '#3730A3'], ['#FFE4D6', '#9A3412'], ['#DCFCE7', '#166534'],
-    ['#E0F2FE', '#075985'], ['#FCE7F3', '#9D174D'], ['#FEF3C7', '#92400E'],
-  ];
-  const SPARK_COLORS = ['#4338CA', '#FFC93C', '#F472B6', '#38BDF8'];
 
-  const isMini = new URLSearchParams(location.search).has('mini');
+  const pageParams = new URLSearchParams(location.search);
+  const isMini = pageParams.has('mini');
+  const isOsGlass = pageParams.has('glass');
+  const isLauncher = pageParams.has('launcher');
   const isLocalFile = location.protocol === 'file:';
   const isServer = /^https?:$/.test(location.protocol);
   const serverBase = isServer ? '' : `http://127.0.0.1:${SERVER_PORT}`;
@@ -477,8 +480,11 @@
     view: 'list',
     teamPopId: null,
     teamPopFresh: false,
+    dockMenuOpen: false,
+    dockPrefs: null,
   };
 
+  const iconOf = name => (name ? `<span class="ep-icon ep-icon--${name}" aria-hidden="true"></span>` : '');
   const escapeHtml = text => String(text ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const folderOf = cwd => (cwd || '').split(/[\\/]/).filter(Boolean).at(-1) || cwd || '';
 
@@ -595,19 +601,26 @@
     const prompts = days.reduce((total, day) => total + day.prompts, 0);
     const delays = days.flatMap(day => day.delays);
     const parts = [];
-    if (delays.length > 0) parts.push(`⏱ tu réponds en ${formatDelay(medianOf(delays))}`);
-    parts.push(`💬 ${prompts} messages envoyés aujourd'hui`);
+    if (delays.length > 0) {
+      const medianDelay = medianOf(delays);
+      const delayLabel = formatDelay(medianDelay);
+      parts.push(`tu réponds en ${delayLabel}`);
+    }
+    parts.push(`${prompts} messages envoyés aujourd'hui`);
     document.getElementById('day-stats').textContent = ` · ${parts.join(' · ')}`;
   };
 
-  const statsLineOf = row => (row.stats ? `💬 ${row.stats.messages} · ⏱ ${formatDuration(row.stats.activeMs)}` : '');
+  const statsLineOf = row => {
+    if (!row.stats) return '';
+    const activeLabel = formatDuration(row.stats.activeMs);
+    return `${row.stats.messages} msg · ${activeLabel}`;
+  };
 
   const hashOf = text => {
     let hash = 0;
     for (let index = 0; index < text.length; index++) hash = (hash * 31 + text.charCodeAt(index)) | 0;
     return Math.abs(hash);
   };
-  const toneOf = engineId => TONES[hashOf(engineId) % TONES.length];
   const lettersOf = word => word.replace(/[^\p{L}\p{N}]/gu, '');
   const initialsOf = title => {
     const words = String(title || '').split(/\s+/).filter(word => lettersOf(word).length > 2);
@@ -632,26 +645,26 @@
 
   const kindOf = row => {
     if (row.status === 'permission') return 'permission';
+    if (row.status === 'external') return 'external';
     const kind = row.summary && row.summary.kind;
     if (kind === 'question' || kind === 'delivered') return kind;
     return 'unknown';
   };
 
   const PARK_KINDS = {
-    blocked: { emoji: '🚫', label: 'Bloquée', title: 'Bloquée par…', color: '#B91C1C', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
-    later: { emoji: '⏸️', label: 'Plus tard', title: 'Je reviens dessus…', color: 'var(--muted)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
+    blocked: { icon: 'block', label: 'Bloquée', title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
+    later: { icon: 'later', label: 'Plus tard', title: 'Je reviens dessus…', color: 'var(--ink-2)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
   };
 
   const sectionIdOf = status => {
     if (status === 'blocked' || status === 'later') return 'parked';
     if (WAITING_STATUSES.includes(status)) return 'waiting';
-    if (ACTIVE_STATUSES.includes(status) || status === 'external') return 'working';
+    if (ACTIVE_STATUSES.includes(status)) return 'working';
     return 'others';
   };
 
   const activityOf = row => {
-    if (row.status === 'external') return ['⏳', awaitingOf(row) || 'attend autre chose que toi'];
-    const base = ACTIVITY[row.status] || ['⚙️', 'travaille'];
+    const base = ACTIVITY[row.status] || ['info', 'travaille'];
     if (row.status !== 'tool' || !row.tool) return base;
     const flavor = TOOL_FLAVORS.find(([match]) => match.test(row.tool));
     return flavor ? [flavor[1], flavor[2]] : base;
@@ -659,10 +672,11 @@
 
   const ageBonus = (row, now) => {
     const minutes = Math.floor((now - row.updatedAt) / 60000);
-    if (minutes < 5) return { label: `⚡ Éclair · ${5 - minutes} min`, bg: '#FFF4CC', fg: '#7A5200' };
-    if (minutes < 15) return { label: `${minutes} min`, bg: 'transparent', fg: 'var(--muted)' };
-    if (minutes < 60) return { label: `🔥 ${minutes} min`, bg: '#FFEDD5', fg: '#9A3412' };
-    return { label: `🕸️ À sauver · ${formatAge(row.updatedAt, now)}`, bg: '#15161A', fg: '#FFFFFF' };
+    if (minutes < 5) return { label: `Éclair · ${5 - minutes} min`, tone: 'ep-tag--info' };
+    if (minutes < 15) return { label: `${minutes} min`, tone: '' };
+    if (minutes < 60) return { label: `${minutes} min`, tone: 'ep-tag--warning' };
+    const ageLabel = formatAge(row.updatedAt, now);
+    return { label: `À sauver · ${ageLabel}`, tone: 'ep-tag--danger' };
   };
 
   const openUrlOf = row => (row.hostId ? `${DEEP_LINK_PREFIX}${row.hostId}` : '');
@@ -673,9 +687,91 @@
   };
 
   const ICONS = {
-    open: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>',
-    eye: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>',
-    terminal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6"></path><path d="M12 19h8"></path></svg>',
+    open: iconOf('open'),
+    eye: iconOf('eye'),
+    terminal: iconOf('terminal'),
+  };
+  const ICON_BUTTON = 'ep-btn ep-btn--ghost ep-btn--icon ep-btn--sm';
+
+  const identStateOf = row => (window.CockpitIdentity ? window.CockpitIdentity.stateOf(row.status) : 'rest');
+
+  const badgeOf = row => {
+    const zone = teamZoneOf(row.status);
+    if (zone === 'waiting') return `<span class="ident-badge waiting">${iconOf(KINDS[kindOf(row)].icon)}</span>`;
+    if (row.status === 'blocked') return `<span class="ident-badge stuck">${iconOf('block')}</span>`;
+    if (row.status === 'error') return `<span class="ident-badge stuck">${iconOf('x')}</span>`;
+    if (row.status === 'later') return `<span class="ident-badge">${iconOf('later')}</span>`;
+    return '';
+  };
+
+  const FACE_PAPER = '#e7e7e2';
+  const FACE_OPACITY = 78;
+  const TINT_BLOCK = 20;
+
+  const tintStyleOf = (engineId, percent) => {
+    if (!window.CockpitIdentity || !engineId) return '';
+    const tint = window.CockpitIdentity.tintOf(engineId);
+    return `--conv-tint: ${tint}; --epf: color-mix(in srgb, ${tint} ${percent}%, var(--glass-strong));`;
+  };
+
+  const faceStyleOf = engineId => {
+    if (!window.CockpitIdentity || !engineId) return '';
+    const tint = window.CockpitIdentity.tintOf(engineId);
+    return `--conv-tint: ${tint}; --epf: color-mix(in srgb, color-mix(in srgb, ${tint} 55%, ${FACE_PAPER}) ${FACE_OPACITY}%, transparent);`;
+  };
+
+  const renderFace = (row, size, { extraClass = '', withBadge = true, isBare = false } = {}) => {
+    const initials = escapeHtml(initialsOf(row.title));
+    const badge = withBadge ? badgeOf(row) : '';
+    const glassClass = isBare ? '' : 'face-glass ep-glass';
+    const glassStyle = isBare ? '' : faceStyleOf(row.engineId);
+    return `<span class="t-face ${glassClass} ${extraClass}" style="${glassStyle}" aria-hidden="true"><span class="ident" data-ident="${escapeHtml(row.engineId)}" data-ident-size="${size}" data-ident-state="${identStateOf(row)}" style="--ident-size: ${size}px"><span class="ident-fallback">${initials}</span></span>${badge}</span>`;
+  };
+
+  const PR_LABELS = {
+    OPEN: ['ouverte', 'ep-tag--info'],
+    DRAFT: ['brouillon', ''],
+    MERGED: ['fusionnée', 'ep-tag--success'],
+    CLOSED: ['fermée', 'ctx-quiet'],
+  };
+  const TICKET_URL = 'https://tickets.example.com/requests?ticket=';
+  const GITHUB_URL = 'https://github.com/';
+  const safeHref = value => (/^https:\/\//.test(String(value || '')) ? value : '');
+
+  const contextTag = (content, isInteractive, { href = '', action = '', title = '', tone = '' } = {}) => {
+    const className = `ep-tag ctx-tag ${tone}`;
+    const link = safeHref(href);
+    if (isInteractive && link) return `<a class="${className}" href="${escapeHtml(link)}" target="_blank" rel="noopener" title="${escapeHtml(title)}">${content}</a>`;
+    if (isInteractive && action) return `<button type="button" class="${className}" data-action="${action}" title="${escapeHtml(title)}">${content}</button>`;
+    return `<span class="${className}">${content}</span>`;
+  };
+
+  const renderContext = (row, { isInteractive = true, limit = 3, moreAction = 'toggle' } = {}) => {
+    const context = row.context;
+    const folder = folderOf(row.cwd);
+    const tags = [];
+    if (folder) {
+      const action = isServer && row.cwd ? 'terminal' : '';
+      tags.push(contextTag(`${iconOf('terminal')} ${escapeHtml(folder)}`, isInteractive, { action, title: `Terminal dans ${folder}` }));
+    }
+    const prs = context && Array.isArray(context.prs) ? context.prs : [];
+    const prRepos = new Set(prs.map(pr => pr.repo));
+    const isMultiRepo = prRepos.size > 1;
+    if (context && context.repo && !isMultiRepo) tags.push(contextTag(escapeHtml(context.repo), isInteractive, { href: `${GITHUB_URL}${context.repo}`, title: 'Ouvrir le dépôt sur GitHub' }));
+    if (context && context.ticket) tags.push(contextTag(`#${escapeHtml(context.ticket)}`, isInteractive, { href: `${TICKET_URL}${context.ticket}`, title: 'Ouvrir le ticket' }));
+    const shown = prs.slice(0, limit);
+    for (const pr of shown) {
+      const [label, tone] = PR_LABELS[pr.state] || [String(pr.state || '').toLowerCase(), ''];
+      const repoName = isMultiRepo && pr.repo ? `${String(pr.repo).split('/').pop()} ` : '';
+      tags.push(contextTag(`${escapeHtml(repoName)}PR #${escapeHtml(pr.number)} · ${escapeHtml(label)}`, isInteractive, { href: pr.url, title: pr.repo || '', tone }));
+    }
+    const hidden = prs.length - shown.length;
+    if (hidden > 0) tags.push(contextTag(`+${hidden} PR`, isInteractive, { action: moreAction, title: 'Voir toutes les PR' }));
+    return tags.length > 0 ? `<span class="ctx">${tags.join('')}</span>` : '';
+  };
+
+  const hydrateIdentities = () => {
+    if (window.CockpitIdentity) window.CockpitIdentity.hydrate();
   };
 
   const withOptimisticWorking = data => {
@@ -712,7 +808,7 @@
     const waiting = rows.filter(row => sectionIdOf(row.status) === 'waiting')
       .sort((a, b) => KINDS[kindOf(a)].rank - KINDS[kindOf(b)].rank || a.updatedAt - b.updatedAt);
     const working = rows.filter(row => sectionIdOf(row.status) === 'working')
-      .sort((a, b) => (a.status === 'external') - (b.status === 'external') || b.updatedAt - a.updatedAt);
+      .sort((a, b) => b.updatedAt - a.updatedAt);
     const others = rows.filter(row => sectionIdOf(row.status) === 'others')
       .sort((a, b) => b.updatedAt - a.updatedAt);
     const parked = rows.filter(row => sectionIdOf(row.status) === 'parked')
@@ -721,26 +817,20 @@
   };
 
   const renderAvatar = (row, kind) => {
-    const [bg, fg] = toneOf(row.engineId);
     const isWaiting = kind === 'waiting';
-    const isBlocked = row.status === 'external';
-    const ring = isWaiting ? 'var(--orange)' : (isBlocked ? 'var(--idle-ring)' : 'var(--blue)');
-    const emoji = isWaiting ? KINDS[kindOf(row)].emoji : activityOf(row)[0];
-    const label = `${row.title}, ${isWaiting ? 'attend tes ordres' : (isBlocked ? 'bloqué ailleurs' : 'en mission')}`;
+    const label = `${row.title}, ${isWaiting ? 'attend tes ordres' : 'en mission'}`;
     const pop = state.popId === row.engineId ? 'pop' : '';
+    const face = renderFace(row, 56, { extraClass: pop });
     return `<button type="button" class="av ${isWaiting ? '' : 'inert'}" data-av="${row.engineId}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
-      <span class="av-face ${pop}" style="--ring: ${ring}; background: ${bg}; color: ${fg}; opacity: ${isBlocked ? 0.6 : 1}">
-        <span>${escapeHtml(initialsOf(row.title))}</span>
-        <span class="av-emoji ${isWaiting ? 'wave' : ''}" aria-hidden="true">${emoji}</span>
-      </span>
-      <span class="av-level">${row.stats ? `💬 ${row.stats.messages}` : ''}</span>
+      ${face}
+      <span class="av-level">${row.stats ? `${row.stats.messages} msg` : ''}</span>
     </button>`;
   };
 
   const renderPlain = row => {
     const summary = row.summary;
     const pending = state.requestedSummaries.has(row.engineId) && !isSummaryFresh(row);
-    if (pending) return '<div class="note">🧠 Mise à jour du résumé…</div>';
+    if (pending) return '<div class="note">Mise à jour du résumé…</div>';
     if (!summary) return '<div class="note">Pas encore de résumé. « Rafraîchir » pour le demander.</div>';
     const stale = summary.updatedAt !== row.updatedAt ? ' stale' : '';
     const text = summary.plain || summary.text || '';
@@ -753,7 +843,7 @@
     const isExactOpen = state.exactThreads.has(row.engineId);
     const showExact = isBig || isExactOpen;
     const toggleLabel = isExactOpen ? 'Masquer la réponse exacte' : 'Voir la réponse exacte';
-    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="btn link-btn" data-action="exact" aria-expanded="${isExactOpen}">${toggleLabel}</button>` : '';
+    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-action="exact" aria-expanded="${isExactOpen}">${toggleLabel}</button>` : '';
     if (!showExact || thread.length === 0) return toggle;
     const bubbles = thread.map(message => {
       const role = message.role === 'user' ? 'user' : 'assistant';
@@ -765,9 +855,9 @@
   const renderComposer = row => {
     if (!isServer) return '<div class="note">Donner un ordre demande la version servie (voir le bandeau en haut).</div>';
     const draft = draftOf(row.engineId);
-    const thumbs = draft.images.map((image, index) => `<div class="thumb"><img src="${image.url}" alt=""><button type="button" data-action="remove-image" data-index="${index}" aria-label="Retirer l'image">×</button></div>`).join('');
+    const thumbs = draft.images.map((image, index) => `<div class="thumb"><img src="${image.url}" alt=""><button type="button" data-action="remove-image" data-index="${index}" aria-label="Retirer l'image">${iconOf('x')}</button></div>`).join('');
     return `<label style="display: flex"><span class="sr">Ordre pour ${escapeHtml(row.title)}</span>
-      <textarea class="field" data-role="draft" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Ctrl+Entrée, colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
+      <textarea class="ep-textarea" data-role="draft" style="width: 100%" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Ctrl+Entrée, colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
       ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}`;
   };
 
@@ -786,14 +876,14 @@
         ${composer}
         <div class="card-actions">
           <div class="group">
-            ${isServer ? '<button type="button" class="btn" data-action="summarize">Rafraîchir</button>' : ''}
-            ${isServer && row.cwd ? `<button type="button" class="btn" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
-            <button type="button" class="btn" data-action="big">${isBig ? '⤡ Réduire' : '⤢ Agrandir'}</button>
+            ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
+            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
             ${feedbackHtml}
           </div>
           <div class="group">
-            <button type="button" class="btn" data-action="toggle">Replier</button>
-            ${canOrder ? `<button type="button" class="btn btn-primary" data-action="send">${sendLabel}</button>` : ''}
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle">Replier</button>
+            ${canOrder ? `<button type="button" class="ep-btn ep-btn--primary" data-action="send">${sendLabel}</button>` : ''}
           </div>
         </div>
       </div>`;
@@ -802,7 +892,6 @@
   const renderWaitingCard = (row, now) => {
     const kind = kindOf(row);
     const info = KINDS[kind];
-    const [bg, fg] = toneOf(row.engineId);
     const isOpen = state.expanded.has(row.engineId);
     const isBig = state.bigId === row.engineId;
     const bonus = ageBonus(row, now);
@@ -813,26 +902,30 @@
     const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
     const canOrder = isServer && !row.isCurrent;
     const quick = !isOpen && canOrder ? `<div class="card-quick">
-        ${QUICK_REPLIES.map(text => `<button type="button" class="btn btn-line" data-action="quick" data-text="${text}">${text}</button>`).join('')}
-        <button type="button" class="btn order" data-action="toggle">Donner un ordre…</button>
+        ${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}
+        <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm order" data-action="toggle">Donner un ordre…</button>
         ${feedbackHtml}
       </div>` : '';
     const body = isOpen ? renderCardBody(row) : '';
-    return `<article class="card ${kind} ${isOpen ? 'open' : ''} ${isBig ? 'big' : ''}" data-engine="${row.engineId}">
+    const face = renderFace(row, 52, { withBadge: false });
+    return `<article class="card ep-plate ${kind} ${isOpen ? 'open' : ''} ${isBig ? 'big' : ''}" data-engine="${row.engineId}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">
       <div class="card-head">
-        <span class="card-av" style="background: ${bg}; color: ${fg}">${escapeHtml(initialsOf(row.title))}</span>
-        <button type="button" class="card-main" data-action="toggle" aria-expanded="${isOpen}">
-          <span class="card-meta">
-            <span class="card-title trunc">${escapeHtml(row.title)}</span>
-            ${row.stats ? `<span style="flex: none">${statsLineOf(row)}</span>` : ''}
-            <span style="flex: none; font-weight: 700; color: ${info.color}">· ${info.label}</span>
-          </span>
-          <span class="card-ask${askStale}">👉 ${inlineMarkdown(awaiting)}</span>
-        </button>
+        ${face}
+        <div class="card-text">
+          <button type="button" class="card-main" data-action="toggle" aria-expanded="${isOpen}">
+            <span class="card-meta">
+              <span class="card-title trunc">${escapeHtml(row.title)}</span>
+              <span class="card-kind" style="color: ${info.color}">${iconOf(info.icon)} ${info.label}</span>
+              ${row.stats ? `<span class="card-stats">${statsLineOf(row)}</span>` : ''}
+            </span>
+            <span class="card-ask${askStale}">${iconOf('arrow')}<span>${inlineMarkdown(awaiting)}</span></span>
+          </button>
+          ${renderContext(row, { limit: isOpen || isBig ? Infinity : 3 })}
+        </div>
         <div class="card-side">
-          <span class="pill age-pill" data-updated="${row.updatedAt}" style="background: ${bonus.bg}; color: ${bonus.fg}">${escapeHtml(bonus.label)}</span>
-          ${openUrl ? `<a href="${openUrl}" class="btn btn-icon" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : ''}
-          ${isServer ? `<button type="button" class="btn btn-icon" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : ''}
+          <span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}">${escapeHtml(bonus.label)}</span>
+          ${openUrl ? `<a href="${openUrl}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : ''}
+          ${isServer ? `<button type="button" class="${ICON_BUTTON}" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : ''}
           ${parkButtons(row)}
         </div>
       </div>
@@ -842,59 +935,65 @@
   };
 
   const renderMissionRow = (row, now) => {
-    const [bg, fg] = toneOf(row.engineId);
-    const isBlocked = row.status === 'external';
     const isOpen = state.expanded.has(row.engineId);
     const isBig = state.bigId === row.engineId;
-    const [emoji, label] = activityOf(row);
-    const color = isBlocked ? 'var(--muted)' : 'var(--blue)';
+    const [icon, label] = activityOf(row);
     const openUrl = openUrlOf(row);
     const pop = state.popId === row.engineId ? 'pop' : '';
+    const folderLabel = escapeHtml(folderOf(row.cwd));
     const terminal = isServer && row.cwd
-      ? `<button type="button" class="btn btn-icon" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal dans ${escapeHtml(folderOf(row.cwd))}">${ICONS.terminal}</button>`
+      ? `<button type="button" class="${ICON_BUTTON}" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal dans ${folderLabel}">${ICONS.terminal}</button>`
       : '';
-    const open = openUrl ? `<a href="${openUrl}" class="btn btn-icon" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const open = openUrl ? `<a href="${openUrl}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const face = renderFace(row, 40, { extraClass: pop, withBadge: false });
     const head = `<div class="mrow">
-        <span class="mrow-av ${pop}" style="background: ${bg}; color: ${fg}">${escapeHtml(initialsOf(row.title))}</span>
-        <button type="button" class="mrow-main" data-action="toggle" aria-expanded="${isOpen}">
-          <span class="mrow-title trunc">${escapeHtml(row.title)}</span>
-          <span class="mrow-activity trunc" style="color: ${color}">${emoji} ${escapeHtml(label)}</span>
-        </button>
+        ${face}
+        <div class="mrow-text">
+          <button type="button" class="mrow-main" data-action="toggle" aria-expanded="${isOpen}">
+            <span class="mrow-title trunc">${escapeHtml(row.title)}</span>
+            <span class="mrow-activity trunc">${iconOf(icon)} ${escapeHtml(label)}</span>
+          </button>
+          ${renderContext(row, { limit: isOpen || isBig ? Infinity : 3 })}
+        </div>
         <span class="mrow-tools">${parkButtons(row)}${terminal}${open}</span>
         <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span>
       </div>`;
-    if (!isOpen) return `<div class="mission ${isBlocked ? 'blocked' : ''}" data-engine="${row.engineId}">${head}</div>`;
-    return `<article class="card mission open ${isBlocked ? 'blocked' : ''} ${isBig ? 'big' : ''}" data-engine="${row.engineId}">${head}${renderCardBody(row)}</article>`;
+    if (!isOpen) return `<div class="mission" data-engine="${row.engineId}">${head}</div>`;
+    return `<article class="card mission open ${isBig ? 'big' : ''}" data-engine="${row.engineId}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">${head}${renderCardBody(row)}</article>`;
   };
 
   const parkButtons = row => (isServer && !row.isCurrent
-    ? `<button type="button" class="btn btn-icon" data-action="park" data-kind="blocked" aria-label="Marquer bloquée" title="Bloquée">🚫</button><button type="button" class="btn btn-icon" data-action="park" data-kind="later" aria-label="Mettre de côté pour plus tard" title="Plus tard">⏸️</button>`
+    ? `<button type="button" class="${ICON_BUTTON}" data-action="park" data-kind="blocked" aria-label="Marquer bloquée" title="Bloquée">${iconOf('block')}</button><button type="button" class="${ICON_BUTTON}" data-action="park" data-kind="later" aria-label="Mettre de côté pour plus tard" title="Plus tard">${iconOf('later')}</button>`
     : '');
 
   const renderParkedRow = (row, now) => {
-    const [bg, fg] = toneOf(row.engineId);
     const info = PARK_KINDS[row.status] || PARK_KINDS.later;
     const park = row.park || { reason: '', at: row.updatedAt, hasMoved: false };
     const isOpen = state.expanded.has(row.engineId);
     const isBig = state.bigId === row.engineId;
     const openUrl = openUrlOf(row);
     const reason = park.reason ? escapeHtml(park.reason) : '<em>sans raison</em>';
-    const moved = park.hasMoved ? '<span class="moved" title="La conversation a bougé depuis">● a bougé</span>' : '';
-    const terminal = isServer && row.cwd ? `<button type="button" class="btn btn-icon" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal">${ICONS.terminal}</button>` : '';
-    const open = openUrl ? `<a href="${openUrl}" class="btn btn-icon" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
-    const resume = isServer ? '<button type="button" class="btn btn-line resume" data-action="unpark">Reprendre</button>' : '';
+    const moved = park.hasMoved ? '<span class="ep-tag ep-tag--warning moved" title="La conversation a bougé depuis">A bougé</span>' : '';
+    const terminal = isServer && row.cwd ? `<button type="button" class="${ICON_BUTTON}" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal">${ICONS.terminal}</button>` : '';
+    const open = openUrl ? `<a href="${openUrl}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const resume = isServer ? `<button type="button" class="ep-btn ep-btn--sm resume" data-action="unpark">${iconOf('arrow')} Reprendre</button>` : '';
+    const face = renderFace(row, 40, { withBadge: false });
+    const kindClass = row.status === 'blocked' ? 'blocked-kind' : '';
     const head = `<div class="mrow">
-        <span class="mrow-av" style="background: ${bg}; color: ${fg}">${escapeHtml(initialsOf(row.title))}</span>
-        <button type="button" class="mrow-main" data-action="toggle" aria-expanded="${isOpen}">
-          <span class="mrow-title trunc">${escapeHtml(row.title)}</span>
-          <span class="mrow-activity trunc" style="color: ${info.color}">${info.emoji} ${info.label} : ${reason}</span>
-        </button>
+        ${face}
+        <div class="mrow-text">
+          <button type="button" class="mrow-main" data-action="toggle" aria-expanded="${isOpen}">
+            <span class="mrow-title trunc">${escapeHtml(row.title)}</span>
+            <span class="mrow-activity trunc ${kindClass}">${iconOf(info.icon)} ${info.label} : ${reason}</span>
+          </button>
+          ${renderContext(row, { limit: isOpen || isBig ? Infinity : 3 })}
+        </div>
         <span class="mrow-tools">${moved}${resume}${terminal}${open}</span>
         <span class="mrow-age" title="Mise de côté">depuis <span class="park-age" data-updated="${park.at}">${formatAge(park.at, now)}</span></span>
       </div>`;
-    const kindClass = row.status === 'blocked' ? 'parked-blocked' : 'parked-later';
-    if (!isOpen) return `<div class="mission parked ${kindClass}" data-engine="${row.engineId}">${head}</div>`;
-    return `<article class="card mission parked ${kindClass} open ${isBig ? 'big' : ''}" data-engine="${row.engineId}">${head}${renderCardBody(row)}</article>`;
+    const parkClass = row.status === 'blocked' ? 'parked-blocked' : 'parked-later';
+    if (!isOpen) return `<div class="mission parked ${parkClass}" data-engine="${row.engineId}">${head}</div>`;
+    return `<article class="card mission parked ${parkClass} open ${isBig ? 'big' : ''}" data-engine="${row.engineId}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">${head}${renderCardBody(row)}</article>`;
   };
 
   const closeParkMenu = () => {
@@ -906,14 +1005,14 @@
     closeRepoMenu();
     const info = PARK_KINDS[kind];
     const menu = document.createElement('div');
-    menu.className = 'repo-menu park-menu';
+    menu.className = 'repo-menu park-menu ep-glass';
     menu.dataset.engine = row.engineId;
     menu.dataset.kind = kind;
-    const chips = info.chips.map(chip => `<button type="button" class="btn btn-line park-chip" data-reason="${escapeHtml(chip)}">${escapeHtml(chip)}</button>`).join('');
-    menu.innerHTML = `<div class="repo-title">${info.emoji} ${escapeHtml(info.title)}</div>
+    const chips = info.chips.map(chip => `<button type="button" class="ep-btn ep-btn--sm park-chip" data-reason="${escapeHtml(chip)}">${escapeHtml(chip)}</button>`).join('');
+    menu.innerHTML = `<div class="repo-title">${iconOf(info.icon)} ${escapeHtml(info.title)}</div>
       <div class="park-chips">${chips}</div>
-      <input type="text" class="field park-input" maxlength="200" placeholder="Raison (facultative), Entrée pour valider">
-      <div class="park-actions"><button type="button" class="btn park-cancel">Annuler</button><button type="button" class="btn btn-primary park-ok">${kind === 'blocked' ? 'Marquer bloquée' : 'Mettre de côté'}</button></div>`;
+      <input type="text" class="ep-input park-input" maxlength="200" placeholder="Raison (facultative), Entrée pour valider">
+      <div class="park-actions"><button type="button" class="ep-btn ep-btn--ghost ep-btn--sm park-cancel">Annuler</button><button type="button" class="ep-btn ep-btn--primary ep-btn--sm park-ok">${kind === 'blocked' ? 'Marquer bloquée' : 'Mettre de côté'}</button></div>`;
     document.body.appendChild(menu);
     const box = anchor.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menu.offsetWidth - 12, Math.max(12, box.right - menu.offsetWidth));
@@ -933,7 +1032,7 @@
       if (state.teamPopId === engineId) state.teamPopId = null;
       if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
       const info = PARK_KINDS[kind];
-      showReward(`${info.emoji} ${info.label}`, `${row?.title || 'Agent'}${reason ? ` : ${reason}` : ''}`, kind === 'blocked' ? 'error' : 'info');
+      showReward(info.label, `${row?.title || 'Agent'}${reason ? ` : ${reason}` : ''}`, kind === 'blocked' ? 'error' : 'info');
     } catch (error) {
       showReward('Oups', error.message, 'error');
     }
@@ -944,7 +1043,7 @@
     try {
       await post('/unpark', { engineId });
       if (state.teamPopId === engineId) { state.teamPopId = null; render({ force: true }); }
-      showReward('▶️ Reprise', `${row?.title || 'Agent'} revient dans l'équipe`, 'info');
+      showReward('Reprise', `${row?.title || 'Agent'} revient dans l'équipe`, 'info');
     } catch (error) {
       showReward('Oups', error.message, 'error');
     }
@@ -953,7 +1052,7 @@
   const renderRestRow = (row, now) => {
     const openUrl = openUrlOf(row);
     const title = openUrl ? `<a class="trunc" href="${openUrl}">${escapeHtml(row.title)}</a>` : `<span class="trunc">${escapeHtml(row.title)}</span>`;
-    const back = row.status === 'seen' && isServer ? '<button type="button" class="btn" data-action="unseen">Remettre en attente</button>' : '';
+    const back = row.status === 'seen' && isServer ? '<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="unseen">Remettre en attente</button>' : '';
     const label = REST_LABELS[row.status] || row.status;
     return `<div class="rest-row" data-engine="${row.engineId}">${title}<span class="rest-side">${back}<span>${escapeHtml(label)} · <span class="rest-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span></span></div>`;
   };
@@ -963,20 +1062,12 @@
     const line = stats.relaunched > 0 && stats.relaunched >= stats.record
       ? `Nouveau record : ${stats.relaunched} relances aujourd'hui.`
       : `${stats.relaunched} relances aujourd'hui. Personne n'attend.`;
-    return `<div class="empty"><div class="empty-icon" aria-hidden="true">🎉</div><div style="display: flex; flex-direction: column; gap: 2px"><span class="empty-title">Toute l'équipe est en mission</span><span class="empty-line">${escapeHtml(line)}</span></div></div>`;
+    return `<div class="empty ep-plate"><span class="empty-mark" aria-hidden="true">${iconOf('check')}</span><div style="display: flex; flex-direction: column; gap: 4px"><span class="empty-title">Toute l'équipe est en <em>mission</em></span><span class="empty-line">${escapeHtml(line)}</span></div></div>`;
   };
 
-  const MII_LOOKS = [
-    { skin: '#F6D3B3', hair: '#3B2A20', shirt: '#6D74E8' },
-    { skin: '#E9BD97', hair: '#8A5A2B', shirt: '#EE8B6B' },
-    { skin: '#C98D66', hair: '#1F1F23', shirt: '#45B89A' },
-    { skin: '#F3DCC4', hair: '#C9973F', shirt: '#5CA6E6' },
-    { skin: '#A8724D', hair: '#2B1D16', shirt: '#B07FD9' },
-    { skin: '#EDC7A6', hair: '#9C9CA4', shirt: '#E2B04C' },
-  ];
   const teamZoneOf = status => {
     if (WAITING_STATUSES.includes(status)) return 'waiting';
-    if (ACTIVE_STATUSES.includes(status) || status === 'external') return 'working';
+    if (ACTIVE_STATUSES.includes(status)) return 'working';
     if (status === 'blocked' || status === 'error') return 'stuck';
     if (status === 'later') return 'later';
     return 'rest';
@@ -994,136 +1085,95 @@
     return { waiting: groups.waiting, working: groups.working, stuck: keepOrderWhileReading(stuck), later: keepOrderWhileReading(later), rest };
   };
 
-  const moodOf = row => {
-    const zone = teamZoneOf(row.status);
-    if (zone === 'waiting') return { mouth: 'm-o', spot: 'rgba(249, 115, 22, 0.22)', motion: '' };
-    if (zone === 'working') return { mouth: 'm-smile', spot: 'rgba(67, 56, 202, 0.18)', motion: 't-bob' };
-    if (row.status === 'blocked') return { mouth: 'm-frown', spot: 'rgba(220, 38, 38, 0.22)', motion: 't-shake' };
-    if (row.status === 'error') return { mouth: 'm-frown', spot: 'rgba(220, 38, 38, 0.22)', motion: 't-shake' };
-    return { mouth: 'm-flat', spot: 'rgba(21, 22, 26, 0.08)', motion: '' };
-  };
-
   const teamFaceOf = row => {
     if (teamZoneOf(row.status) === 'waiting') {
       const awaiting = awaitingOf(row) || 'Regarde où en est cet agent.';
-      return { emoji: KINDS[kindOf(row)].emoji, bubble: awaiting, state: 't\u2019attend' };
+      const waitingState = row.status === 'external' ? 'attend autre chose' : 't\u2019attend';
+      return { icon: KINDS[kindOf(row)].icon, bubble: awaiting, state: waitingState };
     }
     if (row.status === 'blocked') {
       const reason = row.park && row.park.reason ? row.park.reason : 'Bloquée, sans raison';
-      return { emoji: '🚫', bubble: reason, state: 'bloquée' };
+      return { icon: 'block', bubble: reason, state: 'bloquée' };
     }
-    if (row.status === 'error') return { emoji: '❌', bubble: 'S\u2019est arrêtée sur une erreur', state: 'en erreur' };
+    if (row.status === 'error') return { icon: 'x', bubble: 'S\u2019est arrêtée sur une erreur', state: 'en erreur' };
     if (row.status === 'later') {
       const reason = row.park && row.park.reason ? row.park.reason : 'Plus tard';
-      return { emoji: '⏸️', bubble: reason, state: 'mise de côté' };
+      return { icon: 'later', bubble: reason, state: 'mise de côté' };
     }
-    const [emoji, label] = activityOf(row);
-    return { emoji, bubble: label, state: row.status === 'external' ? 'attend autre chose' : 'en mission' };
+    const [icon, label] = activityOf(row);
+    return { icon, bubble: label, state: 'en mission' };
   };
 
   const bubbleStyleOf = row => {
     const zone = teamZoneOf(row.status);
-    if (zone === 'waiting') return '--b-bg: #FFF7ED; --b-line: #FFE2C2; --b-fg: var(--ink); --b-weight: 600';
-    if (row.status === 'blocked' || row.status === 'error') return '--b-bg: #FFF1F2; --b-line: #FFD5DB; --b-fg: #9F1239; --b-weight: 600';
-    if (zone === 'working') return '--b-bg: #FFFFFF; --b-line: #EEEEF2; --b-fg: var(--ink-2)';
-    return '--b-bg: #FFFFFF; --b-line: #EEEEF2; --b-fg: var(--muted)';
-  };
-
-  const renderMii = (row, extraClass = '') => {
-    const look = MII_LOOKS[hashOf(row.engineId) % MII_LOOKS.length];
-    const mood = moodOf(row);
-    const face = teamFaceOf(row);
-    const delay = (hashOf(row.engineId) % 7) * 350;
-    const opacity = row.status === 'external' || row.status === 'later' ? 0.7 : 1;
-    const badgeClass = teamZoneOf(row.status) === 'waiting' ? 'wave' : '';
-    return `<span class="t-mii ${mood.motion} ${extraClass}" aria-hidden="true" style="opacity: ${opacity}; animation-delay: ${delay}ms">
-      <span class="t-spot" style="background: ${mood.spot}"></span>
-      <span class="t-neck" style="background: ${look.skin}"></span>
-      <span class="t-body" style="background: ${look.shirt}"></span>
-      <span class="t-ear" style="left: 9px; background: ${look.skin}"></span>
-      <span class="t-ear" style="right: 9px; background: ${look.skin}"></span>
-      <span class="t-head" style="background: ${look.skin}">
-        <span class="t-hair" style="background: ${look.hair}"></span>
-        <span class="t-fringe" style="background: ${look.hair}"></span>
-        <span class="t-eye" style="left: 12px"></span>
-        <span class="t-eye" style="right: 12px"></span>
-        <span class="t-cheek" style="left: 5px"></span>
-        <span class="t-cheek" style="right: 5px"></span>
-        <span class="t-mouth ${mood.mouth}"></span>
-      </span>
-      <span class="t-badge ${badgeClass}">${face.emoji}</span>
-    </span>`;
+    if (zone === 'waiting') return '--b-bg: color-mix(in srgb, var(--warning-tint) 70%, transparent); --b-line: color-mix(in srgb, var(--warning) 45%, transparent); --b-fg: var(--ink); --b-weight: 500';
+    if (row.status === 'blocked' || row.status === 'error') return '--b-bg: color-mix(in srgb, var(--danger-tint) 70%, transparent); --b-line: color-mix(in srgb, var(--danger) 45%, transparent); --b-fg: var(--ink); --b-weight: 500';
+    if (zone === 'working') return '--b-bg: var(--glass-nested); --b-line: var(--glass-edge); --b-fg: var(--ink)';
+    return '--b-bg: var(--glass-nested); --b-line: var(--glass-edge); --b-fg: var(--ink-2)';
   };
 
   const renderTeamAgent = (row, now) => {
     const face = teamFaceOf(row);
     const isWaiting = teamZoneOf(row.status) === 'waiting';
     const bonus = ageBonus(row, now);
+    const ageLabel = formatAge(row.updatedAt, now);
     const meta = isWaiting
-      ? `<span class="pill age-pill" data-updated="${row.updatedAt}" style="background: ${bonus.bg}; color: ${bonus.fg}">${escapeHtml(bonus.label)}</span>`
-      : `<span>🕒 <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span>`;
-    const messages = row.stats ? `<span>💬 ${row.stats.messages}</span>` : '';
+      ? `<span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}">${escapeHtml(bonus.label)}</span>`
+      : `<span class="mrow-age" data-updated="${row.updatedAt}">${ageLabel}</span>`;
+    const messages = row.stats ? `<span>${row.stats.messages} msg</span>` : '';
     const pop = state.popId === row.engineId ? 'pop' : '';
     const label = `${row.title} : ${face.bubble}`;
     return `<button type="button" class="t-agent" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(row.title)}">
-      <span class="t-bubble" style="${bubbleStyleOf(row)}"><span class="t-clamp">${escapeHtml(face.bubble)}</span><span class="t-tail"></span></span>
-      ${renderMii(row, pop)}
+      <span class="t-bubble" style="${bubbleStyleOf(row)}"><span class="t-clamp">${escapeHtml(face.bubble)}</span></span>
+      ${renderFace(row, 64, { extraClass: pop })}
       <span class="t-name"><span class="t-title trunc">${escapeHtml(row.title)}</span><span class="t-meta">${messages}${meta}</span></span>
+      <span class="t-ctx">${renderContext(row, { isInteractive: false })}</span>
     </button>`;
   };
 
   const renderTeamZone = (zone, title, color, rows, now, empty = '') => {
     const agents = rows.map(row => renderTeamAgent(row, now)).join('');
-    const floorClass = zone === 'working' ? 't-floor run' : 't-floor';
     const content = rows.length === 0 && empty ? empty : `<div class="t-grid">${agents}</div>`;
-    return `<section class="t-zone ${zone}" aria-label="${escapeHtml(title)}">
+    return `<section class="t-zone ep-plate ${zone}" aria-label="${escapeHtml(title)}">
       <div class="t-zone-head"><span class="t-dot" style="background: ${color}"></span><span class="t-zone-title">${escapeHtml(title)}</span><span class="t-zone-count">${rows.length}</span></div>
       ${content}
-      <div class="${floorClass}" aria-hidden="true"></div>
     </section>`;
   };
 
   const renderTeamEmpty = () => {
     const stats = readStats();
     const line = stats.relaunched > 0 && stats.relaunched >= stats.record
-      ? `🏆 Nouveau record : ${stats.relaunched} relances`
+      ? `Nouveau record : ${stats.relaunched} relances`
       : `${stats.relaunched} relances aujourd'hui`;
-    return `<div class="t-empty"><span class="t-empty-icon" aria-hidden="true">🎉</span><span class="t-empty-title">Personne ne t'attend</span><span class="t-empty-line">${escapeHtml(line)}</span></div>`;
+    return `<div class="t-empty"><span class="empty-mark" aria-hidden="true">${iconOf('check')}</span><span class="t-empty-text"><span class="empty-title">Personne ne t'attend</span><span class="empty-line">${escapeHtml(line)}</span></span></div>`;
   };
 
   const renderTeamRest = (rows, now) => {
-    const toggleLabel = `😴 ${state.othersOpen ? 'Masquer les' : 'Voir les'} ${rows.length} agents au repos`;
+    const toggleLabel = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${rows.length} agents au repos`;
     const chips = rows.map(row => {
       const openUrl = openUrlOf(row);
       const stateLabel = REST_LABELS[row.status] || row.status;
-      const inner = `<span class="trunc">${escapeHtml(row.title)}</span><span class="t-chip-state">${escapeHtml(stateLabel)}</span>`;
+      const inner = `<span class="trunc t-chip-title">${escapeHtml(row.title)}</span><span class="t-chip-state">${escapeHtml(stateLabel)}</span>`;
       return openUrl
-        ? `<a href="${openUrl}" class="t-chip" data-engine="${row.engineId}">${inner}</a>`
-        : `<span class="t-chip" data-engine="${row.engineId}">${inner}</span>`;
+        ? `<a href="${openUrl}" class="ep-tag t-chip" data-engine="${row.engineId}">${inner}</a>`
+        : `<span class="ep-tag t-chip" data-engine="${row.engineId}">${inner}</span>`;
     }).join('');
     return `<div class="t-rest">
-      <button type="button" class="btn rest-toggle" data-action="team-rest" aria-expanded="${state.othersOpen}">${escapeHtml(toggleLabel)}</button>
+      <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm rest-toggle" data-action="team-rest" aria-expanded="${state.othersOpen}">${escapeHtml(toggleLabel)}</button>
       ${state.othersOpen ? `<div class="t-chips">${chips}</div>` : ''}
     </div>`;
   };
 
-  const askStyleOf = row => {
-    const zone = teamZoneOf(row.status);
-    if (zone === 'waiting') return 'background: #FFF7ED; color: var(--ink)';
-    if (row.status === 'blocked' || row.status === 'error') return 'background: #FFF1F2; color: #9F1239';
-    if (zone === 'working') return 'background: var(--indigo-tint); color: var(--ink)';
-    return 'background: #F2F2F5; color: var(--ink)';
-  };
-
   const renderTeamStats = row => {
     if (!row.stats) return '';
+    const activeLabel = formatDuration(row.stats.activeMs);
     const tiles = [
-      ['💬', row.stats.messages, 'messages'],
-      ['⏱', formatDuration(row.stats.activeMs), 'de travail actif'],
-      ['🛠️', row.stats.tools, 'outils lancés'],
-      ['📝', row.stats.files, 'fichiers modifiés'],
+      [row.stats.messages, 'messages'],
+      [activeLabel, 'de travail actif'],
+      [row.stats.tools, 'outils lancés'],
+      [row.stats.files, 'fichiers modifiés'],
     ];
-    const html = tiles.map(([emoji, value, label]) => `<span class="t-stat">${emoji} <span class="t-stat-value">${escapeHtml(value)}</span> ${escapeHtml(label)}</span>`).join('');
+    const html = tiles.map(([value, label]) => `<span class="t-stat"><span class="t-stat-value">${escapeHtml(value)}</span><span class="t-stat-label">${escapeHtml(label)}</span></span>`).join('');
     return `<div class="t-stats">${html}</div>`;
   };
 
@@ -1134,48 +1184,49 @@
     const openUrl = openUrlOf(row);
     const feedback = state.feedback.get(row.engineId);
     const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
-    const headline = zone === 'waiting' ? `👉 ${inlineMarkdown(face.bubble)}` : `${face.emoji} ${escapeHtml(face.bubble)}`;
+    const headline = zone === 'waiting' ? `${iconOf('arrow')}<span>${inlineMarkdown(face.bubble)}</span>` : `${iconOf(face.icon)}<span>${escapeHtml(face.bubble)}</span>`;
     const quick = canOrder && zone === 'waiting'
-      ? `<div class="t-quick">${QUICK_REPLIES.map(text => `<button type="button" class="btn btn-line" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>`
+      ? `<div class="t-quick">${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>`
       : '';
     const composer = row.isCurrent
       ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
       : renderComposer(row);
     const isParked = row.status === 'blocked' || row.status === 'later';
-    const restButton = isServer && zone === 'waiting' ? '<button type="button" class="btn" data-action="seen">😴 Au repos</button>' : '';
+    const restButton = isServer && zone === 'waiting' ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="seen">${ICONS.eye} Au repos</button>` : '';
     const parkActions = isParked && isServer
-      ? '<button type="button" class="btn" data-action="unpark">▶️ Reprendre</button>'
-      : (isServer && !row.isCurrent ? '<button type="button" class="btn" data-action="park" data-kind="blocked">🚫 Bloquée</button><button type="button" class="btn" data-action="park" data-kind="later">⏸️ Plus tard</button>' : '');
+      ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="unpark">${iconOf('arrow')} Reprendre</button>`
+      : (isServer && !row.isCurrent ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="blocked">${iconOf('block')} Bloquée</button><button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="later">${iconOf('later')} Plus tard</button>` : '');
     const sendLabel = WAITING_STATUSES.includes(row.status) ? 'Relancer l\'agent' : 'Envoyer à l\'agent';
     const enter = state.teamPopFresh ? 'enter' : '';
     return `<div class="t-modal" data-engine="${row.engineId}">
       <div class="t-backdrop" data-action="team-close"></div>
-      <div class="t-sheet ${enter}" role="dialog" aria-modal="true" aria-labelledby="t-pop-title">
+      <div class="t-sheet ep-glass ${enter}" role="dialog" aria-modal="true" aria-labelledby="t-pop-title" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">
         <div class="t-sheet-head">
-          ${renderMii(row)}
+          ${renderFace(row, 80)}
           <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px">
             <h2 id="t-pop-title" class="t-sheet-title">${escapeHtml(row.title)}</h2>
             <span class="t-sheet-sub">${escapeHtml(face.state)} depuis <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span>
+            ${renderContext(row, { limit: Infinity })}
           </div>
-          <button type="button" class="btn btn-icon" data-action="team-close" aria-label="Fermer" style="align-self: flex-start; width: 40px; height: 40px; font-size: 17px">✕</button>
+          <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-action="team-close" aria-label="Fermer" style="align-self: flex-start">${iconOf('x')}</button>
         </div>
         ${renderTeamStats(row)}
-        <div class="t-ask" style="${askStyleOf(row)}">${headline}</div>
+        <div class="t-ask" style="${bubbleStyleOf(row)}">${headline}</div>
         ${renderPlain(row)}
         ${renderThread(row)}
         ${quick}
         ${composer}
         <div class="card-actions">
           <div class="group">
-            ${openUrl ? `<a href="${openUrl}" class="btn">${ICONS.open} Ouvrir</a>` : ''}
-            ${isServer && row.cwd ? `<button type="button" class="btn" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
-            ${isServer ? '<button type="button" class="btn" data-action="summarize">🔄 Rafraîchir</button>' : ''}
+            ${openUrl ? `<a href="${openUrl}" class="ep-btn ep-btn--ghost ep-btn--sm">${ICONS.open} Ouvrir</a>` : ''}
+            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
+            ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
             ${restButton}
             ${parkActions}
             ${feedbackHtml}
           </div>
           <div class="group">
-            ${canOrder ? `<button type="button" class="btn btn-primary" data-action="send">${sendLabel}</button>` : ''}
+            ${canOrder ? `<button type="button" class="ep-btn ep-btn--primary" data-action="send">${sendLabel}</button>` : ''}
           </div>
         </div>
       </div>
@@ -1185,10 +1236,10 @@
   const renderTeam = now => {
     const groups = teamGroups();
     const board = `<div class="t-board">
-      ${renderTeamZone('waiting', 'T\'attendent', 'var(--orange)', groups.waiting, now, renderTeamEmpty())}
-      ${renderTeamZone('working', 'En mission', 'var(--indigo)', groups.working, now)}
-      ${renderTeamZone('stuck', 'Bloqués', '#DC2626', groups.stuck, now)}
-      ${renderTeamZone('later', 'Plus tard', 'var(--idle-ring)', groups.later, now)}
+      ${renderTeamZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
+      ${renderTeamZone('working', 'En mission', 'var(--accent)', groups.working, now)}
+      ${renderTeamZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
+      ${renderTeamZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
     </div>`;
     const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
     if (state.teamPopId && !popRow) state.teamPopId = null;
@@ -1201,16 +1252,57 @@
 
   const desktop = window.cockpitDesktop || null;
   let miniExpanded = false;
-  let miniInside = false;
+  let miniSheetWidth = 0;
   let miniSheetHeight = 0;
-  const MINI_SIDE_ROOM = 260;
+  const DOCK_PREFS_KEY = 'cockpit.dock';
 
-  const renderMiniHead = (row, zone, isFresh) => {
+  const readStoredDockPrefs = () => {
+    let raw = null;
+    try { raw = localStorage.getItem(DOCK_PREFS_KEY); } catch { raw = null; }
+    return window.CockpitDock.readDockPrefs(raw);
+  };
+
+  const saveDockPrefs = prefs => {
+    state.dockPrefs = prefs;
+    try { localStorage.setItem(DOCK_PREFS_KEY, JSON.stringify(prefs)); } catch { }
+  };
+
+  const renderMiniHead = (row, zone, isFresh, head) => {
     const face = teamFaceOf(row);
-    return `<button type="button" class="mini-head ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(`${row.title} : ${face.bubble}`)}">
-      ${renderMii(row)}
-      <span class="mini-tip"><strong>${escapeHtml(row.title)}</strong>${face.emoji} ${escapeHtml(face.bubble)}</span>
+    const label = `${row.title} : ${face.bubble}`;
+    const tip = `${row.title}\n${face.state}\n${face.bubble}`;
+    return `<button type="button" class="mini-head ep-glass ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}" style="${faceStyleOf(row.engineId)}">
+      ${renderFace(row, head, { isBare: true })}
     </button>`;
+  };
+
+  const renderDockMenu = () => {
+    const { DOCK_SIZES, DOCK_LAYOUTS } = window.CockpitDock;
+    const prefs = state.dockPrefs;
+    const sizeEntries = Object.entries(DOCK_SIZES);
+    const sizes = sizeEntries.map(([key, size]) => `<button type="button" class="ep-btn ep-btn--sm ${prefs.size === key ? 'ep-btn--primary' : ''}" data-dock-size="${key}" aria-pressed="${prefs.size === key}">${size.label}</button>`).join('');
+    const layoutEntries = Object.entries(DOCK_LAYOUTS);
+    const layouts = layoutEntries.map(([key, label]) => `<button type="button" class="ep-btn ep-btn--sm ${prefs.layout === key ? 'ep-btn--primary' : ''}" data-dock-layout="${key}" aria-pressed="${prefs.layout === key}">${label}</button>`).join('');
+    return `<div class="t-modal">
+      <div class="t-backdrop" data-dock-menu="close"></div>
+      <div class="t-sheet ep-glass dock-menu" role="dialog" aria-modal="true" aria-labelledby="dock-menu-title">
+        <div class="t-sheet-head">
+          <h2 id="dock-menu-title" class="t-sheet-title" style="flex: 1 1 auto">Disposition</h2>
+          <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-dock-menu="close" aria-label="Fermer">${iconOf('x')}</button>
+        </div>
+        <span class="nc-label">Taille</span>
+        <div class="dock-menu-row">${sizes}</div>
+        <span class="nc-label">Forme</span>
+        <div class="dock-menu-row">${layouts}</div>
+      </div>
+    </div>`;
+  };
+
+  const applyDockChoice = (key, value) => {
+    const next = { ...state.dockPrefs, [key]: value };
+    saveDockPrefs(next);
+    state.dockMenuOpen = false;
+    render({ force: true });
   };
 
   const renderMini = now => {
@@ -1219,41 +1311,62 @@
     const isFresh = row => previous !== null && !previous.has(row.engineId);
     state.miniWaiting = new Set(groups.waiting.map(row => row.engineId));
     const count = groups.waiting.length;
-    const counter = `<button type="button" class="dock-count ${count === 0 ? 'calm' : ''}" data-mini="cockpit" title="Ouvrir le cockpit"><span class="dock-count-value">${count === 0 ? '✓' : count}</span><span class="dock-count-label">${count === 0 ? 'tranquille' : 't\'attend'}</span></button>`;
-    const waiting = groups.waiting.map(row => renderMiniHead(row, 'waiting', isFresh(row))).join('');
-    const others = [...groups.stuck, ...groups.working].map(row => renderMiniHead(row, teamZoneOf(row.status), false)).join('');
-    const separator = count > 0 && others ? '<span class="dock-sep" aria-hidden="true"></span>' : '';
+    const counter = `<button type="button" class="dock-count ep-glass ${count === 0 ? 'calm' : ''}" data-mini="cockpit" title="Ouvrir le cockpit"><span class="dock-count-value">${count === 0 ? iconOf('check') : count}</span><span class="dock-count-label">${count === 0 ? 'tranquille' : 't\'attend'}</span></button>`;
+    const prefs = state.dockPrefs;
+    const head = window.CockpitDock.DOCK_SIZES[prefs.size].head;
+    const othersRows = [...groups.stuck, ...groups.working];
+    const waiting = groups.waiting.map(row => renderMiniHead(row, 'waiting', isFresh(row), head)).join('');
+    const others = othersRows.map(row => renderMiniHead(row, teamZoneOf(row.status), false, head)).join('');
+    const isGrid = prefs.layout === 'grid';
+    const separator = count > 0 && others && !isGrid ? '<span class="dock-sep" aria-hidden="true"></span>' : '';
+    const headCount = groups.waiting.length + othersRows.length;
+    const gridColumns = window.CockpitDock.gridColumnsOf(headCount);
     const calm = count === 0 && !others ? '<span class="dock-calm">Personne au travail</span>' : '';
-    const newButton = isServer ? '<button type="button" class="dock-new" data-mini="new" title="Nouvelle conversation" aria-label="Nouvelle conversation">＋</button>' : '';
-    const quit = desktop ? '<button type="button" class="dock-quit" data-mini="quit" aria-label="Fermer la mini-équipe" title="Fermer">✕</button>' : '';
+    const newButton = isServer ? `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-new" data-mini="new" title="Nouvelle conversation" aria-label="Nouvelle conversation">${iconOf('plus')}</button>` : '';
+    const quit = desktop ? `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-quit" data-mini="quit" aria-label="Fermer la mini-équipe" title="Fermer">${iconOf('x')}</button>` : '';
+    const layoutButton = `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-layout" data-mini="layout" title="Disposition du dock" aria-label="Disposition du dock">${iconOf('layout')}</button>`;
+    const shortcutLabel = SHORTCUT_LABELS[state.launcherShortcut] ? ` (${SHORTCUT_LABELS[state.launcherShortcut]})` : '';
+    const searchButton = isServer ? `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-search" data-mini="search" title="Rechercher dans les conversations${shortcutLabel}" aria-label="Rechercher dans les conversations">${iconOf('search')}</button>` : '';
     const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
     if (state.teamPopId && !popRow) state.teamPopId = null;
-    const popup = popRow ? renderTeamPopup(popRow, now) : '';
+    const teamPopup = popRow ? renderTeamPopup(popRow, now) : '';
+    const popup = state.dockMenuOpen ? renderDockMenu() : teamPopup;
     state.teamPopFresh = false;
-    document.getElementById('mini').innerHTML = `<div class="dock-zone"><div class="dock" id="dock">${newButton}${counter}${waiting}${separator}${others}${calm}${quit}</div></div>${popup}`;
+    const dock = document.getElementById('dock');
+    dock.dataset.size = prefs.size;
+    dock.dataset.layout = prefs.layout;
+    dock.style.setProperty('--grid-columns', String(gridColumns));
+    document.getElementById('dock-items').innerHTML = `<span class="dock-tools">${newButton}${layoutButton}${searchButton}${quit}</span>${counter}<span class="dock-heads">${waiting}${separator}${others}${calm}</span>`;
+    document.getElementById('mini-pop').innerHTML = popup;
     document.title = count > 0 ? `(${count}) Mini équipe` : 'Mini équipe';
     syncDesktopWindow();
   };
 
   const syncDesktopWindow = () => {
     if (!desktop) return;
-    const isOpen = state.teamPopId !== null || state.newConv !== null;
+    const isOpen = state.teamPopId !== null || state.newConv !== null || state.dockMenuOpen;
     const sheet = document.querySelector('.t-sheet');
     const sheetHeight = sheet ? sheet.scrollHeight + 4 : 0;
-    if (isOpen !== miniExpanded || (isOpen && sheetHeight !== miniSheetHeight)) {
+    const panelWidth = sheet ? getComputedStyle(sheet).getPropertyValue('--panel-width') : '';
+    const sheetWidth = Number.parseInt(panelWidth, 10) || 0;
+    const hasChanged = isOpen !== miniExpanded || (isOpen && (sheetHeight !== miniSheetHeight || sheetWidth !== miniSheetWidth));
+    if (hasChanged) {
       miniExpanded = isOpen;
+      miniSheetWidth = sheetWidth;
       miniSheetHeight = sheetHeight;
-      desktop.setExpanded(isOpen, sheetHeight);
-      if (!isOpen) desktop.setClickThrough(!miniInside);
+      desktop.setExpanded(isOpen, sheetWidth, sheetHeight);
     }
     const dock = document.getElementById('dock');
-    if (dock) desktop.setDockWidth(dock.offsetWidth + MINI_SIDE_ROOM);
+    if (!dock) return;
+    document.body.style.setProperty('--dock-room', `${dock.offsetHeight}px`);
+    desktop.setDockSize(dock.offsetWidth, dock.offsetHeight);
   };
 
   const renderMiniFrame = now => {
     const scroll = captureScroll();
     renderMini(now);
     restoreScroll(scroll);
+    hydrateIdentities();
     focusPendingDraft();
   };
 
@@ -1265,7 +1378,7 @@
   const renderNewConvPicked = () => {
     const box = document.getElementById('nc-picked');
     if (!box || state.newConv === null) return;
-    const chips = state.newConv.selected.map((folder, index) => `<span class="nc-chip">${index === 0 ? '📁' : '+'} ${escapeHtml(folderOf(folder))}</span>`).join('');
+    const chips = state.newConv.selected.map((folder, index) => `<span class="ep-tag ${index === 0 ? 'ep-tag--accent' : ''}">${index === 0 ? 'Principal · ' : ''}${escapeHtml(folderOf(folder))}</span>`).join('');
     box.innerHTML = chips || '<span class="nc-none">Aucun dépôt choisi</span>';
   };
 
@@ -1276,21 +1389,21 @@
     const items = folders.map(newConvItem).join('');
     document.getElementById('newconv').innerHTML = `<div class="t-modal">
       <div class="t-backdrop" data-nc="close"></div>
-      <div class="t-sheet enter" role="dialog" aria-modal="true" aria-labelledby="nc-title">
+      <div class="t-sheet ep-glass enter" role="dialog" aria-modal="true" aria-labelledby="nc-title">
         <div class="t-sheet-head">
-          <h2 id="nc-title" class="t-sheet-title" style="flex: 1 1 auto">➕ Nouvelle conversation</h2>
-          <button type="button" class="btn btn-icon" data-nc="close" aria-label="Fermer" style="width: 40px; height: 40px; font-size: 17px">✕</button>
+          <h2 id="nc-title" class="t-sheet-title" style="flex: 1 1 auto">Nouvelle <em>conversation</em></h2>
+          <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-nc="close" aria-label="Fermer">${iconOf('x')}</button>
         </div>
         <span class="nc-label">Dépôt <span>(le premier coché est le dossier principal, tu peux en cocher d'autres)</span></span>
-        <input type="search" class="field nc-search" placeholder="Rechercher un dépôt…" aria-label="Rechercher un dépôt">
+        <input type="search" class="ep-input nc-search" placeholder="Rechercher un dépôt…" aria-label="Rechercher un dépôt">
         <div class="nc-list">${items || '<span class="nc-none" style="padding: 8px">Aucun dépôt connu</span>'}</div>
         <div class="nc-picked" id="nc-picked"></div>
         <label class="nc-label" for="nc-text">Premier message</label>
-        <textarea id="nc-text" class="field nc-text" rows="4" placeholder="Ce que tu veux lui demander… (Ctrl+Entrée pour ouvrir)"></textarea>
+        <textarea id="nc-text" class="ep-textarea nc-text" rows="4" placeholder="Ce que tu veux lui demander… (Ctrl+Entrée pour ouvrir)"></textarea>
         <div class="nc-note">Claude s'ouvre sur la conversation avec ton message déjà écrit : appuie sur Entrée pour l'envoyer. La première fois, l'app te demande de faire confiance au dossier. Le modèle et le mode se règlent dans l'app.</div>
         <div class="card-actions">
           <div class="group"><span class="feedback error" id="nc-error"></span></div>
-          <div class="group"><button type="button" class="btn btn-primary" data-nc="open">Ouvrir dans Claude</button></div>
+          <div class="group"><button type="button" class="ep-btn ep-btn--primary" data-nc="open">Ouvrir dans Claude</button></div>
         </div>
       </div>
     </div>`;
@@ -1347,7 +1460,7 @@
     const url = newConvUrlOf(folders, text);
     openAppLink(url);
     closeNewConv();
-    showReward('➕ Nouvelle conversation', `${folderOf(folders[0])} : appuie sur Entrée dans Claude`, 'info');
+    showReward('Nouvelle conversation', `${folderOf(folders[0])} : appuie sur Entrée dans Claude`, 'info');
   };
 
   document.addEventListener('click', event => {
@@ -1380,6 +1493,7 @@
     const row = rowOf(engineId);
     if (!row) return;
     state.teamPopId = engineId;
+    state.dockMenuOpen = false;
     state.teamPopFresh = true;
     state.pendingBottom.add(engineId);
     if (!row.isCurrent && isServer) state.focusDraft = engineId;
@@ -1523,6 +1637,7 @@
     renderDayStats();
     if (state.view === 'team') renderTeam(now);
     else document.getElementById('team').innerHTML = '';
+    hydrateIdentities();
 
     document.title = groups.waiting.length > 0 ? `(${groups.waiting.length}) Ton équipe` : 'Ton équipe';
     restoreScroll(scroll);
@@ -1549,10 +1664,11 @@
       element.textContent = formatAge(Number(element.dataset.updated), now);
     }
     for (const pill of document.querySelectorAll('.age-pill[data-updated]')) {
-      const bonus = ageBonus({ updatedAt: Number(pill.dataset.updated) }, now);
+      const updatedAt = Number(pill.dataset.updated);
+      const bonus = ageBonus({ updatedAt }, now);
       pill.textContent = bonus.label;
-      pill.style.background = bonus.bg;
-      pill.style.color = bonus.fg;
+      pill.classList.remove('ep-tag--info', 'ep-tag--warning', 'ep-tag--danger');
+      if (bonus.tone) pill.classList.add(bonus.tone);
     }
     const freshness = document.getElementById('freshness');
     if (state.data.generatedAt === 0) {
@@ -1574,37 +1690,35 @@
   const showReward = (badge, text, variant = '') => {
     for (const old of document.querySelectorAll('.reward')) old.remove();
     const reward = document.createElement('div');
-    reward.className = `reward ${variant}`;
+    const tone = variant === 'error' ? 'ep-tag--danger' : (variant === 'info' ? 'ep-tag--info' : 'ep-tag--success');
+    reward.className = `reward ep-glass ${variant}`;
     reward.setAttribute('role', 'status');
-    reward.innerHTML = `<span class="reward-badge">${escapeHtml(badge)}</span><span>${escapeHtml(text)}</span>`;
+    reward.innerHTML = `<span class="ep-tag ${tone}">${escapeHtml(badge)}</span><span>${escapeHtml(text)}</span>`;
     document.body.appendChild(reward);
     setTimeout(() => reward.classList.add('out'), 2400);
     setTimeout(() => reward.remove(), 2750);
   };
 
-  const showSparks = () => {
-    for (const old of document.querySelectorAll('.sparks')) old.remove();
+  const showTrace = () => {
+    for (const old of document.querySelectorAll('.trace')) old.remove();
+    const library = window.EncrePapier;
+    if (!library || prefersCalm()) return;
+    const seed = Date.now() % 9973;
+    const lines = library.engine.ribbonLines({ w: 240, h: 90, seed, count: 8, maxLen: 70, step: 3 });
+    const pathData = library.svg.pathD(lines);
     const host = document.createElement('div');
-    host.className = 'sparks';
-    const seed = Date.now() % 97;
-    for (let index = 0; index < 16; index++) {
-      const angle = -Math.PI * (0.1 + 0.8 * (index / 15));
-      const distance = 80 + ((index * 37 + seed * 13) % 90);
-      const size = 6 + (index % 3) * 3;
-      const spark = document.createElement('span');
-      spark.className = 'spark';
-      spark.style.cssText = `--dx: ${Math.round(Math.cos(angle) * distance)}px; --dy: ${Math.round(Math.sin(angle) * distance) - 24}px; --rot: ${(index * 67) % 360}deg; width: ${size}px; height: ${size}px; background: ${SPARK_COLORS[index % 4]}; animation-delay: ${(index % 4) * 35}ms`;
-      host.appendChild(spark);
-    }
+    host.className = 'trace';
+    host.setAttribute('aria-hidden', 'true');
+    host.innerHTML = `<svg viewBox="0 0 240 90"><path d="${pathData}" pathLength="1"></path></svg>`;
     document.body.appendChild(host);
-    setTimeout(() => host.remove(), 1600);
+    setTimeout(() => host.remove(), 1800);
   };
 
   const rewardFor = (row, waitedMinutes, combo) => {
-    if (combo >= 2) return [`🔥 Combo x${combo}`, `${row.title} repart en mission`];
-    if (waitedMinutes >= 60) return ['🛟 Sauvetage', `${row.title} n'attend plus`];
-    if (waitedMinutes < 5) return ['⚡ Éclair', 'Ordre donné en moins de 5 min'];
-    return ['🚀 +1', `${row.title} repart en mission`];
+    if (combo >= 2) return [`Combo x${combo}`, `${row.title} repart en mission`];
+    if (waitedMinutes >= 60) return ['Sauvetage', `${row.title} n'attend plus`];
+    if (waitedMinutes < 5) return ['Éclair', 'Ordre donné en moins de 5 min'];
+    return ['+1', `${row.title} repart en mission`];
   };
 
   const celebrateSend = row => {
@@ -1618,7 +1732,7 @@
     stats.combo = combo;
     writeStats(stats);
     const [badge, text] = rewardFor(row, waitedMinutes, combo);
-    showSparks();
+    showTrace();
     showReward(badge, text);
     renderStats({ bump: true });
     state.popId = row.engineId;
@@ -1630,7 +1744,7 @@
   };
 
   const notifyNewWaiting = rows => {
-    if (isMini) return;
+    if (isMini || isLauncher) return;
     const waiting = new Map(rows.filter(row => WAITING_STATUSES.includes(row.status)).map(row => [row.engineId, row]));
     const snapshot = new Map([...waiting].map(([id, row]) => [id, row.updatedAt]));
     if (state.knownWaiting === null) { state.knownWaiting = snapshot; return; }
@@ -1638,7 +1752,7 @@
     state.knownWaiting = snapshot;
     if (fresh.length === 0 || !('Notification' in window) || Notification.permission !== 'granted' || document.hasFocus()) return;
     for (const row of fresh) {
-      const notification = new Notification(`${KINDS[kindOf(row)].emoji} ${row.title}`, { body: awaitingOf(row) || 'attend tes ordres', tag: row.engineId });
+      const notification = new Notification(`${KINDS[kindOf(row)].label} · ${row.title}`, { body: awaitingOf(row) || 'attend tes ordres', tag: row.engineId });
       notification.onclick = () => { window.focus(); expand(row.engineId); };
     }
   };
@@ -1690,6 +1804,166 @@
     throw new Error(reason);
   };
 
+  const SEARCH_DELAY_MS = 250;
+  const SEARCH_SLOW_MS = 1200;
+  let searchTimer = null;
+  let searchSequence = 0;
+
+  const markedHtml = snippet => {
+    let html = '';
+    let cursor = 0;
+    for (const [start, end] of snippet.marks) {
+      if (start < cursor) continue;
+      const before = snippet.text.slice(cursor, start);
+      const marked = snippet.text.slice(start, end);
+      html += `${escapeHtml(before)}<mark>${escapeHtml(marked)}</mark>`;
+      cursor = end;
+    }
+    const rest = snippet.text.slice(cursor);
+    return html + escapeHtml(rest);
+  };
+
+  const renderSearchRow = (result, now) => {
+    const face = renderFace({ engineId: result.engineId, title: result.title, status: 'idle' }, 44, { withBadge: false });
+    const passages = result.count > 1 ? `${result.count} passages` : (result.count === 1 ? '1 passage' : '');
+    const age = `il y a ${formatAge(result.lastAt, now)}`;
+    const folder = folderOf(result.cwd);
+    const metaParts = [age, passages, folder].filter(Boolean);
+    const meta = metaParts.map(part => `<span>${escapeHtml(part)}</span>`).join('<span aria-hidden="true">·</span>');
+    const terminalTag = result.isTerminal ? '<span class="ep-tag">terminal</span>' : '';
+    const snippet = markedHtml(result.snippet);
+    const body = `${face}<span class="search-text"><span class="search-title">${escapeHtml(result.title)}</span><span class="search-snippet">${snippet}</span><span class="search-meta">${meta}${terminalTag}</span></span>`;
+    const tint = tintStyleOf(result.engineId, TINT_BLOCK);
+    if (!result.hostId) return `<div class="search-row ep-plate" style="${tint}">${body}</div>`;
+    const href = `${DEEP_LINK_PREFIX}${result.hostId}`;
+    return `<a class="search-row ep-plate" href="${escapeHtml(href)}" title="Ouvrir dans l'app" style="${tint}">${body}</a>`;
+  };
+
+  const SHORTCUT_LABELS = { 'Alt+Space': 'Alt+Espace', 'Control+Alt+Space': 'Ctrl+Alt+Espace' };
+  let launcherIndex = -1;
+
+  const syncLauncherHeight = () => {
+    if (!isLauncher || !desktop) return;
+    const wrap = document.getElementById('wrap');
+    desktop.setLauncherHeight(wrap.scrollHeight);
+  };
+
+  const launcherRows = () => [...document.querySelectorAll('#search-results .search-row')];
+
+  const selectLauncherRow = index => {
+    const rows = launcherRows();
+    launcherIndex = rows.length === 0 ? -1 : Math.min(index, rows.length - 1);
+    rows.forEach((row, position) => row.classList.toggle('selected', position === launcherIndex));
+    const selected = rows[launcherIndex];
+    if (selected) selected.scrollIntoView({ block: 'nearest' });
+    syncLauncherHeight();
+  };
+
+  const openLauncherRow = row => {
+    const href = row ? row.getAttribute('href') : null;
+    if (!href || !desktop) return;
+    desktop.openLink(href);
+    desktop.hideLauncher();
+  };
+
+  const suggestionResultOf = row => {
+    const face = teamFaceOf(row);
+    const awaiting = awaitingOf(row);
+    return {
+      engineId: row.engineId,
+      hostId: row.hostId || null,
+      title: row.title,
+      cwd: row.cwd,
+      lastAt: row.updatedAt,
+      count: 0,
+      isTerminal: !row.hostId,
+      snippet: { text: awaiting || face.bubble, marks: [] },
+    };
+  };
+
+  const renderSuggestions = () => {
+    const rows = window.CockpitDock.suggestionsOf(state.data.rows, WAITING_STATUSES);
+    const waitingCount = rows.filter(row => WAITING_STATUSES.includes(row.status)).length;
+    const plural = waitingCount > 1;
+    const header = waitingCount > 0 ? `${waitingCount} conversation${plural ? 's' : ''} t'attend${plural ? 'ent' : ''}` : 'Conversations récentes';
+    const now = Date.now();
+    const results = rows.map(suggestionResultOf);
+    const html = results.map(result => renderSearchRow(result, now)).join('');
+    document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(header)}</p>${html}`;
+    hydrateIdentities();
+    selectLauncherRow(0);
+  };
+
+  const renderSearchStatus = message => {
+    document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(message)}</p>`;
+    syncLauncherHeight();
+  };
+
+  const renderSearchResults = (found, now) => {
+    if (found.results.length === 0) {
+      renderSearchStatus('Aucune conversation ne contient tous ces mots');
+      return;
+    }
+    const limit = isLauncher ? window.CockpitDock.MAX_SUGGESTIONS : found.results.length;
+    const visible = found.results.slice(0, limit);
+    const shown = visible.length;
+    const header = found.total > shown ? `${shown} conversations sur ${found.total}, les plus récentes` : `${shown} conversation${shown > 1 ? 's' : ''}`;
+    const rows = visible.map(result => renderSearchRow(result, now)).join('');
+    document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(header)}</p>${rows}`;
+    hydrateIdentities();
+    if (isLauncher) selectLauncherRow(0);
+  };
+
+  const runSearch = async query => {
+    searchSequence += 1;
+    const sequence = searchSequence;
+    const trimmed = query.trim();
+    if (trimmed.length === 0 && isLauncher) {
+      renderSuggestions();
+      return;
+    }
+    if (trimmed.length === 0) {
+      document.body.classList.remove('searching');
+      document.getElementById('search-results').innerHTML = '';
+      return;
+    }
+    document.body.classList.add('searching');
+    renderSearchStatus('Recherche…');
+    const slowNote = setTimeout(() => {
+      if (sequence === searchSequence) renderSearchStatus('Première indexation de tes conversations, jusqu’à 20 secondes…');
+    }, SEARCH_SLOW_MS);
+    try {
+      const encoded = encodeURIComponent(trimmed);
+      const response = await fetch(`${serverBase}/search?q=${encoded}`);
+      const found = await response.json();
+      if (sequence !== searchSequence) return;
+      if (!found.ok) throw new Error(found.error || `HTTP ${response.status}`);
+      const now = Date.now();
+      renderSearchResults(found, now);
+    } catch (error) {
+      if (sequence === searchSequence) renderSearchStatus(`Recherche impossible : ${error.message}`);
+    } finally {
+      clearTimeout(slowNote);
+    }
+  };
+
+  const scheduleSearch = query => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => runSearch(query), SEARCH_DELAY_MS);
+  };
+
+  const focusSearch = () => {
+    const input = document.getElementById('search-input');
+    input.focus();
+    input.select();
+  };
+
+  const focusSearchFromHash = () => {
+    if (location.hash !== '#recherche') return;
+    focusSearch();
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+  };
+
   const setFeedback = (engineId, text, isError = false) => {
     state.feedback.set(engineId, { text, isError });
     render({ force: true });
@@ -1717,7 +1991,7 @@
       if (state.teamPopId === engineId) state.teamPopId = null;
       if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
       render({ force: true });
-      showReward(seen ? '👁️ Au repos' : '🙋 En attente', seen ? `${title} est mis au repos` : `${title} attend de nouveau tes ordres`, 'info');
+      showReward(seen ? 'Au repos' : 'En attente', seen ? `${title} est mis au repos` : `${title} attend de nouveau tes ordres`, 'info');
     } catch (error) {
       showReward('Oups', error.message, 'error');
     }
@@ -1729,7 +2003,7 @@
     closeRepoMenu();
     try {
       await post('/terminal', { cwd: folder });
-      showReward('🖥️ Terminal', folderOf(folder), 'info');
+      showReward('Terminal', folderOf(folder), 'info');
     } catch (error) {
       showReward('Terminal non ouvert', error.message, 'error');
     }
@@ -1742,7 +2016,7 @@
   const showRepoMenu = (anchor, row, repos) => {
     closeRepoMenu();
     const menu = document.createElement('div');
-    menu.className = 'repo-menu';
+    menu.className = 'repo-menu ep-glass';
     menu.setAttribute('role', 'menu');
     const items = repos.map(repo => `<button type="button" class="repo-item" role="menuitem" data-folder="${escapeHtml(repo)}"><span class="repo-name">${escapeHtml(folderOf(repo))}</span><span class="repo-path">${escapeHtml(repo)}</span></button>`).join('');
     const origin = `<button type="button" class="repo-item muted" role="menuitem" data-folder="${escapeHtml(row.cwd)}"><span class="repo-name">Dossier d'ouverture</span><span class="repo-path">${escapeHtml(row.cwd)}</span></button>`;
@@ -2013,16 +2287,18 @@
     updateBell();
   });
 
+  if (isOsGlass) document.documentElement.classList.add('os-glass');
+  if (isMini && desktop) {
+    desktop.launcherShortcut().then(shortcut => {
+      state.launcherShortcut = shortcut;
+      render({ force: true });
+    });
+  }
   if (isMini) {
+    state.dockPrefs = readStoredDockPrefs();
     document.documentElement.classList.add('mini-mode');
     document.body.classList.add('mini-mode');
-    window.addEventListener('resize', () => syncDesktopWindow());
-    document.addEventListener('mouseover', event => {
-      const inside = Boolean(event.target.closest && event.target.closest('.dock, .t-sheet, .repo-menu'));
-      if (inside === miniInside) return;
-      miniInside = inside;
-      if (desktop) desktop.setClickThrough(!inside);
-    });
+    window.addEventListener('resize', syncDesktopWindow);
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');
       if (appLink) {
@@ -2030,14 +2306,99 @@
         desktop.openLink(appLink.href);
         return;
       }
+      const sizeChoice = event.target.closest('[data-dock-size]');
+      if (sizeChoice) { applyDockChoice('size', sizeChoice.dataset.dockSize); return; }
+      const layoutChoice = event.target.closest('[data-dock-layout]');
+      if (layoutChoice) { applyDockChoice('layout', layoutChoice.dataset.dockLayout); return; }
+      if (event.target.closest('[data-dock-menu="close"]')) { state.dockMenuOpen = false; render({ force: true }); return; }
       const control = event.target.closest('[data-mini]');
       if (!control) return;
       if (control.dataset.mini === 'cockpit') { if (desktop) desktop.openCockpit(); else window.open('/', 'cockpit'); }
+      if (control.dataset.mini === 'search') { if (desktop) desktop.openCockpit('search'); else window.open('/#recherche', 'cockpit'); }
+      if (control.dataset.mini === 'layout') { state.dockMenuOpen = !state.dockMenuOpen; state.teamPopId = null; render({ force: true }); }
       if (control.dataset.mini === 'quit' && desktop) desktop.quit();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !state.dockMenuOpen) return;
+      state.dockMenuOpen = false;
+      render({ force: true });
     });
   }
   else applyView(readView());
+  if (!isMini && isServer) {
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', () => scheduleSearch(searchInput.value));
+    searchInput.addEventListener('keydown', event => {
+      const isArrow = event.key === 'ArrowDown' || event.key === 'ArrowUp';
+      if (isLauncher && isArrow) {
+        event.preventDefault();
+        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        const count = launcherRows().length;
+        const next = window.CockpitDock.moveSelection(launcherIndex, delta, count);
+        selectLauncherRow(next);
+        return;
+      }
+      if (event.key === 'Enter' && isLauncher) {
+        event.preventDefault();
+        const rows = launcherRows();
+        openLauncherRow(rows[launcherIndex]);
+        return;
+      }
+      if (event.key === 'Escape' && isLauncher) {
+        event.preventDefault();
+        desktop.hideLauncher();
+        return;
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const first = document.querySelector('#search-results a.search-row');
+        if (first) first.click();
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        searchInput.value = '';
+        runSearch('');
+        searchInput.blur();
+      }
+    });
+    if (isLauncher && desktop) {
+      document.documentElement.classList.add('launcher-mode');
+      document.body.classList.add('launcher-mode');
+      searchInput.placeholder = 'Rechercher dans toutes les conversations';
+      document.addEventListener('click', event => {
+        const link = event.target.closest && event.target.closest('a.search-row');
+        if (!link) return;
+        event.preventDefault();
+        openLauncherRow(link);
+      });
+      desktop.onLauncherShown(() => {
+        focusSearch();
+        const query = searchInput.value;
+        if (query.trim().length === 0) renderSuggestions();
+        else runSearch(query);
+      });
+      renderSuggestions();
+    }
+    document.addEventListener('keydown', event => {
+      const isShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
+      if (!isShortcut) return;
+      event.preventDefault();
+      focusSearch();
+    });
+    window.addEventListener('hashchange', focusSearchFromHash);
+    focusSearchFromHash();
+  } else {
+    document.getElementById('search-bar').hidden = true;
+  }
   document.getElementById('banner').classList.toggle('show', !isServer);
+  const isDesignSystemLoaded = () => {
+    const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitDock && ink);
+  };
+  window.addEventListener('load', () => {
+    document.getElementById('ds-banner').classList.toggle('show', !isDesignSystemLoaded());
+    hydrateIdentities();
+  });
   updateBell();
   renderStats();
   tickClock();

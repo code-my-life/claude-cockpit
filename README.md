@@ -10,6 +10,8 @@ Trois morceaux :
 
 ## Ce que ça fait
 
+- **Identité générative animée** pour chaque conversation : un volume tiré de son identifiant (chrome, ruban torsadé, sections de coque, bande de Möbius) dessiné à l'encre noire du Systems Kit (lavis et hachures), sur un fond de verre teinté d'une couleur unique parmi 24, toujours le même pour une conversation, qui bouge plus vite quand elle t'attend et presque plus quand elle est au repos.
+- **Style Liquid Paper, thème Nuit** : verre sur un fond génératif dans le navigateur, vrai flou de Windows 11 dans les fenêtres de bureau (mini équipe et cockpit), Instrument Serif pour les titres, DM Mono pour les étiquettes. Les fichiers du design system sont copiés dans `mod/assets/liquid-paper/`.
 - **Statut en direct** de chaque conversation : t'attend (permission, question, mission livrée), en mission, en attente d'une PR ou d'une CI, bloquée, plus tard, au repos.
 - **Résumé en clair** : Haiku reformule la dernière réponse de Claude en langage simple, avec la réponse exacte à côté.
 - **Répondre depuis le cockpit** : OK / GO / Non en un clic, ou un message libre (images collées acceptées).
@@ -44,6 +46,7 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 ## Utilisation
 
 - **Conversations Claude** ouvre le cockpit. ➕ en haut pour une nouvelle conversation, « Liste / Équipe » pour changer de vue, A− / A+ pour la taille du texte, 🔔 pour les notifications Windows.
+- **Recherche globale** : le champ en haut du cockpit (Ctrl+K, ou la loupe du dock) cherche dans tes messages et les réponses de Claude de toutes les sessions, sans tenir compte des accents ; un clic ouvre la conversation dans l'app. L'index vit en mémoire dans le serveur du cockpit, repris de `search-cache.json` au démarrage.
 - **Mini équipe** pose la bande des têtes en bas à droite. Survol : ce que la conversation attend. Clic : le résumé et la réponse. Le compteur ouvre le cockpit, ＋ ouvre une nouvelle conversation, ✕ ferme la bande. La bande se déplace à la souris et retient sa place.
 - Dans une conversation, `/sessions` rouvre le panneau du mod dans l'app.
 
@@ -52,6 +55,8 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 - Le cockpit a besoin d'au moins une conversation Claude ouverte : c'est elle qui fait tourner le serveur. Sans elle, la mini-équipe affiche « Cockpit éteint » et réessaie seule.
 - Une conversation n'apparaît avec son statut en direct qu'après avoir chargé le mod (nouvelle conversation, ou redémarrage de l'app).
 - Les résumés passent par Haiku et consomment un peu de quota.
+- Les polices viennent de Google Fonts. Hors connexion, la page se rabat sur Georgia et Consolas.
+- Après une mise à jour, si la page affiche « Le cockpit a été mis à jour », redémarre Claude Desktop : le serveur encore en mémoire ne connaît pas les nouveaux fichiers.
 - Le mod écrit ses fichiers de travail (page générée, données, images collées) à la racine du dépôt cloné ; ils sont ignorés par git.
 
 ## Mise à jour

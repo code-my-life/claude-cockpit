@@ -1,23 +1,40 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require('electron')
+const { app, BrowserWindow, globalShortcut, ipcMain, nativeTheme, screen, shell } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
+const { boundsOf, MARGIN, SHEET_MAX_HEIGHT } = require('./bounds')
+const { applyBlur } = require('./blur')
+const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 
 const COCKPIT_URL = 'http://127.0.0.1:48123/'
-const MINI_URL = `${COCKPIT_URL}?mini=1`
+const MINI_URL = `${COCKPIT_URL}?mini=1&glass=1`
+const COCKPIT_GLASS_URL = `${COCKPIT_URL}?glass=1`
+const LAUNCHER_URL = `${COCKPIT_URL}?launcher=1&glass=1`
+const LAUNCHER_SHORTCUTS = ['Alt+Space', 'Control+Alt+Space']
 const RETRY_MS = 5000
 const ERR_ABORTED = -3
-const MARGIN = 12
 const DOCK_MIN_WIDTH = 120
-const DOCK_HEIGHT = 170
-const EXPANDED_MAX_WIDTH = 1100
-const EXPANDED_MAX_HEIGHT = 800
+const DOCK_HEIGHT = 96
+const OFFLINE_WIDTH = 380
+const OFFLINE_HEIGHT = 44
 const SELF_MOVE_GRACE_MS = 600
-const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:0;background:transparent;font-family:system-ui;display:flex;align-items:flex-end;justify-content:flex-end;height:100vh"><div style="margin:0 8px 8px 0;padding:10px 16px;border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 6px 20px rgba(0,0,0,.18);font-size:13px;color:#6B6F7A">💤 Cockpit éteint : ouvre une conversation Claude</div></body>')}`
+const COCKPIT_WIDTH = 1180
+const COCKPIT_HEIGHT = 900
+const CLEAR = '#00000000'
+const TITLE_SYMBOLS = '#ecece6'
+const TITLE_BAR_HEIGHT = 36
+const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:0;background:transparent;height:100vh;display:flex;align-items:center;justify-content:center;font:500 11px/1 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae">Cockpit éteint : ouvre une conversation Claude</body>')}`
 
 let win = null
+let cockpitWin = null
+let launcherWin = null
+let launcherHeight = LAUNCHER_MIN_HEIGHT
+let isLauncherBroken = false
+let activeShortcut = null
 let dockWidth = DOCK_MIN_WIDTH
+let dockHeight = DOCK_HEIGHT
 let isExpanded = false
-let expandedHeight = EXPANDED_MAX_HEIGHT
+let sheetWidth = 0
+let sheetHeight = SHEET_MAX_HEIGHT
 let anchor = null
 let selfMovedAt = 0
 
@@ -53,12 +70,9 @@ const applyBounds = () => {
   if (win === null) return
   const target = anchor ?? defaultAnchor()
   const area = dockArea(target)
-  const width = isExpanded ? Math.min(EXPANDED_MAX_WIDTH, area.width - 2 * MARGIN) : Math.max(DOCK_MIN_WIDTH, dockWidth)
-  const height = isExpanded ? Math.min(expandedHeight, EXPANDED_MAX_HEIGHT, area.height - 2 * MARGIN) : DOCK_HEIGHT
-  const x = isExpanded ? Math.round(area.x + (area.width - width) / 2) : Math.max(area.x, target.right - width)
-  const y = isExpanded ? Math.round(area.y + (area.height - height) / 2) : Math.max(area.y, target.bottom - height)
+  const bounds = boundsOf(target, area, { isExpanded, dockWidth, dockHeight, sheetWidth, sheetHeight })
   selfMovedAt = Date.now()
-  win.setBounds({ x, y, width, height })
+  win.setBounds(bounds)
 }
 
 const rememberAnchor = () => {
@@ -77,40 +91,132 @@ const openOutside = url => {
   if (/^(https?|claude):/.test(url)) shell.openExternal(url)
 }
 
+const guardNavigation = target => {
+  target.webContents.setWindowOpenHandler(({ url }) => {
+    openOutside(url)
+    return { action: 'deny' }
+  })
+  target.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith(COCKPIT_URL)) return
+    event.preventDefault()
+    openOutside(url)
+  })
+}
+
+const cockpitUrlOf = section => (section === 'search' ? `${COCKPIT_GLASS_URL}#recherche` : COCKPIT_GLASS_URL)
+
+const openCockpitWindow = section => {
+  const target = cockpitUrlOf(section)
+  if (cockpitWin !== null) {
+    if (cockpitWin.isMinimized()) cockpitWin.restore()
+    cockpitWin.focus()
+    if (section === 'search') cockpitWin.loadURL(target).catch(() => {})
+    return
+  }
+  cockpitWin = new BrowserWindow({
+    width: COCKPIT_WIDTH,
+    height: COCKPIT_HEIGHT,
+    title: 'Ton équipe',
+    backgroundColor: CLEAR,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: CLEAR, symbolColor: TITLE_SYMBOLS, height: TITLE_BAR_HEIGHT },
+    autoHideMenuBar: true,
+  })
+  applyBlur(cockpitWin)
+  guardNavigation(cockpitWin)
+  cockpitWin.on('closed', () => { cockpitWin = null })
+  cockpitWin.loadURL(target).catch(() => {})
+}
+
+const placeLauncher = () => {
+  const cursor = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(cursor)
+  const bounds = launcherBoundsOf(display.workArea, launcherHeight)
+  launcherWin.setBounds(bounds)
+}
+
+const hideLauncher = () => {
+  if (launcherWin !== null && launcherWin.isVisible()) launcherWin.hide()
+}
+
+const createLauncherWindow = () => {
+  launcherWin = new BrowserWindow({
+    width: LAUNCHER_WIDTH,
+    height: LAUNCHER_MIN_HEIGHT,
+    show: false,
+    frame: false,
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    backgroundColor: CLEAR,
+    webPreferences: { preload: path.join(__dirname, 'preload.js') },
+  })
+  applyBlur(launcherWin)
+  launcherWin.setAlwaysOnTop(true, 'pop-up-menu')
+  guardNavigation(launcherWin)
+  launcherWin.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
+    if (isMainFrame && code !== ERR_ABORTED) isLauncherBroken = true
+  })
+  launcherWin.on('blur', hideLauncher)
+  launcherWin.on('closed', () => { launcherWin = null })
+  launcherWin.loadURL(LAUNCHER_URL).catch(() => {})
+}
+
+const showLauncher = () => {
+  if (launcherWin === null) createLauncherWindow()
+  if (isLauncherBroken) {
+    isLauncherBroken = false
+    launcherWin.loadURL(LAUNCHER_URL).catch(() => {})
+  }
+  placeLauncher()
+  launcherWin.show()
+  launcherWin.focus()
+  launcherWin.webContents.send('launcher-shown')
+}
+
+const toggleLauncher = () => {
+  const isOpen = launcherWin !== null && launcherWin.isVisible()
+  if (isOpen) hideLauncher()
+  else showLauncher()
+}
+
+const registerLauncherShortcut = () => {
+  for (const accelerator of LAUNCHER_SHORTCUTS) {
+    const isRegistered = globalShortcut.register(accelerator, toggleLauncher)
+    if (isRegistered) {
+      activeShortcut = accelerator
+      return
+    }
+  }
+}
+
 const createWindow = () => {
   anchor = loadAnchor()
   win = new BrowserWindow({
     width: DOCK_MIN_WIDTH,
     height: DOCK_HEIGHT,
     frame: false,
-    transparent: true,
     resizable: false,
     maximizable: false,
     minimizable: false,
     fullscreenable: false,
     skipTaskbar: true,
-    hasShadow: false,
     alwaysOnTop: true,
-    backgroundColor: '#00000000',
+    backgroundColor: CLEAR,
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   })
+  applyBlur(win)
   win.setAlwaysOnTop(true, 'floating')
-  win.setIgnoreMouseEvents(true, { forward: true })
   applyBounds()
-
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    openOutside(url)
-    return { action: 'deny' }
-  })
-  win.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith(COCKPIT_URL)) return
-    event.preventDefault()
-    openOutside(url)
-  })
+  guardNavigation(win)
   win.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
     if (!isMainFrame || code === ERR_ABORTED) return
     isExpanded = false
-    dockWidth = 360
+    dockWidth = OFFLINE_WIDTH
+    dockHeight = OFFLINE_HEIGHT
     applyBounds()
     win.loadURL(OFFLINE_PAGE).catch(() => {})
     setTimeout(loadCockpit, RETRY_MS)
@@ -121,27 +227,32 @@ const createWindow = () => {
   loadCockpit()
 }
 
-ipcMain.on('dock-width', (event, width) => {
+ipcMain.on('dock-size', (event, width, height) => {
   dockWidth = Math.round(Number(width) || DOCK_MIN_WIDTH)
+  dockHeight = Math.round(Number(height) || DOCK_HEIGHT)
   if (!isExpanded) applyBounds()
 })
 
-ipcMain.on('expanded', (event, expanded, height) => {
+ipcMain.on('expanded', (event, expanded, width, height) => {
   isExpanded = expanded === true
-  expandedHeight = Math.max(DOCK_HEIGHT, Math.round(Number(height) || EXPANDED_MAX_HEIGHT))
+  sheetWidth = Math.round(Number(width) || 0)
+  sheetHeight = Math.round(Number(height) || SHEET_MAX_HEIGHT)
   applyBounds()
   if (isExpanded && win !== null) win.focus()
 })
 
-ipcMain.on('click-through', (event, enabled) => {
-  if (win === null) return
-  if (enabled === true && !isExpanded) win.setIgnoreMouseEvents(true, { forward: true })
-  else win.setIgnoreMouseEvents(false)
-})
-
-ipcMain.on('open-cockpit', () => shell.openExternal(COCKPIT_URL))
+ipcMain.on('open-cockpit', (event, section) => openCockpitWindow(section === 'search' ? 'search' : null))
 
 ipcMain.on('open-link', (event, url) => openOutside(String(url)))
+
+ipcMain.on('launcher-height', (event, height) => {
+  launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
+  if (launcherWin !== null && launcherWin.isVisible()) placeLauncher()
+})
+
+ipcMain.on('launcher-hide', hideLauncher)
+
+ipcMain.handle('launcher-shortcut', () => activeShortcut)
 
 ipcMain.on('quit', () => app.quit())
 
@@ -153,6 +264,12 @@ if (!app.requestSingleInstanceLock()) {
     applyBounds()
     if (win !== null) win.showInactive()
   })
-  app.whenReady().then(createWindow)
+  app.whenReady().then(() => {
+    nativeTheme.themeSource = 'dark'
+    createWindow()
+    createLauncherWindow()
+    registerLauncherShortcut()
+  })
+  app.on('will-quit', () => globalShortcut.unregisterAll())
   app.on('window-all-closed', () => app.quit())
 }
