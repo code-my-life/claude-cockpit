@@ -43,7 +43,7 @@ const purgeOldImages = (dataDir, now = Date.now()) => {
 export const startAppServer = async ({ rootDir, dataDir, secret, proof, pageToken, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {} }) => {
   ensureStarterPage(rootDir, dataDir)
   purgeOldImages(dataDir)
-  const hub = createBridgeHub()
+  const hub = createBridgeHub({ onHubChange: engineId => onError(`hub du pont : ${engineId ?? 'aucune conversation'}`) })
   const sink = order => {
     if (order.type === 'error') return onError(order.message)
     return hub.dispatch(order)

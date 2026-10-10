@@ -12,9 +12,12 @@ const ORDER_TTL_MS = { reply: 60000, summarize: 60000 }
 const DEFAULT_ORDER_TTL_MS = 600000
 const ENGINE_ROUTED = new Set(['reply', 'summarize'])
 
-export const createBridgeHub = ({ now = Date.now, newId = () => crypto.randomUUID() } = {}) => {
+// `onHubChange` hears the engineId of each new hub (null when none is left),
+// so the app can log who holds the page.
+export const createBridgeHub = ({ now = Date.now, newId = () => crypto.randomUUID(), onHubChange = () => {} } = {}) => {
   const bridges = new Map()
   let hubId = null
+  let reportedHub
   let pending = []
 
   const isAlive = bridge => bridge.waiters.size > 0 || now() - bridge.lastSeenAt <= BRIDGE_TIMEOUT_MS
@@ -29,6 +32,11 @@ export const createBridgeHub = ({ now = Date.now, newId = () => crypto.randomUUI
     if (hubId !== null && bridges.has(hubId)) return
     const oldest = bridges.values().next().value
     hubId = oldest === undefined ? null : oldest.id
+    const hubEngine = oldest === undefined ? null : oldest.engineId
+    if (hubEngine !== reportedHub) {
+      reportedHub = hubEngine
+      onHubChange(hubEngine)
+    }
     if (hubId !== null) wake(hubId)
   }
 

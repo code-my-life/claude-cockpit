@@ -21,6 +21,15 @@ const hubWith = () => {
 
 const typesOf = polled => polled.orders.map(entry => entry.type)
 
+test('every change of hub is reported with the conversation that holds it', () => {
+  const changes = []
+  const hub = createBridgeHub({ onHubChange: engineId => changes.push(engineId) })
+  const host = hub.hello({ engineId: 'a' })
+  hub.hello({ engineId: 'b' })
+  hub.leave(host.bridgeId)
+  assert.deepEqual(changes, ['a', 'b'])
+})
+
 test('the first bridge to say hello is the hub, the next ones are peers', () => {
   const { hub } = hubWith()
   const first = hub.hello({ engineId: 'a' })
