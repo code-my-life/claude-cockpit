@@ -1,12 +1,13 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { createIslandController } = require('./controller')
-const { ISLAND_CLOSE_MS, SETTLE_SLACK_MS, SHAPE_PAD } = require('../bounds')
+const { OPEN_SPRING, CLOSE_SPRING } = require('../bounds')
 const { HIDE_DELAY_MS, POINTER_HIDE_DELAY_MS, FOLD_DELAY_MS, INTENT_DELAY_MS, PIN_DONE_MS } = require('./fsm')
 const { POLL_INTERVAL_MS } = require('./edge')
 
 const AREA = { x: 0, y: 0, width: 1920, height: 1040 }
-const SETTLE_MS = ISLAND_CLOSE_MS + SETTLE_SLACK_MS
+const SETTLE_MS = CLOSE_SPRING.ms + 50
+const GROW_MS = OPEN_SPRING.ms + 50
 const AT_EDGE = { x: 960, y: 1 }
 const AWAY = { x: 960, y: 500 }
 
@@ -15,6 +16,7 @@ const fakeClock = () => {
   let nextId = 1
   const timers = new Map()
   return {
+    now: () => now,
     setTimer: (callback, delay) => { const id = nextId++; timers.set(id, { callback, at: now + delay }); return id },
     clearTimer: id => { timers.delete(id) },
     advance: ms => {
@@ -34,14 +36,13 @@ const fakeClock = () => {
 
 const setup = (overrides = {}) => {
   const clock = fakeClock()
-  const log = { bounds: [], shapes: [], sent: [], visible: [], order: [], cursorReads: 0, focus: 0 }
+  const log = { bounds: [], sent: [], visible: [], order: [], cursorReads: 0, focus: 0 }
   const cursor = { value: AWAY }
   const island = createIslandController({
     clock,
     getArea: () => AREA,
     getCursor: () => { log.cursorReads++; return cursor.value },
     applyBounds: bounds => log.bounds.push(bounds),
-    applyShape: rects => log.shapes.push(rects),
     setVisible: isVisible => { log.visible.push(isVisible); log.order.push(`visible:${isVisible}`) },
     focusWindow: () => { log.focus++; log.order.push('focus') },
     send: (channel, payload, cause) => log.sent.push([channel, payload, cause]),
@@ -54,104 +55,77 @@ const setup = (overrides = {}) => {
 const last = list => list[list.length - 1]
 
 test('demarrage : l ile se revele en reduit, par evenement', () => {
-  const { island, log } = setup()
+  const { island, log, clock } = setup()
   island.start()
   assert.equal(island.phase(), 'compact')
   assert.deepEqual(last(log.sent), ['island-state', 'compact', 'event'])
-  assert.equal(last(log.bounds).width, 320 + 2 * SHAPE_PAD)
-  assert.equal(last(log.shapes)[0].width, 320 + 2 * SHAPE_PAD)
   assert.equal(last(log.visible), true)
+  clock.advance(GROW_MS)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [320, 44])
 })
 
-test('cache : la fenetre est masquee, aucune zone ne capte la souris', () => {
+test('la forme sort du bord : hauteur de 1 px puis elle grandit jusqu a la pastille', () => {
   const { island, log, clock } = setup()
   island.start()
-  clock.advance(HIDE_DELAY_MS)
+  assert.equal(log.bounds[0].height, 1)
+  clock.advance(GROW_MS)
+  assert.ok(log.bounds.length > 4)
+})
+
+test('cache : la forme se retracte puis la fenetre est masquee', () => {
+  const { island, log, clock } = setup()
+  island.start()
+  clock.advance(GROW_MS)
+  clock.advance(HIDE_DELAY_MS - GROW_MS + 100)
   assert.equal(island.phase(), 'hidden')
+  assert.equal(last(log.visible), true)
   clock.advance(SETTLE_MS)
   assert.equal(last(log.visible), false)
 })
 
-test('repli decide par l app : l etat part tout de suite, la fenetre attend la fin de l animation', () => {
+test('ouverture : la fenetre grandit en ressort jusqu a la taille ouverte, au meme centre', () => {
+  const { island, log, clock } = setup()
+  island.start()
+  clock.advance(GROW_MS)
+  const before = log.bounds.length
+  island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [760, 280])
+  assert.ok(log.bounds.length - before > 20, 'une image par pas de 8 ms, pas un saut')
+  for (const bounds of log.bounds) assert.ok(Math.abs(bounds.x + bounds.width / 2 - 960) <= 1)
+})
+
+test('repli decide par l app : l etat part tout de suite, la fenetre se referme en ressort', () => {
   const { island, log, clock } = setup()
   island.start()
   island.setExpanded(true, 760, 280)
-  assert.equal(last(log.shapes)[0].height, 280 + SHAPE_PAD)
+  clock.advance(GROW_MS)
   island.escape()
   assert.equal(last(log.sent)[1], 'compact')
-  assert.equal(last(log.shapes)[0].height, 280 + SHAPE_PAD)
   clock.advance(SETTLE_MS)
-  assert.equal(last(log.shapes)[0].height, 44 + SHAPE_PAD)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [320, 44])
 })
 
-test('fiche deja fermee par la page : la fenetre retrecit sans attendre', () => {
-  const { island, log } = setup()
-  island.start()
-  island.setExpanded(true, 760, 280)
-  island.setExpanded(false, 0, 0)
-  assert.equal(last(log.shapes)[0].height, 44 + SHAPE_PAD)
-})
-
-test('apres un repli decide par l app, la confirmation de la page retrecit tout de suite', () => {
-  const { island, log } = setup()
-  island.start()
-  island.setExpanded(true, 760, 280)
-  island.escape()
-  island.setExpanded(false, 0, 0)
-  assert.equal(last(log.shapes)[0].height, 44 + SHAPE_PAD)
-})
-
-test('animations coupees : la fenetre retrecit sans attendre', () => {
+test('animations coupees : la fenetre change de taille d un coup', () => {
   const { island, log } = setup()
   island.setMotion(true)
   island.start()
   island.setExpanded(true, 760, 280)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [760, 280])
   island.escape()
-  assert.equal(last(log.shapes)[0].height, 44 + SHAPE_PAD)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [320, 44])
 })
 
-test('un agrandissement annule un repli en attente', () => {
+test('un agrandissement en cours de repli repart de la taille courante', () => {
   const { island, log, clock } = setup()
   island.start()
   island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
   island.escape()
+  clock.advance(80)
   island.setExpanded(true, 760, 280)
-  clock.advance(SETTLE_MS)
-  assert.equal(last(log.shapes)[0].height, 280 + SHAPE_PAD)
-})
-
-test('la forme suit la phase appliquee : l ile reste dessinee a sa taille ouverte pendant son repli', () => {
-  const { island, log, clock } = setup()
-  island.start()
-  island.setExpanded(true, 760, 280)
-  assert.equal(last(log.shapes).length, 1)
-  island.escape()
-  assert.equal(last(log.shapes)[0].width, 760 + 2 * SHAPE_PAD)
-  clock.advance(SETTLE_MS)
-  assert.equal(last(log.shapes)[0].width, 320 + 2 * SHAPE_PAD)
-})
-
-test('la fenetre change de taille par paliers, jamais image par image : un cycle ouvrir puis replier = 2 changements', () => {
-  const { island, log, clock } = setup()
-  island.start()
-  const before = log.bounds.length
-  island.setExpanded(true, 760, 280)
-  assert.equal(last(log.bounds).width, 760 + 2 * SHAPE_PAD)
-  island.escape()
-  clock.advance(SETTLE_MS - 1)
-  assert.equal(last(log.bounds).width, 760 + 2 * SHAPE_PAD)
-  clock.advance(1)
-  assert.equal(last(log.bounds).width, 320 + 2 * SHAPE_PAD)
-  assert.equal(log.bounds.length - before, 2)
-})
-
-test('les toasts agrandissent la fenetre sous l ile et la rendent au dernier', () => {
-  const { island, log } = setup()
-  island.start()
-  island.setToasts(380, 120)
-  assert.equal(last(log.bounds).width, 380 + 16)
-  island.setToasts(0, 0)
-  assert.equal(last(log.bounds).width, 320 + 2 * SHAPE_PAD)
+  clock.advance(GROW_MS)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [760, 280])
 })
 
 test('ouverte par le survol : l automate la replie 0,6 s apres le depart du pointeur', () => {
@@ -164,14 +138,17 @@ test('ouverte par le survol : l automate la replie 0,6 s apres le depart du poin
   assert.equal(island.phase(), 'compact')
 })
 
-test('les toasts ajoutent une zone sous la forme sans ouvrir l ile', () => {
-  const { island, log } = setup()
+test('les toasts agrandissent la fenetre sous l ile, sans ouvrir l ile, et la rendent au dernier', () => {
+  const { island, log, clock } = setup()
   island.start()
+  clock.advance(GROW_MS)
   island.setToasts(380, 120)
+  clock.advance(GROW_MS)
   assert.equal(island.phase(), 'compact')
-  assert.equal(last(log.shapes).length, 2)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [380 + 16, 44 + 8 + 120])
   island.setToasts(0, 0)
-  assert.equal(last(log.shapes).length, 1)
+  clock.advance(SETTLE_MS)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [320, 44])
 })
 
 const hide = ({ island, clock }) => {
@@ -239,7 +216,8 @@ test('la taille du dock ne rouvre pas une fenetre cachee', () => {
   ctx.island.setDockSize(500, 96)
   assert.equal(ctx.log.bounds.length, count)
   ctx.island.event()
-  assert.equal(last(ctx.log.shapes)[0].width, 500 + 2 * SHAPE_PAD)
+  ctx.clock.advance(GROW_MS)
+  assert.equal(last(ctx.log.bounds).width, 500)
 })
 
 test('Afficher l ile : revele, place la fenetre, prend le focus et previent la page', () => {
@@ -289,7 +267,8 @@ test('hors ligne : l ile reste visible a la taille du message', () => {
   island.setOffline(true, 380, 44)
   clock.advance(HIDE_DELAY_MS * 2)
   assert.equal(island.phase(), 'compact')
-  assert.equal(last(log.shapes)[0].width, 380 + 2 * SHAPE_PAD)
+  clock.advance(GROW_MS)
+  assert.equal(last(log.bounds).width, 380)
 })
 
 test('dispose arrete le sondage et les minuteries', () => {

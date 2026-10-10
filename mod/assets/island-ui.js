@@ -52,9 +52,7 @@
     let lastGlass = 0;
     let settleTimer = 0;
     let ageTimer = 0;
-    let extentTimer = 0;
     let lastExtent = '';
-    let hang = 0;
 
     const $ = (selector, scope = host) => scope.querySelector(selector);
     const $$ = (selector, scope = host) => [...scope.querySelectorAll(selector)];
@@ -335,8 +333,8 @@
     function mountVisible() { for (const name of visibleLayers()) mountIn(layerEl(name)); }
 
     // ---------------------------------------------------------------- Mouvement
-    // __islandSlow : ralentisseur de mise au point (DevTools), sans effet tant qu'il n'est pas posé.
-    const speed = () => (reduceQuery.matches ? 0 : (Number(win.__islandSlow) || 1));
+    // Échelle de la morphose : 1, sauf réglage de mise au point posé par le lanceur de l'app (jamais par la page).
+    const speed = () => (reduceQuery.matches ? 0 : ((desktop && Number(desktop.motionScale)) || 1));
     const slotOf = name => {
       const el = $('[data-slot]', layerEl(name));
       if (!el) return null;
@@ -377,10 +375,14 @@
     const springs = { open: model.springEase(SPRING_OPEN, SPRING_OPEN.ms), close: model.springEase(SPRING_CLOSE, SPRING_CLOSE.ms), fade: p => 1 - (1 - p) * (1 - p) };
     const isFadeKey = key => key.startsWith('o:') || key === 'oh' || key === 'ho';
 
+    // La fenêtre (donc la forme de verre) s'anime côté app : la page ne tient que le contenu (fondus, grande entité).
+    const GEOMETRY_KEYS = ['w', 'h', 'r'];
     const retarget = (target, isShrinking) => {
       const t0 = win.performance.now();
       const k = speed();
+      for (const key of GEOMETRY_KEYS) cur[key] = target[key];
       for (const key of Object.keys(target)) {
+        if (GEOMETRY_KEYS.includes(key)) continue;
         const to = target[key];
         if (tweens[key] && tweens[key].to === to) continue;
         if (cur[key] === to && !tweens[key]) continue;
@@ -414,10 +416,7 @@
 
     let lastRoom = -1;
     const apply = () => {
-      islandEl.style.width = `${cur.w}px`;
-      islandEl.style.height = `${Math.max(0, cur.h) + hang}px`;
-      islandEl.style.setProperty('--r', `${cur.r}px`);
-      islandEl.dataset.hidden = cur.h < 1 ? 'true' : 'false';
+      islandEl.dataset.hidden = S.phase === 'hidden' ? 'true' : 'false';
       heroEl.style.transform = `translate(${cur.hx}px, ${cur.hy}px) scale(${cur.hs})`;
       heroEl.style.opacity = cur.ho;
       $('#hdr').style.opacity = cur.oh;
@@ -466,10 +465,9 @@
       const key = `${phase}:${w}x${h}`;
       if (key === lastExtent) return;
       lastExtent = key;
-      win.clearTimeout(extentTimer);
-      const send = () => (phase === 'open' ? desktop.setExpanded(true, w, h, S.by === 'hover', S.by !== 'click') : desktop.setDockSize(w, h));
-      if (isShrinking && phase === 'open') extentTimer = win.setTimeout(send, SPRING_CLOSE.ms + 40);
-      else send();
+      // La fenêtre s'anime côté app (ressort 300 ms / 260 ms) : on lui donne la cible tout de suite, qu'elle grandisse ou rétrécisse.
+      if (phase === 'open') desktop.setExpanded(true, w, h, S.by === 'hover', S.by !== 'click');
+      else desktop.setDockSize(w, h);
     };
 
     const setTabs = view => {
@@ -746,7 +744,6 @@
     const dispose = () => { stopAges(); unmountIn(null); if (hero) hero.destroy(); };
 
     renderNewList();
-    hang = parseFloat(win.getComputedStyle(islandEl).getPropertyValue('--hang')) || 0;
     renderAll();
     cur = null;
     go('hidden', 'home', { silent: true });

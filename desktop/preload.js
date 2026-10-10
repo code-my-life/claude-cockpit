@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('cockpitDesktop', {
+  // Échelle de la morphose (1 sauf mise au point, posée par le lanceur) : la page cale ses fondus dessus.
+  motionScale: Number(process.env.COCKPIT_ISLAND_SLOW) || 1,
   setDockSize: (width, height) => ipcRenderer.send('dock-size', width, height),
   setExpanded: (expanded, width, height, byHover, isPassive) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true),
   setToasts: (width, height) => ipcRenderer.send('island-toasts', width, height),

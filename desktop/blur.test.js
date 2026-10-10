@@ -73,3 +73,10 @@ test('on Linux there is no native blur and nothing crashes', () => {
   const hasBlur = applyBlur(win, () => { throw new Error('ne doit pas être appelé') }, 'linux')
   assert.equal(hasBlur, false)
 })
+
+test('the island asks for its own, lighter tint so the desktop shows through', () => {
+  const calls = []
+  const win = windowOf()
+  applyBlur(win, () => (hwnd, data) => { calls.push(data); return true }, 'win32', 0x33161312)
+  assert.equal(calls[0].Data.readUInt32LE(8), 0x33161312)
+})

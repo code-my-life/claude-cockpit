@@ -3,7 +3,7 @@ const crypto = require('node:crypto')
 const path = require('node:path')
 const fs = require('node:fs')
 const { createIslandController } = require('./island/controller')
-const { applyBlur } = require('./blur')
+const { applyBlur, NIGHT_TINT } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 const { createFullscreenProbe } = require('./island/fullscreen')
 const { startEmbeddedServer } = require('./embedded-server')
@@ -24,11 +24,18 @@ const cockpitBase = () => `http://127.0.0.1:${serverPort}/`
 // The page only switches to the OS-glass look when the window really has a native blur behind it.
 let hasOsBlur = false
 const glassParam = () => (hasOsBlur ? '&glass=1' : '')
-// L'île est une fenêtre transparente : elle dessine sa propre forme, sans flou du système.
-const miniUrl = () => `${cockpitBase()}?mini=1`
+// L'île est une fenêtre à verre acrylique du système : la fenêtre EST la forme (voir island/morph.js). La page ne pose que
+// sa teinte et ses reflets par-dessus le flou de Windows, sans backdrop-filter.
+let hasIslandBlur = false
+const miniUrl = () => `${cockpitBase()}?mini=1${hasIslandBlur ? '&glass=1' : ''}`
 const cockpitUrl = () => (hasOsBlur ? `${cockpitBase()}?glass=1` : cockpitBase())
 const launcherUrl = () => `${cockpitBase()}?launcher=1${glassParam()}`
 const LAUNCHER_SHORTCUTS = process.platform === 'darwin' ? ['Command+Alt+Space', 'Control+Alt+Space'] : ['Alt+Space', 'Control+Alt+Space']
+// Teinte du verre de l'île : légère, le bureau doit se voir nettement (la teinte du cockpit complet est à 40 %).
+const ISLAND_TINT = 0x38000000 | (NIGHT_TINT & 0x00ffffff)
+const ISLAND_FRAME_GAP_MS = 8
+// Réglage de mise au point : ralentit la morphose (variable d'environnement du lanceur, jamais exposée à la page).
+const MOTION_SCALE = Number(process.env.COCKPIT_ISLAND_SLOW) || 1
 const RETRY_MS = 5000
 const ERR_ABORTED = -3
 const OFFLINE_WIDTH = 380
@@ -107,12 +114,19 @@ const workArea = () => screen.getPrimaryDisplay().workArea
 
 const fullscreenProbe = createFullscreenProbe({ onError: error => logLine(`sonde de l'état Windows en échec, les sons ne se taisent plus selon cet état (${oneLine(error && error.message)})`) })
 
-// Le contrôleur d'île tient l'automate, la géométrie et les clics traversants.
+// Une image toutes les 8 ms au plus : setTimeout dépasse 15 ms sur Windows (30 images/s), setImmediate cadencé tient 100 et plus.
+const pacedSchedule = run => {
+  const startedAt = Date.now()
+  const spin = () => (Date.now() - startedAt >= ISLAND_FRAME_GAP_MS ? run() : setImmediate(spin))
+  setImmediate(spin)
+}
+
+// Le contrôleur d'île tient l'automate et la géométrie : la fenêtre épouse l'île et s'anime avec elle.
 const createIsland = () => createIslandController({
   getArea: workArea,
   applyBounds: bounds => { if (win !== null) win.setBounds(bounds) },
-  // La forme (dock, fiche) capte la souris ; le reste de la fenêtre laisse passer les clics.
-  applyShape: rects => { if (win !== null) win.setShape(rects) },
+  schedule: pacedSchedule,
+  motionScale: MOTION_SCALE,
   getCursor: () => screen.getCursorScreenPoint(),
   // Caché, l'île n'a plus de fenêtre : le bord haut est surveillé par sondage du curseur.
   setVisible: isVisible => {
@@ -253,8 +267,9 @@ const createWindow = () => {
     minWidth: BOOT_SIZE,
     minHeight: BOOT_SIZE,
     frame: false,
-    transparent: true,
+    transparent: false,
     hasShadow: false,
+    roundedCorners: true,
     resizable: false,
     maximizable: false,
     minimizable: false,
@@ -267,6 +282,7 @@ const createWindow = () => {
     // Les sons servent justement quand on ne regarde pas : l'île cachée doit pouvoir les jouer sans geste préalable.
     webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: path.join(__dirname, 'preload.js') },
   })
+  hasIslandBlur = applyBlur(win, undefined, undefined, ISLAND_TINT)
   win.setAlwaysOnTop(true, 'floating')
   island = createIsland()
   island.start()

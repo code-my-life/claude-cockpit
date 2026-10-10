@@ -3,20 +3,23 @@
    jetons et classes ep-* uniquement. Exceptions : dimensions animées par le script (island-ui.js). */
 .zone { position: fixed; inset: 0; pointer-events: none; z-index: var(--z-modal); }
 .island {
-  /* Recette du cockpit (.t-sheet) : biseau 26, épaisseur 56, flou 18, teinte de la conversation à 20 % (tintStyleOf, TINT_BLOCK). */
+  /* La fenêtre de l'app EST la forme : Windows pose le verre acrylique (flou du bureau) sur toute la fenêtre, la page ne
+     fait que teinter (teinte de la conversation, jeton --conv-tint) et poser les reflets de la recette du .t-sheet
+     (--glass-inset, bord --glass-edge). Densité faible : le bureau doit se voir nettement. */
   --conv-tint: var(--paper);
-  /* Fenêtre transparente : rien derrière à flouter ni à réfracter, donc la teinte du verre part de --plate (94 %) et non de --glass-strong, pour rester lisible sur n'importe quel bureau. */
-  --epf: color-mix(in srgb, var(--conv-tint) 20%, color-mix(in srgb, var(--plate) 94%, transparent));
+  /* Lisibilité AA sur n'importe quel bureau (flou du système dessous) : le texte secondaire reste presque plein. */
+  --ink-2: color-mix(in srgb, var(--ink) 92%, transparent);
+  --epf: color-mix(in srgb, var(--conv-tint) 16%, transparent);
   --glass-bezel: 26px; --glass-thickness: 56px; --glass-blur: 18px;
-  --hang: 32px;               /* la forme déborde au-dessus de l'écran : seuls les coins du bas se voient */
-  --r: var(--radius-glass-s);
-  position: absolute; top: calc(-1 * var(--hang)); left: 50%; transform: translateX(-50%);
-  width: 320px; height: 0; overflow: hidden; pointer-events: auto; margin: 0; padding: 0;
-  border-radius: var(--r); transition: background-color 150ms;
+  position: fixed; inset: 0; pointer-events: auto; margin: 0; padding: 0; overflow: hidden;
+  border-radius: 0; box-shadow: var(--glass-inset);
   color: var(--ink); font: 400 15px/1.55 var(--font-sans);
 }
+#island.ep-glass { border-radius: 0; box-shadow: var(--glass-inset); }
+/* Sans flou du système (Windows 10 ancien, Linux) : plaque presque opaque, jetons --plate, lisible sur n'importe quel bureau. */
+html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, color-mix(in srgb, var(--plate) 94%, transparent)); }
 .island[data-hidden="true"] { pointer-events: none; visibility: hidden; }
-.island .stage { position: absolute; top: var(--hang); left: 50%; width: 760px; height: calc(100% - var(--hang)); margin-left: -380px; }
+.island .stage { position: absolute; top: 0; left: 50%; width: 760px; height: 100%; margin-left: -380px; }
 .island .layer { position: absolute; top: 0; left: 0; width: 760px; }
 .island .layer[inert] { pointer-events: none; }
 .island .is-body { padding: var(--space-4); }
@@ -96,6 +99,5 @@
 html[data-island="hidden"] .island * { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: reduce) { .island, .island .feed li.in { transition: none; animation: none; } }
 
-/* Fenêtre transparente : aucun pixel derrière à flouter ni à réfracter. On coupe donc tous les filtres d'arrière-plan de l'île
-   (le calcul d'un flou par bloc, à chaque image d'une entité animée, coûtait la moitié du GPU au repos). */
+/* Le flou est celui du système (acrylique) : aucun backdrop-filter dans la page (inutile, et coûteux à chaque image d'une entité animée). */
 .island, .island * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
