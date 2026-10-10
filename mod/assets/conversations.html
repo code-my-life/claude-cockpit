@@ -37,7 +37,7 @@
   .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.02em; }
   .trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  :is(.av, .t-agent, .mini-head, .dock-count):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  :is(.av, .t-agent, .mini-head, .dock-count, .card-main, .mrow-main, .repo-item, .search-row, .rest-row a, .thumb button):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
   header { display: flex; flex-direction: column; gap: var(--space-6); }
   .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
@@ -269,7 +269,7 @@
   .dock-count-value { font-family: var(--font-display); font-size: calc(var(--head) * 0.5); line-height: 1; color: var(--ink); display: flex; align-items: center; justify-content: center; }
   .dock-count.calm .dock-count-value { color: var(--success); }
   .dock-count-value .ep-icon { width: calc(var(--head) * 0.36); height: calc(var(--head) * 0.36); }
-  .dock-count-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin-top: 3px; }
+  .dock-count-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin-top: 3px; }
   .dock-sep { flex: none; width: 1px; height: var(--head); background: var(--rule); }
   .dock[data-layout="column"] .dock-sep { width: var(--head); height: 1px; }
   .dock .mini-head.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: 50%; --glass-bezel: 12px; --glass-thickness: 28px; transition: transform 150ms ease-out; }
@@ -316,7 +316,7 @@
   .search-title { font-weight: 600; }
   .search-snippet { color: var(--ink-2); font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
   .search-snippet mark { background: color-mix(in srgb, var(--warning) 35%, transparent); color: var(--ink); border-radius: 3px; padding: 0 1px; }
-  .search-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  .search-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
   .nc-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
   .nc-label span { text-transform: none; letter-spacing: 0; font-family: var(--font-sans); font-size: 13px; }
   .nc-search { width: 100%; }
@@ -342,13 +342,32 @@
   .t-grid .t-agent .t-ctx .ctx { margin-top: 0; flex-wrap: nowrap; overflow: hidden; }
   .dock-menu { max-width: 380px !important; }
   .dock-menu-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .mrow-main { min-height: 32px; }
+  @media (hover: none) { .mrow .mrow-tools .ep-btn--icon { opacity: 1; } }
+  .rest-toggle.has-error { color: var(--danger); }
+  .conn-banner { margin: 0; }
+  .conn-banner[hidden] { display: none; }
+  .reward .ep-btn { margin-left: var(--space-2); }
+  @media (max-width: 600px) {
+    .wrap { padding: var(--space-6) var(--space-4) var(--space-16); gap: var(--space-8); }
+    .card-head { grid-template-columns: auto minmax(0, 1fr); }
+    .card-head .card-side { grid-column: 1 / -1; flex-wrap: wrap; justify-content: flex-end; }
+    .card-quick, .card-body, .card.mission .card-body { padding-left: var(--space-5); }
+    .mrow { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .mrow .mrow-tools { grid-column: 1 / -1; justify-content: flex-end; }
+    .t-grid .t-agent { width: min(320px, 100%); }
+    .repo-menu { min-width: 0; max-width: calc(100vw - 32px); }
+    .reward { max-width: calc(100vw - 32px); white-space: normal; }
+  }
 </style>
 </head>
 <body class="ep-root">
 <div class="ds-banner" id="ds-banner" role="alert">Le cockpit a été mis à jour : redémarre Claude Desktop pour charger le nouveau style.</div>
 <div class="drag-strip" aria-hidden="true"></div>
 <div class="ep-scene__bg" aria-hidden="true"><ep-flow-bg fill tone="paper" seed="cockpit" disc="none" animate="none"></ep-flow-bg></div>
-<div class="wrap" id="wrap">
+<div class="sr" id="live" role="status" aria-live="polite"></div>
+<div class="wrap" id="wrap" role="main">
+  <div class="conn-banner ep-alert ep-tone-warning" id="conn-banner" role="status" hidden>Hors ligne : le cockpit ne répond plus. Ouvre une conversation Claude avec le mod pour le rallumer.</div>
   <header>
     <div class="topbar">
       <div class="topbar-left">
@@ -375,7 +394,7 @@
   <div class="search-results" id="search-results" aria-live="polite"></div>
 
   <section id="s-waiting" aria-labelledby="h-waiting">
-    <h2 id="h-waiting" class="display">Attendent tes ordres <span class="count-tag" id="n-waiting">0</span></h2>
+    <h2 id="h-waiting" class="display" tabindex="-1">Attendent tes ordres <span class="count-tag" id="n-waiting">0</span></h2>
     <div class="lane"></div>
   </section>
 
@@ -414,7 +433,7 @@
   const STATS_KEY = 'cockpit.stats';
   const ZOOM_KEY = 'cockpit.zoom';
   const VIEW_KEY = 'cockpit.view';
-  const ZOOM_MIN = 0.85;
+  const ZOOM_MIN = 1;
   const ZOOM_MAX = 1.3;
   const ZOOM_STEP = 0.05;
   const QUICK_REPLIES = ['OK', 'GO', 'Non'];
@@ -1044,7 +1063,7 @@
       const info = PARK_KINDS[kind];
       showReward(info.label, `${row?.title || 'Agent'}${reason ? ` : ${reason}` : ''}`, kind === 'blocked' ? 'error' : 'info');
     } catch (error) {
-      showReward('Oups', error.message, 'error');
+      showReward('Action impossible', error.message, 'failure');
     }
   };
 
@@ -1055,7 +1074,7 @@
       if (state.teamPopId === engineId) { state.teamPopId = null; render({ force: true }); }
       showReward('Reprise', `${row?.title || 'Agent'} revient dans l'équipe`, 'info');
     } catch (error) {
-      showReward('Oups', error.message, 'error');
+      showReward('Action impossible', error.message, 'failure');
     }
   };
 
@@ -1639,7 +1658,10 @@
     document.querySelector('#s-parked .lane').innerHTML = groups.parked.map(row => renderParkedRow(row, now)).join('');
 
     const restToggle = document.getElementById('rest-toggle');
-    restToggle.textContent = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${groups.others.length} agents au repos`;
+    const errorCount = groups.others.filter(row => row.status === 'error').length;
+    const errorNote = errorCount > 0 ? `, dont ${errorCount} en erreur` : '';
+    restToggle.textContent = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${groups.others.length} ${groups.others.length > 1 ? 'agents' : 'agent'} au repos${errorNote}`;
+    restToggle.classList.toggle('has-error', errorCount > 0);
     restToggle.setAttribute('aria-expanded', String(state.othersOpen));
     document.getElementById('s-others').style.display = groups.others.length === 0 ? 'none' : '';
     document.getElementById('rest-list').innerHTML = state.othersOpen ? groups.others.map(row => renderRestRow(row, now)).join('') : '';
@@ -1697,16 +1719,29 @@
     document.getElementById('clock').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   };
 
+  const REWARD_MS = 4000;
+  const announce = message => {
+    const live = document.getElementById('live');
+    live.textContent = '';
+    setTimeout(() => { live.textContent = message; }, 50);
+  };
+
   const showReward = (badge, text, variant = '') => {
     for (const old of document.querySelectorAll('.reward')) old.remove();
     const reward = document.createElement('div');
-    const tone = variant === 'error' ? 'ep-tag--danger' : (variant === 'info' ? 'ep-tag--info' : 'ep-tag--success');
+    const isFailure = variant === 'failure';
+    const tone = variant === 'error' || isFailure ? 'ep-tag--danger' : (variant === 'info' ? 'ep-tag--info' : 'ep-tag--success');
     reward.className = `reward ep-glass ${variant}`;
-    reward.setAttribute('role', 'status');
-    reward.innerHTML = `<span class="ep-tag ${tone}">${escapeHtml(badge)}</span><span>${escapeHtml(text)}</span>`;
+    reward.setAttribute('role', isFailure ? 'alert' : 'status');
+    const closeButton = isFailure ? '<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-reward-close>Fermer</button>' : '';
+    reward.innerHTML = `<span class="ep-tag ${tone}">${escapeHtml(badge)}</span><span>${escapeHtml(text)}</span>${closeButton}`;
     document.body.appendChild(reward);
-    setTimeout(() => reward.classList.add('out'), 2400);
-    setTimeout(() => reward.remove(), 2750);
+    if (isFailure) {
+      reward.querySelector('[data-reward-close]').addEventListener('click', () => reward.remove());
+      return;
+    }
+    setTimeout(() => reward.classList.add('out'), REWARD_MS);
+    setTimeout(() => reward.remove(), REWARD_MS + 350);
   };
 
   const showTrace = () => {
@@ -1760,6 +1795,7 @@
     if (state.knownWaiting === null) { state.knownWaiting = snapshot; return; }
     const fresh = [...waiting.values()].filter(row => state.knownWaiting.get(row.engineId) !== row.updatedAt);
     state.knownWaiting = snapshot;
+    if (fresh.length > 0) announce(fresh.map(row => `${KINDS[kindOf(row)].label} : ${row.title}`).join(', '));
     if (fresh.length === 0 || !('Notification' in window) || Notification.permission !== 'granted' || document.hasFocus()) return;
     for (const row of fresh) {
       const notification = new Notification(`${KINDS[kindOf(row)].label} · ${row.title}`, { body: awaitingOf(row) || 'attend tes ordres', tag: row.engineId });
@@ -1790,8 +1826,12 @@
     return Boolean(served && mine && served !== mine);
   };
 
+  let failedLoads = 0;
+
   const refresh = async () => {
     const isLoaded = await loadData();
+    failedLoads = isLoaded || isLocalFile ? 0 : failedLoads + 1;
+    document.getElementById('conn-banner').hidden = failedLoads < 2;
     if (!isLoaded && isLocalFile) {
       if (!isTyping() && state.expanded.size === 0) location.reload();
       return;
@@ -2006,7 +2046,7 @@
       render({ force: true });
       showReward(seen ? 'Au repos' : 'En attente', seen ? `${title} est mis au repos` : `${title} attend de nouveau tes ordres`, 'info');
     } catch (error) {
-      showReward('Oups', error.message, 'error');
+      showReward('Action impossible', error.message, 'failure');
     }
   };
 
@@ -2018,7 +2058,7 @@
       await post('/terminal', { cwd: folder });
       showReward('Terminal', folderOf(folder), 'info');
     } catch (error) {
-      showReward('Terminal non ouvert', error.message, 'error');
+      showReward('Terminal non ouvert', error.message, 'failure');
     }
   };
 
@@ -2053,11 +2093,14 @@
     showRepoMenu(anchor, row, repos);
   };
 
+  const sendingReplies = new Set();
+
   const sendReply = async engineId => {
     const row = rowOf(engineId);
     const draft = draftOf(engineId);
     const text = draft.text.trim();
-    if (!row || (text.length === 0 && draft.images.length === 0)) return;
+    if (!row || (text.length === 0 && draft.images.length === 0) || sendingReplies.has(engineId)) return;
+    sendingReplies.add(engineId);
     try {
       const images = draft.images.map(image => ({ type: image.type, base64: image.base64 }));
       await post('/reply', { engineId, text, images });
@@ -2069,9 +2112,13 @@
       state.data = withOptimisticWorking(state.data);
       celebrateSend(row);
       render({ force: true });
+      announce(`Ordre envoyé à ${row.title}`);
+      if (document.activeElement === document.body) document.getElementById('h-waiting')?.focus();
     } catch (error) {
       setFeedback(engineId, `Non envoyé : ${error.message}`, true);
-      showReward('Non envoyé', `${row.title} : ${error.message}`, 'error');
+      showReward('Non envoyé', `${row.title} : ${error.message}`, 'failure');
+    } finally {
+      sendingReplies.delete(engineId);
     }
   };
 
@@ -2288,6 +2335,9 @@
     const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100));
     document.documentElement.style.setProperty('--zoom', String(clamped));
     try { localStorage.setItem(ZOOM_KEY, String(clamped)); } catch { }
+    const percent = Math.round(clamped * 100);
+    document.getElementById('zoom-in').setAttribute('aria-label', `Agrandir le texte, ${percent} %`);
+    document.getElementById('zoom-out').setAttribute('aria-label', `Réduire le texte, ${percent} %`);
     return clamped;
   };
   let zoom = applyZoom(readZoom());
