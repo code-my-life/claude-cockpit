@@ -5,7 +5,9 @@
   // Chargé après identity.js, dont il utilise chromeAnglesOf pour que la vue et la pose de face concordent.
   const VIRTUAL = 100;
   const CHROME_BLEED = 6;
-  const GL_SIZE = 112;
+  // Résolution du rendu : un contexte par palier, choisi selon les pixels réels du canvas (HiDPI), puis réduit en lissé.
+  const GL_BUCKETS = [96, 160, 256];
+  const bucketOf = pixels => GL_BUCKETS.find(size => size >= pixels * 1.25) || GL_BUCKETS[GL_BUCKETS.length - 1];
 
   const CHROME_FRAGMENT = [
     '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
@@ -47,9 +49,9 @@
     return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
   };
 
-  let chromeGl;
+  const chromeGls = new Map();
 
-  const createChromeGl = () => {
+  const createChromeGl = GL_SIZE => {
     const canvas = root.document.createElement('canvas');
     canvas.width = GL_SIZE;
     canvas.height = GL_SIZE;
@@ -76,15 +78,15 @@
     return { canvas, gl, locations, spheres: new Float32Array(18), radii: new Float32Array(6) };
   };
 
-  const chromeOf = () => {
-    if (chromeGl === undefined) chromeGl = createChromeGl();
-    return chromeGl;
+  const chromeOf = size => {
+    if (!chromeGls.has(size)) chromeGls.set(size, createChromeGl(size));
+    return chromeGls.get(size);
   };
 
   const fraction = value => value - Math.floor(value);
 
-  const renderChrome = (identity, phase, pose) => {
-    const shared = chromeOf();
+  const renderChrome = (identity, phase, pose, glSize) => {
+    const shared = chromeOf(glSize);
     if (!shared || shared.gl.isContextLost()) return null;
     const { gl, locations, spheres, radii } = shared;
     const { ringRadius, thickness, stretch, roll, dropCount, dropSize, dropSeed } = identity.params;
@@ -148,11 +150,31 @@
     context.restore();
   };
 
-  const drawChrome = (context, identity, phase, pose, inkBias) => {
-    const source = renderChrome(identity, phase, pose);
+  // `options.pixels` : taille réelle du canvas en pixels ; `options.tint` : couleur multipliée sur le métal (teinte de la conversation).
+  const tintCanvases = new Map();
+  const tinted = (source, tint) => {
+    let work = tintCanvases.get(source.width);
+    if (!work) { work = root.document.createElement('canvas'); work.width = source.width; work.height = source.height; tintCanvases.set(source.width, work); }
+    const ctx = work.getContext('2d');
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, work.width, work.height);
+    ctx.drawImage(source, 0, 0);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = tint;
+    ctx.fillRect(0, 0, work.width, work.height);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(source, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    return work;
+  };
+
+  const drawChrome = (context, identity, phase, pose, inkBias, options = {}) => {
+    const glSize = bucketOf(options.pixels || 100);
+    const source = renderChrome(identity, phase, pose, glSize);
     if (source === null) return;
     context.imageSmoothingEnabled = true;
-    context.drawImage(source, -CHROME_BLEED, -CHROME_BLEED, VIRTUAL + 2 * CHROME_BLEED, VIRTUAL + 2 * CHROME_BLEED);
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(options.tint ? tinted(source, options.tint) : source, -CHROME_BLEED, -CHROME_BLEED, VIRTUAL + 2 * CHROME_BLEED, VIRTUAL + 2 * CHROME_BLEED);
     tintInk(context, inkBias);
   };
 

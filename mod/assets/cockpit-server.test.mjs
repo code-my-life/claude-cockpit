@@ -109,3 +109,21 @@ test('two factory servers keep their own token', async () => {
     })
   })
 })
+
+test('the island scripts and the living entities are served from the assets folder', async () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-root-'))
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-data-'))
+  fs.mkdirSync(path.join(rootDir, 'mod', 'assets', 'entity'), { recursive: true })
+  const names = ['island-model.js', 'island-ui.js', 'entity/entity.js', 'entity/entity-forms.js', 'entity/entity-2d.js', 'entity/entity-mount.js']
+  for (const name of names) fs.writeFileSync(path.join(rootDir, 'mod', 'assets', name), `// ${name}`)
+  const cockpit = createCockpitServer({ rootDir, dataDir, port: 0, sink: () => {}, homeDir: dataDir, env: {} })
+  try {
+    const port = await cockpit.listen()
+    for (const name of names) {
+      const asset = await call(port, 'GET', `/mod/assets/${name}`)
+      assert.equal(asset.text, `// ${name}`)
+    }
+  } finally {
+    await cockpit.close()
+  }
+})

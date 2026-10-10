@@ -5,7 +5,7 @@
   const HUE_COUNT = 12;
   const HUE_OFFSET = 10;
   const BACKGROUND_TONES = [{ saturation: 0.52, lightness: 0.62 }, { saturation: 0.52, lightness: 0.4 }];
-  const INK = '#17181b';
+  let INK = '#17181b';
   const SPEEDS = { waiting: 1.4, working: 0.6, rest: 0.08 };
   const WAITING_STATUSES = ['permission', 'done', 'external'];
   const WORKING_STATUSES = ['thinking', 'writing', 'tool', 'working'];
@@ -781,4 +781,5 @@
   }
 
   root.CockpitIdentity = { ...api, hydrate, pause, resume, react, hover, press, appear };
+  root.CockpitIdentityInternals = { drawSurface, surfaceOf, setInk: color => { INK = color; }, VIRTUAL };
 })(typeof window !== 'undefined' ? window : globalThis);
