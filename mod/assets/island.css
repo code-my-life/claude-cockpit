@@ -49,7 +49,9 @@
 .island .feed li { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .island .feed .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .island .feed .ep-icon { width: 12px; height: 12px; }
-.island .details { display: grid; gap: var(--space-2); }
+.island .details { display: grid; grid-template-columns: minmax(0, 1fr) 312px; column-gap: var(--space-4); margin-top: var(--space-3); }
+.island .details[hidden] { display: none; }
+.island .details .col { display: grid; gap: var(--space-2); align-content: start; min-width: 0; }
 .island .details .is-plain { max-height: 120px; overflow: auto; overscroll-behavior: contain; font-size: 14px; line-height: 1.5; }
 .island .details .is-thread { display: grid; gap: var(--space-1); max-height: 120px; overflow: auto; overscroll-behavior: contain; }
 .island .details .is-bubble { padding: var(--space-2) var(--space-3); border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); background: var(--glass-nested); font-size: 14px; line-height: 1.5; }
