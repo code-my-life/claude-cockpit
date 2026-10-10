@@ -396,6 +396,7 @@
   const phases = new Map();
   const instances = [];
   let isLooping = false;
+  let isPaused = false;
   let lastFrameAt = 0;
   const prefersCalm = () => root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -680,7 +681,7 @@
   };
 
   const frame = now => {
-    if (instances.length === 0) {
+    if (instances.length === 0 || isPaused) {
       isLooping = false;
       return;
     }
@@ -694,8 +695,17 @@
     }
   };
 
+  // En pause (île cachée), la boucle s'arrête : zéro image dessinée, zéro CPU.
+  const pause = () => { isPaused = true; };
+
+  const resume = () => {
+    if (!isPaused) return;
+    isPaused = false;
+    startLoop();
+  };
+
   const startLoop = () => {
-    if (isLooping || prefersCalm()) return;
+    if (isLooping || isPaused || prefersCalm()) return;
     isLooping = true;
     lastFrameAt = 0;
     root.requestAnimationFrame(frame);
@@ -748,5 +758,5 @@
     return true;
   };
 
-  root.CockpitIdentity = { ...api, hydrate };
+  root.CockpitIdentity = { ...api, hydrate, pause, resume };
 })(typeof window !== 'undefined' ? window : globalThis);

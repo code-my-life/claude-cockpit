@@ -250,11 +250,16 @@
   html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
   body.mini-mode .wrap { display: none; }
   body.mini-mode #mini { display: block; }
-  .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 6px 6px 0; pointer-events: none; }
-  .dock { --head: 56px; --pad: 8px; pointer-events: auto; position: relative; flex: none; display: flex; border-radius: 30px; overflow: hidden; background: var(--paper-deep); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-glass); }
+  :root { --island-open: 280ms; --island-close: 180ms; --island-ease: cubic-bezier(0.2, 0, 0, 1); --island-pad: var(--space-4); }
+  .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: var(--island-pad); pointer-events: none; }
+  .dock { --head: 56px; --pad: 8px; pointer-events: auto; position: relative; flex: none; display: flex; border-radius: 30px; overflow: hidden; background: var(--paper-deep); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-glass); transition: transform var(--island-open) var(--island-ease), visibility 0s; }
+  html[data-island="hidden"] .dock { transform: translateY(calc(-100% - var(--island-pad))); visibility: hidden; transition: transform var(--island-close) ease-in, visibility 0s linear var(--island-close); }
+  html[data-island="hidden"] * { animation-play-state: paused !important; }
+  .wake { display: none; }
+  html[data-island="hidden"] .wake { display: block; position: fixed; inset: 0 0 auto 0; height: var(--space-2); }
   .dock[data-size="small"] { --head: 40px; --pad: 6px; border-radius: 24px; }
   .dock[data-size="large"] { --head: 72px; --pad: 10px; border-radius: 36px; }
-  .dock-items { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--pad); padding: var(--pad) calc(var(--pad) + 6px); -webkit-app-region: drag; }
+  .dock-items { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--pad); padding: var(--pad) calc(var(--pad) + 6px); }
   .dock-tools { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: var(--space-1); }
   .dock-heads { display: flex; align-items: center; gap: var(--pad); }
   .dock[data-layout="column"] .dock-items { flex-direction: column; }
@@ -279,18 +284,20 @@
   .dock-quit { opacity: 0; transition: opacity 140ms ease-out; }
   .dock:hover .dock-quit { opacity: 1; }
   .dock-calm { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); padding: 0 var(--space-2); white-space: nowrap; }
-  body.mini-mode .t-modal { padding: 0 6px 0 0; align-items: flex-end; justify-content: flex-end; height: calc(100vh - var(--dock-room)); }
-  body.mini-mode .ep-toasts { right: 8px; bottom: 96px; width: calc(100vw - 16px); }
-  body.mini-mode .trace { left: auto; right: 120px; bottom: 60px; margin-left: 0; }
+  body.mini-mode .t-modal { top: var(--dock-room); height: calc(100vh - var(--dock-room)); align-items: flex-start; justify-content: center; padding: 0 var(--island-pad) var(--island-pad); }
+  /* L'île flotte sur le bureau, sans scène derrière : la fiche prend la surface papier, opaque, comme le dock. */
+  body.mini-mode .t-sheet.ep-glass { background: var(--paper-deep) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  body.mini-mode .t-sheet.enter { animation: islandSheetIn var(--island-open) var(--island-ease); }
+  body.mini-mode .t-sheet.leave { animation: islandSheetOut var(--island-close) ease-in both; }
+  @keyframes islandSheetIn { from { clip-path: inset(0 0 100% 0 round var(--radius-glass)); transform: translateY(calc(-1 * var(--space-4))); } to { clip-path: inset(0 round var(--radius-glass)); transform: none; } }
+  @keyframes islandSheetOut { to { clip-path: inset(0 0 100% 0 round var(--radius-glass)); transform: translateY(calc(-1 * var(--space-4))); } }
+  body.mini-mode .ep-toasts { right: var(--space-2); top: var(--dock-room); bottom: auto; width: calc(100vw - var(--space-4)); }
+  body.mini-mode .trace { left: auto; right: 120px; top: var(--dock-room); bottom: auto; margin-left: 0; }
   body.mini-mode .t-backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
   body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
   .t-sheet { --panel-width: 1100; }
   .dock-menu { --panel-width: 380; }
-  html.os-glass .dock-zone { padding: 0; }
-  html.os-glass .dock { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
-  html.os-glass body.mini-mode .t-modal { padding: 0; border-bottom: 1px solid var(--rule); }
-  html.os-glass body.mini-mode .t-sheet { width: 100%; max-width: none !important; border-radius: 0; background: color-mix(in srgb, var(--conv-tint, transparent) 20%, transparent) !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } .dock, html[data-island="hidden"] .dock { transition: none; } body.mini-mode .t-sheet.enter, body.mini-mode .t-sheet.leave { animation: none; } }
   body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
   .search-bar { margin-top: var(--space-4); min-height: 46px; }
   .search-bar[hidden] { display: none !important; }
@@ -408,6 +415,7 @@
   <div id="team"></div>
 </div>
 <div id="mini">
+  <div class="wake" aria-hidden="true"></div>
   <div class="dock-zone"><div class="dock" id="dock"><div class="dock-items" id="dock-items"></div></div></div>
   <div id="mini-pop"></div>
 </div>
@@ -416,6 +424,7 @@
 <script src="mod/assets/liquid-paper/bundle.js"></script>
 <script src="mod/assets/identity.js"></script>
 <script src="mod/assets/dock.js"></script>
+<script src="mod/assets/island.js"></script>
 <script>
   const DATA_FILE = 'conversations-data.js';
   const DEEP_LINK_PREFIX = 'claude://claude.ai/epitaxy/';
@@ -1275,6 +1284,7 @@
   let miniExpanded = false;
   let miniSheetWidth = 0;
   let miniSheetHeight = 0;
+  let islandUi = null;
   const DOCK_PREFS_KEY = 'cockpit.dock';
 
   const readStoredDockPrefs = () => {
@@ -1331,6 +1341,7 @@
     const previous = state.miniWaiting;
     const isFresh = row => previous !== null && !previous.has(row.engineId);
     state.miniWaiting = new Set(groups.waiting.map(row => row.engineId));
+    if (islandUi) islandUi.observe(state.data.rows, WAITING_STATUSES);
     const count = groups.waiting.length;
     const counter = `<button type="button" class="dock-count ep-glass ${count === 0 ? 'calm' : ''}" data-mini="cockpit" title="Ouvrir le cockpit"><span class="dock-count-value">${count === 0 ? iconOf('check') : count}</span><span class="dock-count-label">${count === 0 ? 'tranquille' : 't\'attend'}</span></button>`;
     const prefs = state.dockPrefs;
@@ -1379,8 +1390,16 @@
     }
     const dock = document.getElementById('dock');
     if (!dock) return;
-    document.body.style.setProperty('--dock-room', `${dock.offsetHeight}px`);
+    document.body.style.setProperty('--dock-room', `calc(${dock.getBoundingClientRect().bottom}px + var(--island-pad))`);
     desktop.setDockSize(dock.offsetWidth, dock.offsetHeight);
+  };
+
+  // Repli décidé par l'île (délai écoulé, Échap) : ferme la fiche, la nouvelle conversation et le menu.
+  const foldIslandSheets = () => {
+    state.teamPopId = null;
+    state.dockMenuOpen = false;
+    if (state.newConv !== null) closeNewConv();
+    render({ force: true });
   };
 
   const renderMiniFrame = now => {
@@ -2342,6 +2361,7 @@
     state.dockPrefs = readStoredDockPrefs();
     document.documentElement.classList.add('mini-mode');
     document.body.classList.add('mini-mode');
+    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets });
     window.addEventListener('resize', syncDesktopWindow);
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');
@@ -2437,7 +2457,7 @@
   document.getElementById('banner').classList.toggle('show', !isServer);
   const isDesignSystemLoaded = () => {
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
-    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitDock && ink);
+    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitDock && window.CockpitIsland && ink);
   };
   window.addEventListener('load', () => {
     document.getElementById('ds-banner').classList.toggle('show', !isDesignSystemLoaded());

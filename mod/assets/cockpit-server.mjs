@@ -17,6 +17,7 @@ const INDEX_REFRESH_MS = 3000
 const STATIC_FILES = {
   '/mod/assets/identity.js': 'text/javascript; charset=utf-8',
   '/mod/assets/dock.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/island.js': 'text/javascript; charset=utf-8',
   '/mod/assets/liquid-paper/theme.css': 'text/css; charset=utf-8',
   '/mod/assets/liquid-paper/bundle.css': 'text/css; charset=utf-8',
   '/mod/assets/liquid-paper/bundle.js': 'text/javascript; charset=utf-8',

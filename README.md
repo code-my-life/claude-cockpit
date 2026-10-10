@@ -55,7 +55,7 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 
 - **Conversations Claude** ouvre le cockpit. le bouton « + » en haut pour une nouvelle conversation, « Liste / Équipe » pour changer de vue, A− / A+ pour la taille du texte, la cloche pour les notifications du système.
 - **Recherche globale** : le champ en haut du cockpit (Ctrl+K, ou la loupe du dock) cherche dans tes messages et les réponses de Claude de toutes les sessions, sans tenir compte des accents ; un clic ouvre la conversation dans l'app. L'index vit en mémoire dans le serveur du cockpit, repris de `search-cache.json` au démarrage.
-- **Mini équipe** pose la bande des têtes en bas à droite. Survol : ce que la conversation attend. Clic : le résumé et la réponse. Le compteur ouvre le cockpit, « + » ouvre une nouvelle conversation, « Fermer » ferme la bande. La bande se déplace à la souris et retient sa place.
+- **Mini équipe** est une île en haut au centre de l'écran. Elle se cache après 60 s sans activité ; survole le haut de l'écran, ou attends qu'une conversation bouge, pour la faire revenir. Tant qu'une conversation t'attend, elle reste là. Clic sur une tête : le résumé et la réponse (elle se replie seule après 15 s sans survol, ou avec Échap). Le compteur ouvre le cockpit, « + » ouvre une nouvelle conversation, « Fermer » ferme l'île. Les clics hors de l'île passent à la fenêtre dessous.
 - Dans une conversation, `/sessions` rouvre le panneau du mod dans l'app.
 
 ## Bon à savoir
