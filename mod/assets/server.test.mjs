@@ -58,7 +58,8 @@ before(async () => {
   rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-server-'))
   fs.writeFileSync(path.join(rootDir, 'conversations.html'), '<!doctype html><html><head><title>t</title></head><body></body></html>')
   fs.writeFileSync(path.join(rootDir, 'conversations-data.js'), 'window.__CONVERSATIONS__ = {};')
-  child = spawn(process.execPath, [SERVER, rootDir, String(PORT)], { stdio: ['ignore', 'pipe', 'ignore'] })
+  const env = { ...process.env, LOCALAPPDATA: rootDir, XDG_RUNTIME_DIR: rootDir }
+  child = spawn(process.execPath, [SERVER, rootDir, String(PORT)], { env, stdio: ['ignore', 'pipe', 'ignore'] })
   await waitForListening()
   const page = await call('GET', '/')
   token = /<meta name="cockpit-token" content="([0-9a-f]+)">/.exec(page.text)?.[1] ?? ''

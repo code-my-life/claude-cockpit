@@ -124,19 +124,23 @@ const transcriptCache = new Map<string, string>()
 
 // Bridge to the cockpit app: when the app runs, this conversation talks to it
 // over HTTP instead of starting its own server.
-type AppLink = { port: number; secret: string; dataDir: string }
+type AppLink = { port: number; secret: string; proof: string; dataDir: string }
 type BridgeOrder = BridgeMessage & { orderId: string }
-type BridgeReply = { status: number; body: { role?: string; bridgeId?: string; orders?: BridgeOrder[] } | null }
+type BridgeReply = { status: number; body: { role?: string; bridgeId?: string; proof?: string; orders?: BridgeOrder[] } | null }
+type JoinOutcome = 'joined' | 'unreachable' | 'refused'
 const APP_LINK_PROTOCOL = 1
 const ORDERS_WAIT_MS = 20000
 const RECONNECT_MS = 1000
 const MAX_HANDLED_ORDERS = 500
 const LINK_SECRET_PATTERN = /^[0-9a-f]{64}$/
 const MOD_VERSION = '0.2.0'
+const MAX_PORT = 65535
+const EXIT_APP_TOOK_OVER = 4
+const ORDER_TYPES = new Set(['reply', 'park', 'unpark', 'ack', 'summarize'])
 let mode: 'none' | 'local' | 'app' = 'none'
 let appLink: AppLink | null = null
-let localServer: BridgeStream | null = null
 let isConnecting = false
+let hasWarnedVersion = false
 const handledOrders = new Set<string>()
 
 // The page, its data and the session index live with the app when it runs.
@@ -599,16 +603,15 @@ const startServer = async ($: EngineInterface) => {
   const script = `${$.plugin.root}/${SERVER_SCRIPT}`
   try {
     const stream = $.process.spawn({ argv: ['node', script, pageDir($), String(SERVER_PORT)] })
-    localServer = stream
     const ended = await consumeBridge($, stream)
-    if (ended.code !== 0 && ended.code !== 3) {
+    if (ended.code === EXIT_APP_TOOK_OVER) $.clock.after(RECONNECT_MS, () => connect($))
+    else if (ended.code !== 0 && ended.code !== 3) {
       $.ui.log(`sessions: serveur cockpit arrêté (code ${ended.code})`, { to: 'debug' })
     }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     $.ui.log(`sessions: serveur cockpit non démarré (${reason})`, { to: 'debug' })
   }
-  localServer = null
   if (mode === 'local') {
     mode = 'none'
     isServing = false
@@ -616,25 +619,29 @@ const startServer = async ($: EngineInterface) => {
   isStartingServer = false
 }
 
-const stopLocalServer = async () => {
-  const running = localServer as AsyncIterator<unknown> | null
-  if (running !== null) await running.return?.(undefined)
+const appFolder = async ($: EngineInterface) => {
+  const localAppData = await $.env.get('LOCALAPPDATA')
+  return localAppData === undefined ? null : `${localAppData}/claude-cockpit`
 }
 
-const appLinkFile = async ($: EngineInterface) => {
-  const localAppData = await $.env.get('LOCALAPPDATA')
-  return localAppData === undefined ? null : `${localAppData}/claude-cockpit/link.json`
-}
+const isUsableLink = (link: Partial<AppLink> & { protocol?: number }) =>
+  link.protocol === APP_LINK_PROTOCOL &&
+  Number.isInteger(link.port) && (link.port as number) > 0 && (link.port as number) <= MAX_PORT &&
+  typeof link.secret === 'string' && LINK_SECRET_PATTERN.test(link.secret) &&
+  typeof link.proof === 'string' && LINK_SECRET_PATTERN.test(link.proof)
 
 // The running app's link, or null: no file (the app is not running) is the
-// normal case, and so is a file this mod cannot use.
+// normal case, and so is a file this mod cannot use. The data folder is always
+// the one next to the link, whatever the file says.
 const readAppLink = async ($: EngineInterface): Promise<AppLink | null> => {
-  const file = await appLinkFile($)
-  if (file === null || !(await $.fs.exists(file))) return null
   try {
+    const folder = await appFolder($)
+    if (folder === null) return null
+    const file = `${folder}/link.json`
+    if (!(await $.fs.exists(file))) return null
     const link = JSON.parse(await $.fs.read(file)) as Partial<AppLink> & { protocol?: number }
-    const isUsable = link.protocol === APP_LINK_PROTOCOL && Number.isInteger(link.port) && typeof link.secret === 'string' && LINK_SECRET_PATTERN.test(link.secret) && typeof link.dataDir === 'string' && link.dataDir.length > 0
-    return isUsable ? { port: link.port as number, secret: link.secret as string, dataDir: link.dataDir as string } : null
+    if (!isUsableLink(link)) return null
+    return { port: link.port as number, secret: link.secret as string, proof: link.proof as string, dataDir: `${folder}/data` }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     $.ui.log(`sessions: lien vers l'app illisible (${reason})`, { to: 'debug' })
@@ -663,7 +670,7 @@ const applyRole = (role: unknown) => {
 }
 
 const handleOrder = async ($: EngineInterface, order: BridgeOrder) => {
-  if (handledOrders.has(order.orderId)) return
+  if (handledOrders.has(order.orderId) || !ORDER_TYPES.has(order.type)) return
   handledOrders.add(order.orderId)
   if (handledOrders.size > MAX_HANDLED_ORDERS) handledOrders.delete(handledOrders.values().next().value as string)
   try {
@@ -681,17 +688,27 @@ const followOrders = async ($: EngineInterface, link: AppLink, bridgeId: string)
     if (polled === null || polled.status !== 200 || polled.body === null) return
     applyRole(polled.body.role)
     const orders = Array.isArray(polled.body.orders) ? polled.body.orders : []
-    for (const order of orders) await handleOrder($, order)
+    // Acknowledged before they run: an order is carried out at most once, never twice.
     if (orders.length > 0) await bridgeRequest($, link, 'POST', '/ack', { bridgeId, orderIds: orders.map(order => order.orderId) })
+    for (const order of orders) await handleOrder($, order)
   }
 }
 
-const joinApp = async ($: EngineInterface, link: AppLink) => {
+// 'unreachable': nothing usable answers, run the server locally. 'refused':
+// the app answers but will not take this conversation, so no local server.
+const joinApp = async ($: EngineInterface, link: AppLink): Promise<JoinOutcome> => {
   const hello = await bridgeRequest($, link, 'POST', '/hello', { protocol: APP_LINK_PROTOCOL, engineId: ownEngineId, modVersion: MOD_VERSION })
-  const bridgeId = hello?.body?.bridgeId
-  if (hello === null || hello.status !== 200 || typeof bridgeId !== 'string') {
-    if (hello?.status === 426) $.ui.toast('Cockpit : le mod et l’app ne sont pas à la même version, redémarre Claude Desktop')
-    return false
+  if (hello === null) return 'unreachable'
+  if (hello.status === 426) {
+    if (!hasWarnedVersion) $.ui.toast('Cockpit : le mod et l’app ne sont pas à la même version, redémarre Claude Desktop')
+    hasWarnedVersion = true
+    return 'refused'
+  }
+  const bridgeId = hello.body?.bridgeId
+  if (hello.status !== 200 || typeof bridgeId !== 'string') return 'refused'
+  if (hello.body?.proof !== link.proof) {
+    $.ui.log('sessions: le port du cockpit répond sans la preuve de l’app, ordres ignorés', { to: 'debug' })
+    return 'unreachable'
   }
   mode = 'app'
   appLink = link
@@ -702,27 +719,22 @@ const joinApp = async ($: EngineInterface, link: AppLink) => {
     isServing = false
     $.clock.after(RECONNECT_MS, () => connect($))
   })
-  return true
+  return 'joined'
 }
 
-// Joins the app when it runs, else runs the server locally. A local server is
-// only stopped once the app has answered, so an app that does not answer
-// never leaves the cockpit without a server.
+// Joins the app when it runs, else runs the server locally. A local server
+// steps aside by itself (exit code 4) once the app answers.
 const connect = async ($: EngineInterface) => {
-  if (isConnecting || mode === 'app') return
+  if (isConnecting || mode !== 'none') return
   isConnecting = true
   try {
     const link = await readAppLink($)
-    if (link === null) {
-      void startServer($)
-      return
-    }
-    const wasLocal = mode === 'local'
-    if (!(await joinApp($, link))) {
-      void startServer($)
-      return
-    }
-    if (wasLocal) await stopLocalServer()
+    const outcome = link === null ? 'unreachable' : await joinApp($, link)
+    if (outcome === 'unreachable') void startServer($)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    $.ui.log(`sessions: liaison avec l'app impossible (${reason})`, { to: 'debug' })
+    void startServer($)
   } finally {
     isConnecting = false
   }
