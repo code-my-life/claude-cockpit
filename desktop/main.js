@@ -272,11 +272,16 @@ const createWindow = () => {
   island.start()
   guardNavigation(win)
   win.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
+    releaseHold()
     if (!isMainFrame || code === ERR_ABORTED) return
     island.setOffline(true, OFFLINE_WIDTH, OFFLINE_HEIGHT)
     win.loadURL(OFFLINE_PAGE).catch(() => {})
     setTimeout(loadCockpit, RETRY_MS)
   })
+  // Une page rechargée a perdu ses toasts sans le dire : le maintien repart à zéro, la page le reposera s'il en reste un.
+  const releaseHold = () => island?.setHeld(false)
+  win.webContents.on('did-start-loading', releaseHold)
+  win.webContents.on('render-process-gone', releaseHold)
   win.webContents.on('did-finish-load', () => {
     if (!win.webContents.getURL().startsWith(cockpitBase())) return
     island.setOffline(false)

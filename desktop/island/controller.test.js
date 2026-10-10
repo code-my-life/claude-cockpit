@@ -333,3 +333,16 @@ test('Afficher l ile : meme ordre, affichage puis focus', () => {
   assert.equal(ctx.log.order[ctx.log.order.length - 1], 'focus')
   assert.ok(ctx.log.order.indexOf('visible:true') < ctx.log.order.indexOf('focus'))
 })
+
+test('un toast retient l ile ; apres un rechargement de la page, relacher le maintien la laisse se replier', () => {
+  const { clock, island } = setup()
+  island.event()
+  island.setExpanded(true, 380, 120)
+  island.setHeld(true)
+  clock.advance(FOLD_DELAY_MS * 4)
+  assert.equal(island.phase(), 'open')
+  island.setHeld(false)
+  island.setExpanded(false, 0, 0)
+  clock.advance(FOLD_DELAY_MS * 4)
+  assert.notEqual(island.phase(), 'open')
+})
