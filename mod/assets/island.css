@@ -1,0 +1,95 @@
+/* L'île du cockpit : une pièce de verre Encre et Papier (classe ep-glass), construite avec les composants du système.
+   CSS local = géométrie seulement (grilles, tailles, positions). Aucune couleur, bordure, ombre ni fond inventés :
+   jetons et classes ep-* uniquement. Exceptions : dimensions animées par le script (island-ui.js). */
+.zone { position: fixed; inset: 0; pointer-events: none; z-index: var(--z-modal); }
+.island {
+  /* Recette du cockpit (.t-sheet) : biseau 26, épaisseur 56, flou 18, teinte de la conversation à 20 % (tintStyleOf, TINT_BLOCK). */
+  --conv-tint: var(--paper);
+  /* Fenêtre transparente : rien derrière à flouter ni à réfracter, donc la teinte du verre part de --plate (94 %) et non de --glass-strong, pour rester lisible sur n'importe quel bureau. */
+  --epf: color-mix(in srgb, var(--conv-tint) 20%, color-mix(in srgb, var(--plate) 94%, transparent));
+  --glass-bezel: 26px; --glass-thickness: 56px; --glass-blur: 18px;
+  --hang: 32px;               /* la forme déborde au-dessus de l'écran : seuls les coins du bas se voient */
+  --r: var(--radius-glass-s);
+  position: absolute; top: calc(-1 * var(--hang)); left: 50%; transform: translateX(-50%);
+  width: 320px; height: 0; overflow: hidden; pointer-events: auto; margin: 0; padding: 0;
+  border-radius: var(--r); transition: background-color 150ms;
+  color: var(--ink); font: 400 15px/1.55 var(--font-sans);
+}
+.island[data-hidden="true"] { pointer-events: none; visibility: hidden; }
+.island .stage { position: absolute; top: var(--hang); left: 50%; width: 760px; height: calc(100% - var(--hang)); margin-left: -380px; }
+.island .layer { position: absolute; top: 0; left: 0; width: 760px; }
+.island .layer[inert] { pointer-events: none; }
+.island .is-body { padding: var(--space-4); }
+.island .hdr { position: absolute; top: 0; left: 0; width: 760px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-2); }
+
+/* L'identité de la conversation focalisée : une seule, qui voyage entre les vues. */
+.island .hero { position: absolute; left: 0; top: 0; width: 96px; height: 96px; transform-origin: 0 0; pointer-events: none; z-index: 2; }
+.island .hero canvas { display: block; }
+.island .slot-hero { width: 96px; height: 96px; flex: none; }
+.island .l-wait .slot-hero, .island .l-order .slot-hero, .island .l-park .slot-hero { width: 64px; height: 64px; }
+.island .slot-hero.c { width: 32px; height: 32px; }
+.island canvas.ent { display: block; flex: none; }
+
+/* a. Réduite */
+.island .l-compact { left: 220px; width: 320px; }
+.island .compact { appearance: none; margin: 0; width: 320px; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: none; border: 0; border-radius: var(--radius-pill); cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
+.island .compact .ep-tag { margin-right: auto; }
+.island .compact .others { display: flex; gap: var(--space-1); }
+.island .compact:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
+
+/* b. Ouverte */
+.island .home { display: grid; grid-template-columns: minmax(0, 1fr) 312px; column-gap: var(--space-4); }
+.island .is-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--space-4); align-items: start; }
+.island .is-card-text { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 184px; }
+.island .is-card-text .h4 { margin: 0; }
+.island .meta { display: flex; align-items: center; gap: var(--space-2); }
+.island .is-acts { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.island .clamp { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.island .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.island .feed li { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.island .feed .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.island .feed .ep-icon { width: 12px; height: 12px; }
+.island .details { display: grid; gap: var(--space-2); }
+.island .details .is-plain { max-height: 120px; overflow: auto; overscroll-behavior: contain; font-size: 14px; line-height: 1.5; }
+.island .details .is-thread { display: grid; gap: var(--space-1); max-height: 120px; overflow: auto; overscroll-behavior: contain; }
+.island .details .is-bubble { padding: var(--space-2) var(--space-3); border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); background: var(--glass-nested); font-size: 14px; line-height: 1.5; }
+.island .details .is-bubble.user { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.island .details p, .island .details ul, .island .details ol { margin: var(--space-1) 0; }
+/* La fenêtre de l'île fait 800 px : le modèle y applique sa mise en page étroite (.ep-side-group en ligne, titre masqué) ; on garde la colonne. */
+.island .side { align-self: center; display: grid; gap: 2px; }
+.island .side .ep-side-title { display: block; }
+.island .side .ep-side-link { padding-block: var(--space-1); }
+.island .side .ep-side-link .ep-tag { white-space: nowrap; }
+.island .side .ep-side-link span.pn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.island .side .is-tools { display: flex; justify-content: flex-end; gap: var(--space-1); padding-top: var(--space-2); }
+.island .is-tools [aria-pressed="false"] { color: var(--ink-faint); }
+
+/* c. T'attend, vues simples */
+.island .alert { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; column-gap: var(--space-4); align-items: start; }
+.island .alert-main { display: grid; gap: var(--space-2); min-width: 0; }
+.island .alert-main .h4 { margin: 0; }
+.island .reply { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2); align-items: end; }
+.island .reply[hidden], .island .ep-cluster[hidden], .island .is-acts[hidden], .island .ep-hint[hidden] { display: none; }
+.island .rail { display: grid; gap: var(--space-2); align-content: start; }
+.island .rail .ep-btn--icon { padding: 0; width: auto; min-height: 0; }
+.island .simple { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: var(--space-4); align-items: start; }
+.island .l-new .simple, .island .l-new .is-body > .simple-main { grid-template-columns: minmax(0, 1fr); }
+.island .simple-main { display: grid; gap: var(--space-3); min-width: 0; }
+.island .l-new .reply { grid-template-columns: minmax(0, 1fr) auto; }
+.island .is-list { display: grid; gap: 0; max-height: 96px; overflow: auto; overscroll-behavior: contain; }
+.island .is-item { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: var(--space-2); padding: var(--space-1) var(--space-2); }
+.island .is-item-text { min-width: 0; display: flex; align-items: baseline; gap: var(--space-3); }
+.island .is-name { font-weight: 600; white-space: nowrap; }
+.island .is-path { font: 400 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.island .is.is-thumbs { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.island .is-thumb { position: relative; width: 56px; height: 56px; border-radius: var(--radius-glass-s); overflow: hidden; border: 1px solid var(--glass-edge); }
+.island .is-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.island .is-thumb .ep-btn { position: absolute; top: 0; right: 0; }
+
+/* Lisibilité sans opacifier le verre : le texte secondaire de l'île passe en ink. */
+.island .ep-alert__msg, .island .ep-side-link, .island .ep-tab, .island .ep-side-title { color: var(--ink); }
+.island :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.island .feed li.in { animation: islandFeedIn 150ms ease-out; }
+@keyframes islandFeedIn { from { transform: translateY(var(--space-2)); } to { transform: none; } }
+html[data-island="hidden"] .island * { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) { .island, .island .feed li.in { transition: none; animation: none; } }

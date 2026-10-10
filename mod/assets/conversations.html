@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="mod/assets/liquid-paper/theme.css">
 <link rel="stylesheet" href="mod/assets/liquid-paper/bundle.css">
+<link rel="stylesheet" href="mod/assets/island.css">
 <style>
   :root {
     --ep-i-layout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z'/%3E%3C/svg%3E");
@@ -37,7 +38,7 @@
   .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.02em; }
   .trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  :is(.av, .t-agent, .mini-head, .dock-count, .card-main, .mrow-main, .repo-item, .search-row, .rest-row a, .thumb button):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  :is(.av, .t-agent, .mini-head, .card-main, .mrow-main, .repo-item, .search-row, .rest-row a, .thumb button):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
   header { display: flex; flex-direction: column; gap: var(--space-6); }
   .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
@@ -241,7 +242,7 @@
   @media (prefers-reduced-motion: reduce) { .t-sheet.enter { animation: none !important; } .t-agent { transition: none !important; } }
 
   #mini { display: none; }
-  body.mini-mode { --dock-room: 170px; }
+  body.mini-mode { --dock-room: 56px; }
   html.mini-mode, html.mini-mode body { background: transparent !important; background-image: none !important; overflow: hidden; }
   html.mini-mode .ep-scene__bg { display: none; }
   html.os-glass, html.os-glass body { background: transparent !important; background-image: none !important; }
@@ -250,66 +251,14 @@
   html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
   body.mini-mode .wrap { display: none; }
   body.mini-mode #mini { display: block; }
-  /* Jetons locaux de l'île (écart assumé au modèle, voir README, section Écarts au modèle Liquid Paper) : 280 ms à l'ouverture, 180 ms à la fermeture, sans dépassement. --motion-ui est la durée standard du modèle. */
-  :root { --motion-ui: 150ms; --island-open: 280ms; --island-close: 180ms; --island-ease: cubic-bezier(0.2, 0, 0, 1); --island-pad: var(--space-4); }
-  .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: var(--island-pad); pointer-events: none; }
-  .dock { --head: 56px; --pad: 8px; pointer-events: auto; position: relative; flex: none; display: flex; border-radius: var(--radius-glass); overflow: hidden; background: var(--plate); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-pop); transition: transform var(--island-open) var(--island-ease), visibility 0s; }
-  html[data-island="hidden"] .dock { transform: translateY(calc(-100% - var(--island-pad))); visibility: hidden; transition: transform var(--island-close) ease-in, visibility 0s linear var(--island-close); }
-  html[data-island="hidden"] * { animation-play-state: paused !important; }
-  .dock[data-size="small"] { --head: 40px; --pad: 6px; border-radius: var(--radius-glass-s); }
-  .dock[data-size="large"] { --head: 72px; --pad: 10px; border-radius: var(--radius-glass); }
-  .dock-items { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--pad); padding: var(--pad) calc(var(--pad) + 6px); }
-  .dock-tools { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: var(--space-1); }
-  .dock-heads { display: flex; align-items: center; gap: var(--pad); }
-  .dock[data-layout="column"] .dock-items { flex-direction: column; }
-  .dock[data-layout="column"] .dock-tools { grid-auto-flow: row; grid-template-columns: repeat(2, auto); grid-template-rows: none; }
-  .dock[data-layout="column"] .dock-heads { flex-direction: column; }
-  .dock[data-layout="grid"] .dock-heads { display: grid; grid-template-columns: repeat(var(--grid-columns, 1), auto); }
-  .dock button { -webkit-app-region: no-drag; }
-  .dock .dock-count.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: calc(var(--head) / 2.4); --glass-bezel: 14px; --glass-thickness: 34px; }
-  /* Sur papier le fond gris du modèle ramenait le contraste du libellé à 2,2:1 : fond --plate-hover (6,3:1 pour --ink-2, 12,7:1 pour --ink). */
-  .dock .dock-count.ep-glass, .dock .mini-head.ep-glass { background: var(--plate-hover); }
-  .dock-count-value { font-family: var(--font-display); font-size: calc(var(--head) * 0.5); line-height: 1; color: var(--ink); display: flex; align-items: center; justify-content: center; }
-  .dock-count.calm .dock-count-value { color: var(--success); }
-  .dock-count-value .ep-icon { width: calc(var(--head) * 0.36); height: calc(var(--head) * 0.36); }
-  .dock-count-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin-top: 3px; }
-  .dock-sep { flex: none; width: 1px; height: var(--head); background: var(--rule); }
-  .dock[data-layout="column"] .dock-sep { width: var(--head); height: 1px; }
-  .dock .mini-head.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: 50%; --glass-bezel: 12px; --glass-thickness: 28px; transition: transform 150ms ease-out; }
-  .dock .mini-head.ep-glass:hover { transform: translateY(-2px); }
-  .dock[data-layout="column"] .mini-head.ep-glass:hover { transform: translateX(-2px); }
-  /* Pression : la pastille se tasse à 97 % (150 ms, sans rebond). */
-  .dock .mini-head.ep-glass:active { transform: scale(0.97); }
-  .dock .mini-head.ep-glass:hover:active { transform: translateY(-2px) scale(0.97); }
-  .dock[data-layout="column"] .mini-head.ep-glass:hover:active { transform: translateX(-2px) scale(0.97); }
-  .mini-head.working > *, .mini-head.later > * { opacity: var(--opacity-muted); }
-  .mini-head.working:hover { opacity: 1; }
-  /* Sur papier les visages perdent leur teinte de verre : la teinte d'identité passe sur le visage. */
-  body.mini-mode .t-face { background: var(--epf, var(--plate)); border-radius: var(--radius-round); }
-  /* Nouvelle attente : léger déplacement de 150 ms, sans rebond. */
-  .mini-head.fresh { animation: miniFresh var(--motion-ui) ease-out both; }
-  @keyframes miniFresh { from { transform: none; } to { transform: translateY(calc(-1 * var(--space-1))); } }
-  /* Fermer : visible au survol et au clavier (focus dans le dock), sans opacity. */
-  .dock-quit { visibility: hidden; }
-  .dock:hover .dock-quit, .dock:focus-within .dock-quit, .dock-quit:focus-visible { visibility: visible; }
-  .dock-calm { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); padding: 0 var(--space-2); white-space: nowrap; }
-  body.mini-mode .t-modal { top: var(--dock-room); height: calc(100vh - var(--dock-room)); align-items: flex-start; justify-content: center; padding: 0 var(--island-pad) var(--island-pad); }
-  /* L'île flotte sur le bureau, sans scène derrière : surface papier (data-surface sur #mini et #newconv). La mise en page de la fiche, réservée au verre par le modèle, est reprise ici. */
-  body.mini-mode .t-sheet { position: relative; width: 100%; max-width: min(1500px, 96vw); margin: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); border-radius: var(--radius-glass); background: var(--plate); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-pop); }
-  body.mini-mode .t-sheet.enter { animation: islandSheetIn var(--island-open) var(--island-ease); }
-  body.mini-mode .t-sheet.leave { animation: islandSheetOut var(--island-close) ease-in both; }
-  @keyframes islandSheetIn { from { clip-path: inset(0 0 100% 0 round var(--radius-glass)); transform: translateY(calc(-1 * var(--space-4))); } to { clip-path: inset(0 round var(--radius-glass)); transform: none; } }
-  @keyframes islandSheetOut { to { clip-path: inset(0 0 100% 0 round var(--radius-glass)); transform: translateY(calc(-1 * var(--space-4))); } }
+  /* L'île a sa feuille (island.css). --motion-ui est la durée standard du modèle ; le ressort de la forme (300 / 260 ms) est dans island-ui.js. */
+  :root { --motion-ui: 150ms; }
+  /* Les toasts se posent sous l'île, à la hauteur que la morphose lui donne (--dock-room, posé par island-ui.js). */
   body.mini-mode .ep-toasts { right: var(--space-2); top: var(--dock-room); bottom: auto; width: calc(100vw - var(--space-4)); }
   body.mini-mode .trace { left: auto; right: var(--space-24); top: var(--dock-room); bottom: auto; margin-left: 0; }
-  body.mini-mode .t-backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
-  body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
   .t-sheet { --panel-width: 1100; }
-  .dock-menu { --panel-width: 380; }
   .sound-intro { --panel-width: 380; }
-  .sound-intro-text { margin: 0; color: var(--ink-2); }
-  .sound-intro-title-icon { vertical-align: -2px; }
-  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } .dock .mini-head.ep-glass { transition: none; } .dock, html[data-island="hidden"] .dock { transition: none; } body.mini-mode .t-sheet.enter, body.mini-mode .t-sheet.leave { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } }
   body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
   .search-bar { margin-top: var(--space-4); min-height: 46px; }
   .search-bar[hidden] { display: none !important; }
@@ -353,8 +302,6 @@
   .card-text, .mrow-text { min-width: 0; display: flex; flex-direction: column; }
   .t-grid .t-agent .t-ctx { grid-column: 2; grid-row: 3; min-width: 0; }
   .t-grid .t-agent .t-ctx .ctx { margin-top: 0; flex-wrap: nowrap; overflow: hidden; }
-  .dock-menu { max-width: 380px !important; }
-  .dock-menu-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .mrow-main { min-height: 32px; }
   .t-modal { overflow-y: auto; align-items: safe center; }
   .rest-toggle.has-error { color: var(--danger); }
@@ -426,9 +373,8 @@
 
   <div id="team"></div>
 </div>
-<div id="mini" data-surface="paper">
-  <div class="dock-zone"><div class="dock" id="dock"><div class="dock-items" id="dock-items"></div></div></div>
-  <div id="mini-pop"></div>
+<div id="mini">
+  <div class="zone" id="zone"></div>
 </div>
 <div id="newconv" data-surface="paper"></div>
 
@@ -438,8 +384,14 @@
 <script src="mod/assets/identity-chrome.js"></script>
 <script src="mod/assets/identity-badge.js"></script>
 <script src="mod/assets/identity-sound.js"></script>
+<script src="mod/assets/entity/entity.js"></script>
+<script src="mod/assets/entity/entity-forms.js"></script>
+<script src="mod/assets/entity/entity-2d.js"></script>
+<script src="mod/assets/entity/entity-mount.js"></script>
 <script src="mod/assets/dock.js"></script>
+<script src="mod/assets/island-model.js"></script>
 <script src="mod/assets/island.js"></script>
+<script src="mod/assets/island-ui.js"></script>
 <script>
   const DATA_FILE = 'conversations-data.js';
   const DEEP_LINK_PREFIX = 'claude://claude.ai/epitaxy/';
@@ -525,9 +477,6 @@
     view: 'list',
     teamPopId: null,
     teamPopFresh: false,
-    dockMenuOpen: false,
-    soundIntroOpen: false,
-    dockPrefs: null,
   };
 
   const iconOf = name => (name ? `<span class="ep-icon ep-icon--${name}" aria-hidden="true"></span>` : '');
@@ -822,23 +771,10 @@
   let soundPlayer = null;
   let areSoundsOn = false;
   let isIntroAsked = false;
-  // L'annonce est une petite fiche de l'île (la fenêtre s'agrandit comme pour le menu) ; mémorisée après 3 s d'affichage.
+  // L'annonce du premier lancement est un toast de l'île, mémorisée après 3 s d'affichage.
   const SOUND_INTRO_SEEN_MS = 3000;
-  // Un peu plus que --island-open (280 ms).
+  // Un peu plus que le ressort d'ouverture de l'île (300 ms).
   const SOUND_INTRO_SETTLE_MS = 450;
-  let soundIntroTimer = null;
-
-  let soundIntroReturnFocus = null;
-
-  // Focus : « Compris » à l'ouverture, retour à ce qui l'avait (ou au dock) à la fermeture.
-  const closeSoundIntro = () => {
-    if (soundIntroTimer !== null) { clearTimeout(soundIntroTimer); soundIntroTimer = null; }
-    if (!state.soundIntroOpen) return;
-    state.soundIntroOpen = false;
-    render({ force: true });
-    document.querySelector(window.CockpitIsland.returnFocusSelectorOf(soundIntroReturnFocus))?.focus({ preventScroll: true });
-    soundIntroReturnFocus = null;
-  };
 
   // L'app décide au moment du son s'il faut se taire (plein écran, présentation, occupé, heures calmes) ; en cas de doute, silence.
   const playSound = (kind, engineId) => {
@@ -853,14 +789,10 @@
     isIntroAsked = true;
     desktop.soundIntro().then(shouldShow => {
       if (shouldShow !== true) return;
-      // On attend la fin de l’ouverture de l’île : la fiche se place sous le dock une fois celui-ci arrivé.
+      // On attend la fin de l'apparition de l'île : le toast se pose sous elle.
       setTimeout(() => {
-        const active = document.activeElement;
-        soundIntroReturnFocus = active && active !== document.body ? window.CockpitIsland.focusSelectorOf(active) : null;
-        state.soundIntroOpen = true;
-        render({ force: true });
-        document.querySelector('.sound-intro [data-sound-intro="close"].ep-btn--primary')?.focus({ preventScroll: true });
-        soundIntroTimer = setTimeout(() => { soundIntroTimer = null; if (state.soundIntroOpen) desktop.soundIntroSeen(); }, SOUND_INTRO_SEEN_MS);
+        showReward('Alertes sonores', 'Elles sont actives. Coupe-les avec le bouton Sons de l’île ou dans le menu de la barre d’état.', 'info');
+        setTimeout(() => desktop.soundIntroSeen(), SOUND_INTRO_SEEN_MS);
       }, SOUND_INTRO_SETTLE_MS);
     }).catch(() => {});
   };
@@ -890,7 +822,7 @@
     const apply = value => {
       areSoundsOn = !window.CockpitIdentitySound.isMutedBySetting(value);
       soundPlayer.setMuted(!areSoundsOn);
-      if (state.dockMenuOpen) render({ force: true });
+      if (isMini) render({ force: true });
     };
     desktop.soundSetting().then(apply).catch(() => apply(undefined));
     desktop.onSoundSetting(apply);
@@ -1171,8 +1103,10 @@
       if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
       const info = PARK_KINDS[kind];
       showReward(info.label, `${row?.title || 'Agent'}${reason ? ` : ${reason}` : ''}`, kind === 'blocked' ? 'error' : 'info');
+      return true;
     } catch (error) {
       showReward('Action impossible', error.message, 'failure');
+      return false;
     }
   };
 
@@ -1389,159 +1323,39 @@
   };
 
   const desktop = window.cockpitDesktop || null;
-  let miniExpanded = false;
-  let miniSheetWidth = 0;
-  let miniSheetHeight = 0;
   let hasToasts = false;
+  let toastExtent = '';
   let islandUi = null;
-  const DOCK_PREFS_KEY = 'cockpit.dock';
+  let islandHost = null;
 
-  const readStoredDockPrefs = () => {
-    let raw = null;
-    try { raw = localStorage.getItem(DOCK_PREFS_KEY); } catch { raw = null; }
-    return window.CockpitDock.readDockPrefs(raw);
-  };
+  const toggleSounds = isOn => { if (desktop) desktop.setSounds(isOn); };
 
-  const saveDockPrefs = prefs => {
-    state.dockPrefs = prefs;
-    try { localStorage.setItem(DOCK_PREFS_KEY, JSON.stringify(prefs)); } catch { }
-  };
-
-  const renderMiniHead = (row, zone, isFresh, head) => {
-    const face = teamFaceOf(row);
-    const word = window.CockpitIsland.zoneWordOf(zone);
-    const label = `${row.title}${word ? ` (${word})` : ''} : ${face.bubble}`;
-    const tip = `${row.title}${word ? `\n${word}` : ''}\n${face.state}\n${face.bubble}`;
-    return `<button type="button" class="mini-head ep-glass ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${escapeHtml(row.engineId)}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}" style="${faceStyleOf(row.engineId)}">
-      ${renderFace(row, head, { isBare: true })}
-    </button>`;
-  };
-
-  const renderDockMenu = () => {
-    const { DOCK_SIZES, DOCK_LAYOUTS } = window.CockpitDock;
-    const prefs = state.dockPrefs;
-    const sizeEntries = Object.entries(DOCK_SIZES);
-    const sizes = sizeEntries.map(([key, size]) => `<button type="button" data-dock-size="${key}" aria-pressed="${prefs.size === key}">${size.label}</button>`).join('');
-    const layoutEntries = Object.entries(DOCK_LAYOUTS);
-    const layouts = layoutEntries.map(([key, label]) => `<button type="button" data-dock-layout="${key}" aria-pressed="${prefs.layout === key}">${label}</button>`).join('');
-    return `<div class="t-modal">
-      <div class="t-backdrop" data-dock-menu="close"></div>
-      <div class="t-sheet ep-glass dock-menu" role="dialog" aria-modal="true" aria-labelledby="dock-menu-title">
-        <div class="t-sheet-head">
-          <h2 id="dock-menu-title" class="t-sheet-title" style="flex: 1 1 auto">Disposition</h2>
-          <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-dock-menu="close" aria-label="Fermer">${iconOf('x')}</button>
-        </div>
-        <span class="nc-label">Taille</span>
-        <div class="dock-menu-row ep-toggle" role="group" aria-label="Taille">${sizes}</div>
-        <span class="nc-label">Forme</span>
-        <div class="dock-menu-row ep-toggle" role="group" aria-label="Forme">${layouts}</div>
-        <label class="ep-switch dock-menu-sounds"><input type="checkbox" role="switch" data-dock-sounds ${areSoundsOn ? 'checked' : ''}><span class="ep-icon ep-icon--volume" aria-hidden="true"></span>Alertes sonores</label>
-      </div>
-    </div>`;
-  };
-
-  const renderSoundIntro = () => `<div class="t-modal">
-      <div class="t-backdrop" data-sound-intro="close"></div>
-      <div class="t-sheet ep-glass sound-intro" role="dialog" aria-modal="true" aria-labelledby="sound-intro-title">
-        <div class="t-sheet-head">
-          <h2 id="sound-intro-title" class="t-sheet-title" style="flex: 1 1 auto"><span class="ep-icon ep-icon--volume" aria-hidden="true"></span> Alertes sonores</h2>
-          <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-sound-intro="close" aria-label="Fermer">${iconOf('x')}</button>
-        </div>
-        <p class="sound-intro-text">Elles sont actives. Tu peux les couper dans la disposition du dock ou dans le menu de la barre d’état.</p>
-        <button type="button" class="ep-btn ep-btn--primary ep-btn--sm" data-sound-intro="close">Compris</button>
-      </div>
-    </div>`;
-
-  const applyDockChoice = (key, value) => {
-    const next = { ...state.dockPrefs, [key]: value };
-    saveDockPrefs(next);
-    state.dockMenuOpen = false;
-    render({ force: true });
-  };
-
-  const renderMini = now => {
-    const groups = teamGroups();
-    const previous = state.miniWaiting;
-    const isFresh = row => previous !== null && !previous.has(row.engineId);
-    state.miniWaiting = new Set(groups.waiting.map(row => row.engineId));
-    if (islandUi) islandUi.observe(state.data.rows, WAITING_STATUSES);
-    const count = groups.waiting.length;
-    const counter = `<button type="button" class="dock-count ep-glass ${count === 0 ? 'calm' : ''}" data-mini="cockpit" title="Ouvrir le cockpit"><span class="dock-count-value">${count === 0 ? iconOf('check') : count}</span><span class="dock-count-label">${count === 0 ? 'tranquille' : 't\'attend'}</span></button>`;
-    const prefs = state.dockPrefs;
-    const head = window.CockpitDock.DOCK_SIZES[prefs.size].head;
-    const othersRows = [...groups.stuck, ...groups.working];
-    const waiting = groups.waiting.map(row => renderMiniHead(row, 'waiting', isFresh(row), head)).join('');
-    const others = othersRows.map(row => renderMiniHead(row, teamZoneOf(row.status), false, head)).join('');
-    const isGrid = prefs.layout === 'grid';
-    const separator = count > 0 && others && !isGrid ? '<span class="dock-sep" aria-hidden="true"></span>' : '';
-    const headCount = groups.waiting.length + othersRows.length;
-    const gridColumns = window.CockpitDock.gridColumnsOf(headCount);
-    const calm = count === 0 && !others ? '<span class="dock-calm">Personne au travail</span>' : '';
-    const newButton = isServer ? `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-new" data-mini="new" title="Nouvelle conversation" aria-label="Nouvelle conversation">${iconOf('plus')}</button>` : '';
-    const quit = desktop ? `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-quit" data-mini="quit" aria-label="Fermer la mini-équipe" title="Fermer">${iconOf('x')}</button>` : '';
-    const layoutButton = `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-layout" data-mini="layout" title="Disposition du dock" aria-label="Disposition du dock">${iconOf('layout')}</button>`;
-    const shortcutLabel = SHORTCUT_LABELS[state.launcherShortcut] ? ` (${SHORTCUT_LABELS[state.launcherShortcut]})` : '';
-    const searchButton = isServer ? `<button type="button" class="ep-btn ep-btn--icon ep-btn--sm dock-search" data-mini="search" title="Rechercher dans les conversations${shortcutLabel}" aria-label="Rechercher dans les conversations">${iconOf('search')}</button>` : '';
-    const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
-    if (state.teamPopId && !popRow) state.teamPopId = null;
-    const teamPopup = popRow ? renderTeamPopup(popRow, now) : '';
-    const popup = state.dockMenuOpen ? renderDockMenu() : state.soundIntroOpen ? renderSoundIntro() : teamPopup;
-    state.teamPopFresh = false;
-    const dock = document.getElementById('dock');
-    dock.dataset.size = prefs.size;
-    dock.dataset.layout = prefs.layout;
-    dock.style.setProperty('--grid-columns', String(gridColumns));
-    // Le dock est réécrit : le focus clavier retrouve son élément.
-    const focused = dock.contains(document.activeElement) ? window.CockpitIsland.focusSelectorOf(document.activeElement) : null;
-    document.getElementById('dock-items').innerHTML = `<span class="dock-tools">${newButton}${layoutButton}${searchButton}${quit}</span>${counter}<span class="dock-heads">${waiting}${separator}${others}${calm}</span>`;
-    if (focused) dock.querySelector(focused)?.focus({ preventScroll: true });
-    document.getElementById('mini-pop').innerHTML = popup;
+  const renderMini = () => {
+    if (islandHost) islandHost.observe(state.data.rows);
+    islandUi.update(state.data.rows, { folders: state.data.folders, sounds: areSoundsOn });
+    const count = window.CockpitIslandModel.waitingOf(state.data.rows).length;
     document.title = count > 0 ? `(${count}) Mini équipe` : 'Mini équipe';
-    syncDesktopWindow();
   };
 
-  const syncDesktopWindow = () => {
+  // Les toasts s'ajoutent à la forme cliquable sous l'île et la retiennent (ni repli ni masquage tant qu'un toast est là).
+  const syncToasts = () => {
     if (!desktop) return;
-    const isSheetOpen = state.teamPopId !== null || state.newConv !== null || state.dockMenuOpen || state.soundIntroOpen;
-    const sheet = document.querySelector('.t-sheet');
-    const panelWidth = sheet ? getComputedStyle(sheet).getPropertyValue('--panel-width') : '';
-    const sheetSize = { isOpen: isSheetOpen, width: Number.parseInt(panelWidth, 10) || 0, height: sheet ? sheet.scrollHeight + 4 : 0 };
-    const toastHost = document.querySelector('.ep-toasts');
-    const toastSize = window.CockpitIsland.toastExtentOf(toastHost ? toastHost.children.length : 0, toastHost ? toastHost.scrollHeight : 0);
-    const { isOpen, width: sheetWidth, height: sheetHeight } = window.CockpitIsland.expansionOf({ sheet: sheetSize, toast: toastSize });
-    const hasChanged = isOpen !== miniExpanded || (isOpen && (sheetHeight !== miniSheetHeight || sheetWidth !== miniSheetWidth));
-    const areToastsShown = toastSize.height > 0;
+    const host = document.querySelector('.ep-toasts');
+    const size = window.CockpitIsland.toastExtentOf(host ? host.children.length : 0, host ? host.scrollHeight : 0);
+    const areToastsShown = size.height > 0;
     if (areToastsShown !== hasToasts) {
       hasToasts = areToastsShown;
       desktop.islandHold(areToastsShown);
     }
-    if (hasChanged) {
-      miniExpanded = isOpen;
-      miniSheetWidth = sheetWidth;
-      miniSheetHeight = sheetHeight;
-      desktop.setExpanded(isOpen, sheetWidth, sheetHeight);
-    }
-    const dock = document.getElementById('dock');
-    if (!dock) return;
-    document.body.style.setProperty('--dock-room', `calc(${dock.getBoundingClientRect().bottom}px + var(--island-pad))`);
-    desktop.setDockSize(dock.offsetWidth, dock.offsetHeight);
+    const key = `${size.width}x${size.height}`;
+    if (key === toastExtent) return;
+    toastExtent = key;
+    desktop.setToasts(size.width, size.height);
   };
 
-  // Repli décidé par l'île (délai écoulé, Échap) : ferme la fiche, la nouvelle conversation et le menu.
-  const foldIslandSheets = () => {
-    state.teamPopId = null;
-    state.dockMenuOpen = false;
-    closeSoundIntro();
-    if (state.newConv !== null) closeNewConv();
-    render({ force: true });
-  };
-
-  const renderMiniFrame = now => {
-    const scroll = captureScroll();
-    renderMini(now);
-    restoreScroll(scroll);
+  const renderMiniFrame = () => {
+    renderMini();
     hydrateIdentities();
-    focusPendingDraft();
   };
 
   const newConvItem = folder => `<label class="nc-item ep-check" data-search="${escapeHtml(folder.toLowerCase())}">
@@ -1582,14 +1396,12 @@
       </div>
     </div>`;
     renderNewConvPicked();
-    if (isMini) syncDesktopWindow();
     document.querySelector('.nc-search')?.focus();
   };
 
   const closeNewConv = () => {
     state.newConv = null;
     document.getElementById('newconv').innerHTML = '';
-    if (isMini) syncDesktopWindow();
   };
 
   const filterNewConv = query => {
@@ -1667,7 +1479,6 @@
     const row = rowOf(engineId);
     if (!row) return;
     state.teamPopId = engineId;
-    state.dockMenuOpen = false;
     state.teamPopFresh = true;
     state.pendingBottom.add(engineId);
     if (!row.isCurrent && isServer) state.focusDraft = engineId;
@@ -1776,7 +1587,7 @@
     if (!force && isTyping()) return;
     state.lastRenderedKey = key;
     if (isMini) {
-      renderMiniFrame(Date.now());
+      renderMiniFrame();
       return;
     }
     const scroll = captureScroll();
@@ -1971,7 +1782,7 @@
       return;
     }
     if (window.__CONVERSATIONS__) state.data = withOptimisticWorking(window.__CONVERSATIONS__);
-    if (isPageOutdated() && !isTyping() && state.expanded.size === 0 && state.bigId === null && state.teamPopId === null && state.newConv === null) {
+    if (isPageOutdated() && !isTyping() && state.expanded.size === 0 && state.bigId === null && state.teamPopId === null && state.newConv === null && !(islandUi && islandUi.isOpen())) {
       location.reload();
       return;
     }
@@ -2026,7 +1837,6 @@
     return `<a class="search-row ep-plate" href="${escapeHtml(href)}" title="Ouvrir dans l'app" style="${tint}">${body}</a>`;
   };
 
-  const SHORTCUT_LABELS = { 'Alt+Space': 'Alt+Espace', 'Control+Alt+Space': 'Ctrl+Alt+Espace' };
   let launcherIndex = -1;
 
   const syncLauncherHeight = () => {
@@ -2233,7 +2043,7 @@
     const row = rowOf(engineId);
     const draft = draftOf(engineId);
     const text = draft.text.trim();
-    if (!row || (text.length === 0 && draft.images.length === 0) || sendingReplies.has(engineId)) return;
+    if (!row || (text.length === 0 && draft.images.length === 0) || sendingReplies.has(engineId)) return false;
     sendingReplies.add(engineId);
     try {
       const images = draft.images.map(image => ({ type: image.type, base64: image.base64 }));
@@ -2249,9 +2059,11 @@
       render({ force: true });
       announce(`Ordre envoyé à ${row.title}`);
       if (document.activeElement === document.body) document.getElementById('h-waiting')?.focus();
+      return true;
     } catch (error) {
       setFeedback(engineId, `Non envoyé : ${error.message}`, true);
       showReward('Non envoyé', `${row.title} : ${error.message}`, 'failure');
+      return false;
     } finally {
       sendingReplies.delete(engineId);
     }
@@ -2486,47 +2298,62 @@
   });
 
   if (isOsGlass) document.documentElement.classList.add('os-glass');
-  if (isMini && desktop) {
-    desktop.launcherShortcut().then(shortcut => {
-      state.launcherShortcut = shortcut;
-      render({ force: true });
-    });
-  }
+
+  // L'île : le modèle, les entités vivantes, l'interface et l'hôte qui parle à l'app. Les actions sont celles du cockpit.
+  const startIsland = () => {
+    const helpers = {
+      esc: escapeHtml, icon: iconOf, markdown: renderMarkdown, ageOf: (updatedAt, now = Date.now()) => `il y a ${formatAge(updatedAt, now)}`,
+      activityOf, awaitingOf, statsLineOf, tintOf: engineId => (window.CockpitIdentity ? window.CockpitIdentity.tintOf(engineId) : ''),
+      openUrlOf, folderOf, isServer, quickReplies: QUICK_REPLIES,
+    };
+    const actions = {
+      reply: async (engineId, text, images) => {
+        const draft = draftOf(engineId);
+        draft.text = text;
+        draft.images = images;
+        return sendReply(engineId);
+      },
+      open: row => { const url = openUrlOf(row); if (url) openAppLink(url); },
+      ensureSummary: row => { if (row && isServer && !ACTIVE_STATUSES.includes(row.status) && !isSummaryFresh(row)) requestSummary(row.engineId); },
+      summarize: requestSummary,
+      terminal: engineId => {
+        const row = rowOf(engineId);
+        if (!row || !row.cwd) return;
+        const repos = reposOf(row);
+        launchTerminal(repos.length === 1 ? repos[0] : row.cwd);
+      },
+      seen: engineId => setSeen(engineId, true),
+      unpark,
+      park: (engineId, kind, reason) => submitPark(engineId, kind, reason),
+      newConv: (folders, text) => {
+        if (folders.length === 0) return 'Choisis au moins un dépôt.';
+        openAppLink(newConvUrlOf(folders, text));
+        showReward('Nouvelle conversation', `${folderOf(folders[0])} : appuie sur Entrée dans Claude`, 'info');
+        return '';
+      },
+      openCockpit: section => { if (desktop) desktop.openCockpit(section === 'search' ? 'search' : undefined); else window.open(section === 'search' ? '/#recherche' : '/', 'cockpit'); },
+      setSounds: toggleSounds,
+      quit: () => { if (desktop) desktop.quit(); },
+    };
+    islandUi = window.CockpitIslandUi.create({ doc: document, win: window, host: document.getElementById('zone'), model: window.CockpitIslandModel, entities: window.CharacterEntity, helpers, actions, desktop, announce });
+    if (desktop) {
+      islandHost = window.CockpitIsland.init({ desktop, doc: document, win: window, announce, playSound, onReveal: announceSoundsOnce, onPhase: islandUi.setPhase, onPointer: islandUi.pointer });
+    } else {
+      islandUi.setPhase('compact', 'event');
+    }
+    window.CockpitIsland.watchToasts(document, window, syncToasts);
+  };
+
   if (isMini) {
-    state.dockPrefs = readStoredDockPrefs();
     document.documentElement.classList.add('mini-mode');
     document.body.classList.add('mini-mode');
     if (desktop) setUpSounds();
-    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce, playSound, onReveal: announceSoundsOnce });
-    window.addEventListener('resize', syncDesktopWindow);
-    window.CockpitIsland.watchToasts(document, window, syncDesktopWindow);
+    startIsland();
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');
-      if (appLink) {
-        event.preventDefault();
-        desktop.openLink(appLink.href);
-        return;
-      }
-      if (event.target.closest('[data-sound-intro="close"]')) { closeSoundIntro(); return; }
-      const soundSwitch = event.target.closest('[data-dock-sounds]');
-      if (soundSwitch) { if (desktop) desktop.setSounds(soundSwitch.checked); return; }
-      const sizeChoice = event.target.closest('[data-dock-size]');
-      if (sizeChoice) { applyDockChoice('size', sizeChoice.dataset.dockSize); return; }
-      const layoutChoice = event.target.closest('[data-dock-layout]');
-      if (layoutChoice) { applyDockChoice('layout', layoutChoice.dataset.dockLayout); return; }
-      if (event.target.closest('[data-dock-menu="close"]')) { state.dockMenuOpen = false; render({ force: true }); return; }
-      const control = event.target.closest('[data-mini]');
-      if (!control) return;
-      if (control.dataset.mini === 'cockpit') { if (desktop) desktop.openCockpit(); else window.open('/', 'cockpit'); }
-      if (control.dataset.mini === 'search') { if (desktop) desktop.openCockpit('search'); else window.open('/#recherche', 'cockpit'); }
-      if (control.dataset.mini === 'layout') { state.dockMenuOpen = !state.dockMenuOpen; state.teamPopId = null; render({ force: true }); }
-      if (control.dataset.mini === 'quit' && desktop) desktop.quit();
-    });
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && state.soundIntroOpen) { closeSoundIntro(); return; }
-      if (event.key !== 'Escape' || !state.dockMenuOpen) return;
-      state.dockMenuOpen = false;
-      render({ force: true });
+      if (!appLink) return;
+      event.preventDefault();
+      desktop.openLink(appLink.href);
     });
   }
   else applyView(readView());
@@ -2598,7 +2425,7 @@
   document.getElementById('banner').classList.toggle('show', !isServer);
   const isDesignSystemLoaded = () => {
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
-    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitIdentityMotion && window.CockpitDock && window.CockpitIsland && ink);
+    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitIdentityMotion && window.CockpitDock && window.CockpitIsland && window.CockpitIslandModel && window.CockpitIslandUi && window.CharacterEntity && ink);
   };
   window.addEventListener('load', () => {
     document.getElementById('ds-banner').classList.toggle('show', !isDesignSystemLoaded());

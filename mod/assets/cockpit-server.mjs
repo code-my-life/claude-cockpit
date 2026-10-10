@@ -23,6 +23,7 @@ const STATIC_FILES = {
   '/mod/assets/dock.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-model.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-ui.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/island.css': 'text/css; charset=utf-8',
   '/mod/assets/entity/entity.js': 'text/javascript; charset=utf-8',
   '/mod/assets/entity/entity-forms.js': 'text/javascript; charset=utf-8',
   '/mod/assets/entity/entity-2d.js': 'text/javascript; charset=utf-8',

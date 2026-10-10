@@ -1,16 +1,12 @@
 (function (root) {
   'use strict';
 
-  // L'île côté page : suit le pointeur, applique la phase décidée par l'app
-  // (caché, réduit, ouvert), annonce les arrivées et coupe les animations quand elle est cachée.
-  const SHAPE_SELECTOR = '.dock, .t-sheet';
+  // L'île côté page : suit le pointeur, relaie la phase décidée par l'app (caché, réduit, ouvert) à l'interface,
+  // annonce les arrivées, épingle l'île quand quelqu'un attend et coupe les animations quand elle est cachée.
+  const model = typeof module !== 'undefined' && module.exports ? require('./island-model.js') : root.CockpitIslandModel;
+  const SHAPE_SELECTOR = '.island';
   const ACTIVITY_THROTTLE_MS = 1000;
-  // Même durée que --island-close dans conversations.html.
-  const LEAVE_MS = 180;
   const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
-  // Permission et question épinglent l'île ; « done » (mission livrée) l'épingle moins longtemps.
-  const ATTENTION_STATUSES = ['permission', 'external'];
-  const DONE_STATUSES = ['done'];
   const PIN_NONE = 'none';
   const PIN_ATTENTION = 'attention';
   const PIN_DONE = 'done';
@@ -34,58 +30,32 @@
     return { hasChanged, next };
   };
 
-  const waitingCountOf = (rows, waitingStatuses) => rows.filter(row => waitingStatuses.includes(row.status)).length;
+  // Qui t'attend : une permission, une question, une attente d'autre chose (jamais une mission livrée).
+  const waitingCountOf = rows => model.waitingOf(rows).length;
 
+  // Permission et question épinglent l'île ; une mission livrée l'épingle moins longtemps.
   const pinKindOf = rows => {
-    if (rows.some(row => ATTENTION_STATUSES.includes(row.status))) return PIN_ATTENTION;
-    if (rows.some(row => DONE_STATUSES.includes(row.status))) return PIN_DONE;
+    if (model.waitingOf(rows).length > 0) return PIN_ATTENTION;
+    if (rows.some(row => model.kindOf(row) === model.KIND_DONE)) return PIN_DONE;
     return PIN_NONE;
   };
 
   const announcementOf = count => {
     if (count <= 0) return null;
-    return count === 1 ? '1 conversation t\'attend' : `${count} conversations t\'attendent`;
+    return count === 1 ? '1 conversation t\'attend' : `${count} conversations t'attendent`;
   };
 
   // Une attente nouvelle : un identifiant qui attend maintenant et n'attendait pas au rendu précédent.
-  const hasNewWaiting = (previousIds, rows, waitingStatuses) => {
-    if (previousIds === null) return false;
-    return rows.some(row => waitingStatuses.includes(row.status) && !previousIds.has(row.engineId));
-  };
-
-  // Le dock est réécrit à chaque rendu : de quoi retrouver l'élément qui avait le focus.
-  const focusSelectorOf = element => {
-    if (!element || !element.dataset) return null;
-    const { mini, engine, action } = element.dataset;
-    const quote = value => String(value).replace(/(["\\])/g, '\\$1');
-    if (mini) return `[data-mini="${quote(mini)}"]`;
-    if (engine) return `[data-engine="${quote(engine)}"]${action ? `[data-action="${quote(action)}"]` : ''}`;
-    return null;
-  };
-
-  // L'état d'une tête passe aussi par un mot (nom accessible, infobulle), pas seulement par le voile.
-  const ZONE_WORDS = { working: 'au travail', later: 'remise à plus tard', stuck: 'bloquée' };
-  const zoneWordOf = zone => ZONE_WORDS[zone] || '';
+  const hasNewWaiting = (previousIds, rows) => model.newWaitOf(previousIds, rows) !== null;
 
   const shouldPauseLoops = phase => phase === 'hidden';
 
-  // Les toasts de l'île se posent sous le dock : la fenêtre compacte s'arrête là, elle doit donc s'agrandir le temps
-  // des toasts visibles (même mécanisme que les fiches, forme cliquable comprise) puis se rétrécir au dernier.
-  // Largeur des toasts du modèle (min(380px, ...)) et marge sous le dernier.
+  // Les toasts de l'île se posent sous la forme : la fenêtre a la taille de la scène, la forme cliquable
+  // s'étend le temps des toasts visibles. Largeur des toasts du modèle (min(380px, ...)) et marge sous le dernier.
   const TOAST_WIDTH = 380;
   const TOAST_MARGIN = 8;
 
   const toastExtentOf = (count, scrollHeight) => (count > 0 ? { width: TOAST_WIDTH, height: Math.ceil(scrollHeight) + TOAST_MARGIN } : { width: 0, height: 0 });
-
-  // Après une fiche : le focus revient à ce qui l'avait, sinon au premier bouton du dock.
-  const DOCK_FIRST_BUTTON = '.dock button';
-  const returnFocusSelectorOf = saved => (saved ? saved : DOCK_FIRST_BUTTON);
-
-  const expansionOf = ({ sheet, toast }) => ({
-    isOpen: sheet.isOpen || toast.height > 0,
-    width: Math.max(sheet.width, toast.width),
-    height: Math.max(sheet.height, toast.height),
-  });
 
   // Prévient quand la zone des toasts change (arrivée, départ, hauteur) ; la zone est créée à la demande par le modèle.
   const watchToasts = (doc, win, onChange) => {
@@ -114,102 +84,60 @@
     };
   };
 
-  // Fermeture différée de la fiche : annulable si une fiche se rouvre entre-temps.
-  const createLeaveTimer = ({ setTimer, clearTimer, run, delayMs = LEAVE_MS }) => {
-    let handle = null;
-    const cancel = () => {
-      if (handle === null) return;
-      clearTimer(handle);
-      handle = null;
-    };
-    return {
-      cancel,
-      isPending: () => handle !== null,
-      schedule() {
-        cancel();
-        handle = setTimer(() => { handle = null; run(); }, delayMs);
-      },
-    };
-  };
-
   const shouldAnnounce = (previousPhase, phase, cause) => previousPhase === 'hidden' && phase !== 'hidden' && cause === CAUSE_EVENT;
 
-  const init = ({ desktop, doc, win, identity, closeSheets, announce, playSound = () => {}, onReveal = () => {} }) => {
+  const init = ({ desktop, doc, win, announce, playSound = () => {}, onReveal = () => {}, onPhase = () => {}, onPointer = () => {} }) => {
     const html = doc.documentElement;
     const motion = typeof win.matchMedia === 'function' ? win.matchMedia(REDUCED_MOTION_QUERY) : { matches: false };
-    const reportPointer = createPointerReporter(isInside => desktop.islandPointer(isInside));
+    const reportPointer = createPointerReporter(isInside => { desktop.islandPointer(isInside); onPointer(isInside); });
     const reportActivity = createThrottle(() => desktop.islandActivity(), ACTIVITY_THROTTLE_MS);
-    const leaveTimer = createLeaveTimer({ setTimer: (run, delay) => win.setTimeout(run, delay), clearTimer: handle => win.clearTimeout(handle), run: closeSheets });
     let previousStatuses = null;
     let lastPin = null;
     let waitingCount = 0;
     let waitingIds = null;
     let phase = 'hidden';
 
-    const setPhase = next => {
-      html.dataset.island = next;
-      if (shouldPauseLoops(next)) identity?.pause();
-      else identity?.resume();
-    };
-
-    // Un repli décidé par l'app : la fiche joue sa sortie, puis la page se vide.
-    const foldSheets = () => {
-      const sheet = doc.querySelector('.t-sheet');
-      if (!sheet) return;
-      if (motion.matches) { closeSheets(); return; }
-      sheet.classList.add('leave');
-      leaveTimer.schedule();
-    };
-
-    // Une fiche qui s'ouvre annule la fermeture différée de la précédente.
-    const keepSheets = () => {
-      leaveTimer.cancel();
-      for (const sheet of doc.querySelectorAll('.t-sheet.leave')) sheet.classList.remove('leave');
-    };
-
-    const onPhase = (next, cause) => {
+    const onPhaseChange = (next, cause) => {
       const previous = phase;
       phase = next;
-      setPhase(next);
-      // Apparition de l'île : les volumes se tracent à mesure qu'elle se révèle.
+      html.dataset.island = next;
+      // Apparition de l'île : le son d'apparition (coupé par défaut) et l'annonce du premier lancement.
       if (previous === 'hidden' && next !== 'hidden') {
-        identity?.appear?.(doc.getElementById('dock'));
         playSound('appear');
         onReveal();
       }
-      if (next === 'open') keepSheets();
-      else foldSheets();
+      onPhase(next, cause);
       if (shouldAnnounce(previous, next, cause)) {
         const message = announcementOf(waitingCount);
         if (message !== null) announce(message);
       }
     };
 
-    desktop.onIslandState(onPhase);
-    desktop.onIslandFocus(() => doc.querySelector('.dock button')?.focus());
+    desktop.onIslandState(onPhaseChange);
+    // « Afficher l'île » (barre d'état) : le focus va à la pastille.
+    desktop.onIslandFocus(() => doc.getElementById('compactBtn')?.focus());
     desktop.islandMotion(motion.matches);
     if (typeof motion.addEventListener === 'function') motion.addEventListener('change', () => desktop.islandMotion(motion.matches));
     doc.addEventListener('mousemove', event => reportPointer(isInsideShape(event.target)));
     html.addEventListener('mouseleave', () => reportPointer(false));
-    // Phase de capture : on voit la fiche avant que les autres écouteurs la ferment.
-    // Échap referme d'abord la fiche (la page s'en charge), puis seulement cache l'île.
+    // Phase de capture : les menus de la page se ferment d'abord (ils arrêtent la propagation), puis Échap replie l'île.
     doc.addEventListener('keydown', event => {
       reportActivity();
-      if (event.key === 'Escape' && !doc.querySelector('.t-sheet')) desktop.islandEscape();
+      if (event.key === 'Escape') desktop.islandEscape();
     }, true);
     doc.addEventListener('pointerdown', reportActivity);
     doc.addEventListener('input', reportActivity);
-    setPhase('hidden');
+    html.dataset.island = 'hidden';
 
-    // Appelé à chaque rendu du dock : événement (révélation) et épinglage.
-    const observe = (rows, waitingStatuses) => {
-      waitingCount = waitingCountOf(rows, waitingStatuses);
+    // Appelé à chaque rendu : événement (révélation) et épinglage.
+    const observe = rows => {
+      waitingCount = waitingCountOf(rows);
       const { hasChanged, next } = statusChanges(previousStatuses, rows);
       previousStatuses = next;
       if (hasChanged) desktop.islandEvent();
       const pin = pinKindOf(rows);
-      const isNewWaiting = hasNewWaiting(waitingIds, rows, waitingStatuses);
-      waitingIds = new Set(rows.filter(row => waitingStatuses.includes(row.status)).map(row => row.engineId));
+      const isNewWaiting = hasNewWaiting(waitingIds, rows);
+      waitingIds = model.waitingIdsOf(rows);
       // Après un masquage forcé, l'épinglage se réarme à la prochaine attente nouvelle.
       if (pin === lastPin && !(isNewWaiting && pin !== PIN_NONE)) return;
       lastPin = pin;
@@ -220,8 +148,8 @@
   };
 
   const api = {
-    SHAPE_SELECTOR, ACTIVITY_THROTTLE_MS, LEAVE_MS, isInsideShape, createPointerReporter, statusChanges, waitingCountOf,
-    pinKindOf, announcementOf, hasNewWaiting, focusSelectorOf, zoneWordOf, shouldPauseLoops, TOAST_WIDTH, TOAST_MARGIN, DOCK_FIRST_BUTTON, returnFocusSelectorOf, toastExtentOf, expansionOf, watchToasts, shouldAnnounce, createThrottle, createLeaveTimer, init,
+    SHAPE_SELECTOR, ACTIVITY_THROTTLE_MS, isInsideShape, createPointerReporter, statusChanges, waitingCountOf,
+    pinKindOf, announcementOf, hasNewWaiting, shouldPauseLoops, TOAST_WIDTH, TOAST_MARGIN, toastExtentOf, watchToasts, shouldAnnounce, createThrottle, init,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

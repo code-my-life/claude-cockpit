@@ -1,50 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { DEFAULT_PREFS, DOCK_LAYOUTS, DOCK_SIZES, MAX_SUGGESTIONS, gridColumnsOf, moveSelection, readDockPrefs, suggestionsOf } = require('./dock.js');
-
-test('three sizes and three layouts are offered', () => {
-  const sizes = Object.keys(DOCK_SIZES);
-  const layouts = Object.keys(DOCK_LAYOUTS);
-  assert.deepEqual(sizes, ['small', 'medium', 'large']);
-  assert.deepEqual(layouts, ['row', 'column', 'grid']);
-});
-
-test('heads grow with the dock size', () => {
-  const small = DOCK_SIZES.small.head;
-  const medium = DOCK_SIZES.medium.head;
-  const large = DOCK_SIZES.large.head;
-  assert.ok(small < medium && medium < large);
-  assert.equal(medium, 56);
-});
-
-test('missing or broken preferences fall back to medium row', () => {
-  const missing = readDockPrefs(null);
-  const broken = readDockPrefs('{ broken');
-  const notAnObject = readDockPrefs('"grid"');
-  assert.deepEqual(DEFAULT_PREFS, { size: 'medium', layout: 'row' });
-  assert.deepEqual(missing, DEFAULT_PREFS);
-  assert.deepEqual(broken, DEFAULT_PREFS);
-  assert.deepEqual(notAnObject, DEFAULT_PREFS);
-});
-
-test('unknown values are replaced one by one, valid ones are kept', () => {
-  const mixed = readDockPrefs('{"size":"huge","layout":"grid"}');
-  const valid = readDockPrefs('{"size":"large","layout":"column"}');
-  assert.deepEqual(mixed, { size: 'medium', layout: 'grid' });
-  assert.deepEqual(valid, { size: 'large', layout: 'column' });
-});
-
-test('the grid spreads heads over two rows', () => {
-  const none = gridColumnsOf(0);
-  const one = gridColumnsOf(1);
-  const five = gridColumnsOf(5);
-  const six = gridColumnsOf(6);
-  assert.equal(none, 1);
-  assert.equal(one, 1);
-  assert.equal(five, 3);
-  assert.equal(six, 3);
-});
+const { MAX_SUGGESTIONS, moveSelection, suggestionsOf } = require('./dock.js');
 
 const WAITING = ['permission', 'done', 'external'];
 

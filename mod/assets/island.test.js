@@ -4,7 +4,6 @@ const assert = require('node:assert/strict');
 const {
   SHAPE_SELECTOR,
   ACTIVITY_THROTTLE_MS,
-  LEAVE_MS,
   isInsideShape,
   createPointerReporter,
   statusChanges,
@@ -14,16 +13,16 @@ const {
   shouldPauseLoops,
   shouldAnnounce,
   createThrottle,
-  createLeaveTimer,
   hasNewWaiting,
-  focusSelectorOf,
-  zoneWordOf,
+  TOAST_WIDTH,
+  TOAST_MARGIN,
+  toastExtentOf,
 } = require('./island');
 
 const targetMatching = selector => ({ closest: query => (query === selector ? {} : null) });
 
-test('la forme de l ile est le dock et la fiche, plus de bande d eveil', () => {
-  assert.deepEqual(SHAPE_SELECTOR.split(',').map(part => part.trim()), ['.dock', '.t-sheet']);
+test('la forme de l ile est la forme de verre seule, plus de dock ni de fiche', () => {
+  assert.deepEqual(SHAPE_SELECTOR.split(',').map(part => part.trim()), ['.island']);
 });
 
 test('isInsideShape : vrai dans la forme, faux ailleurs ou sans cible', () => {
@@ -56,15 +55,16 @@ test('statusChanges : un statut qui change ou une conversation qui arrive est un
   assert.equal(statusChanges(previous, [{ engineId: 'a', status: 'thinking' }]).hasChanged, false);
 });
 
-test('waitingCountOf compte les conversations qui attendent', () => {
-  const rows = [{ status: 'permission' }, { status: 'done' }, { status: 'thinking' }];
-  assert.equal(waitingCountOf(rows, ['permission', 'done', 'external']), 2);
-  assert.equal(waitingCountOf([], ['done']), 0);
+test('waitingCountOf compte les conversations qui t attendent, pas les missions livrees', () => {
+  const rows = [{ status: 'permission' }, { status: 'done', summary: { kind: 'question' } }, { status: 'done', summary: { kind: 'delivered' } }, { status: 'thinking' }];
+  assert.equal(waitingCountOf(rows), 2);
+  assert.equal(waitingCountOf([]), 0);
 });
 
-test('pinKindOf : permission et question epinglent fort, done epingle moins longtemps', () => {
+test('pinKindOf : permission et question epinglent fort, une mission livree epingle moins longtemps', () => {
   assert.equal(pinKindOf([{ status: 'permission' }, { status: 'done' }]), 'attention');
   assert.equal(pinKindOf([{ status: 'external' }]), 'attention');
+  assert.equal(pinKindOf([{ status: 'done', summary: { kind: 'question' } }]), 'attention');
   assert.equal(pinKindOf([{ status: 'done' }, { status: 'thinking' }]), 'done');
   assert.equal(pinKindOf([{ status: 'thinking' }]), 'none');
   assert.equal(pinKindOf([]), 'none');
@@ -101,114 +101,18 @@ test('createThrottle laisse passer un appel par fenetre de temps', () => {
   assert.deepEqual(calls, [1000, 1000 + ACTIVITY_THROTTLE_MS]);
 });
 
-test('la fermeture dure 180 ms, comme le CSS', () => {
-  assert.equal(LEAVE_MS, 180);
-});
-
-const fakeTimers = () => {
-  const pending = new Map();
-  let nextId = 1;
-  return {
-    setTimer: (run, delay) => { const id = nextId++; pending.set(id, { run, delay }); return id; },
-    clearTimer: id => { pending.delete(id); },
-    fire: () => { for (const [id, timer] of [...pending]) { pending.delete(id); timer.run(); } },
-    count: () => pending.size,
-  };
-};
-
-test('fermeture differee : s execute une fois, apres le delai', () => {
-  const timers = fakeTimers();
-  let runs = 0;
-  const leave = createLeaveTimer({ ...timers, run: () => { runs++; } });
-  leave.schedule();
-  assert.equal(leave.isPending(), true);
-  timers.fire();
-  assert.equal(runs, 1);
-  assert.equal(leave.isPending(), false);
-});
-
-test('fermeture differee : une fiche qui se rouvre l annule', () => {
-  const timers = fakeTimers();
-  let runs = 0;
-  const leave = createLeaveTimer({ ...timers, run: () => { runs++; } });
-  leave.schedule();
-  leave.cancel();
-  timers.fire();
-  assert.equal(runs, 0);
-  assert.equal(timers.count(), 0);
-});
-
-test('fermeture differee : replanifier ne laisse qu une minuterie', () => {
-  const timers = fakeTimers();
-  const leave = createLeaveTimer({ ...timers, run: () => {} });
-  leave.schedule();
-  leave.schedule();
-  assert.equal(timers.count(), 1);
-});
-
 test('hasNewWaiting : une conversation qui se met a attendre est nouvelle', () => {
-  const waiting = ['permission', 'done', 'external'];
   const rows = [{ engineId: 'a', status: 'permission' }, { engineId: 'b', status: 'thinking' }];
-  assert.equal(hasNewWaiting(null, rows, waiting), false);
-  assert.equal(hasNewWaiting(new Set(['a']), rows, waiting), false);
-  assert.equal(hasNewWaiting(new Set(), rows, waiting), true);
-  assert.equal(hasNewWaiting(new Set(['a']), [...rows, { engineId: 'c', status: 'done' }], waiting), true);
+  assert.equal(hasNewWaiting(null, rows), false);
+  assert.equal(hasNewWaiting(new Set(['a']), rows), false);
+  assert.equal(hasNewWaiting(new Set(), rows), true);
+  assert.equal(hasNewWaiting(new Set(['a']), [...rows, { engineId: 'c', status: 'external' }]), true);
+  assert.equal(hasNewWaiting(new Set(['a']), [...rows, { engineId: 'c', status: 'done' }]), false);
 });
-
-test('focusSelectorOf : retrouve un bouton du dock par data-mini ou data-engine', () => {
-  const element = dataset => ({ dataset });
-  assert.equal(focusSelectorOf(element({ mini: 'search' })), '[data-mini="search"]');
-  assert.equal(focusSelectorOf(element({ engine: 'abc', action: 'team-open' })), '[data-engine="abc"][data-action="team-open"]');
-  assert.equal(focusSelectorOf(element({})), null);
-  assert.equal(focusSelectorOf(null), null);
-});
-
-test('focusSelectorOf : un identifiant avec des guillemets est echappe', () => {
-  assert.equal(focusSelectorOf({ dataset: { mini: 'a"b' } }), '[data-mini="a\\"b"]');
-});
-
-test('zoneWordOf : un mot pour les etats voiles ; l attente a deja le sien dans l etat de la tete', () => {
-  assert.equal(zoneWordOf('working'), 'au travail');
-  assert.equal(zoneWordOf('later'), 'remise à plus tard');
-  assert.equal(zoneWordOf('stuck'), 'bloquée');
-  assert.equal(zoneWordOf('waiting'), "");
-  assert.equal(zoneWordOf('rest'), '');
-});
-
-const { TOAST_WIDTH, TOAST_MARGIN, toastExtentOf, expansionOf } = require('./island.js');
 
 test('toasts: no toast takes no room, toasts take their height plus a margin and a fixed width', () => {
   assert.deepEqual(toastExtentOf(0, 0), { width: 0, height: 0 });
   assert.deepEqual(toastExtentOf(0, 120), { width: 0, height: 0 });
   assert.deepEqual(toastExtentOf(1, 96), { width: TOAST_WIDTH, height: 96 + TOAST_MARGIN });
   assert.equal(toastExtentOf(2, 200.4).height, 201 + TOAST_MARGIN);
-});
-
-test('expansion: nothing open, window stays compact', () => {
-  assert.deepEqual(expansionOf({ sheet: { isOpen: false, width: 0, height: 0 }, toast: { width: 0, height: 0 } }), { isOpen: false, width: 0, height: 0 });
-});
-
-test('expansion: a sheet alone keeps its size', () => {
-  const sheet = { isOpen: true, width: 380, height: 300 };
-  assert.deepEqual(expansionOf({ sheet, toast: { width: 0, height: 0 } }), sheet);
-});
-
-test('expansion: a toast alone opens the window to the size of the toast, so it is never cut', () => {
-  const room = expansionOf({ sheet: { isOpen: false, width: 0, height: 0 }, toast: { width: TOAST_WIDTH, height: 110 } });
-  assert.deepEqual(room, { isOpen: true, width: TOAST_WIDTH, height: 110 });
-});
-
-test('expansion: a sheet and a toast together take the larger of each, and a closing toast gives the room back', () => {
-  const sheet = { isOpen: true, width: 1100, height: 80 };
-  assert.deepEqual(expansionOf({ sheet, toast: { width: TOAST_WIDTH, height: 140 } }), { isOpen: true, width: 1100, height: 140 });
-  assert.deepEqual(expansionOf({ sheet, toast: { width: 0, height: 0 } }), sheet);
-});
-
-const { returnFocusSelectorOf, DOCK_FIRST_BUTTON } = require('./island.js');
-
-test('focus after a sheet closes: back to what had it, else to the first button of the dock', () => {
-  assert.equal(returnFocusSelectorOf('[data-mini="search"]'), '[data-mini="search"]');
-  assert.equal(returnFocusSelectorOf(null), DOCK_FIRST_BUTTON);
-  assert.equal(returnFocusSelectorOf(''), DOCK_FIRST_BUTTON);
-  assert.equal(DOCK_FIRST_BUTTON, '.dock button');
 });
