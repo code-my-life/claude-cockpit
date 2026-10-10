@@ -23,9 +23,17 @@ Trois morceaux :
 
 ## Prérequis
 
-- Windows, Claude Desktop avec l'onglet Code
+- Windows, Claude Desktop avec l'onglet Code. macOS et Linux : le cockpit et la mini-équipe ne plantent plus (flou natif remplacé par le verre CSS, terminal et dossier des sessions adaptés au système), mais l'installation, les dossiers de dépôts et les résumés ne sont pas encore portés
 - Node.js 20 ou plus (`node -v`)
 - Chrome ou Edge
+
+## Développement
+
+```bash
+npm test
+```
+
+Les tests tournent sur Windows, macOS et Linux dans GitHub Actions.
 
 ## Installation
 

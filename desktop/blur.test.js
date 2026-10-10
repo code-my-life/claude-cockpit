@@ -27,7 +27,7 @@ test('the blur is applied to the window handle through the composition attribute
     return true
   }
   const win = windowOf()
-  const isApplied = applyBlur(win, () => setAttribute)
+  const isApplied = applyBlur(win, () => setAttribute, 'win32')
   const [call] = calls
   assert.equal(isApplied, true)
   assert.equal(calls.length, 1)
@@ -40,16 +40,36 @@ test('the blur is applied to the window handle through the composition attribute
 
 test('without koffi the window falls back to the Electron acrylic', () => {
   const win = windowOf()
-  const isApplied = applyBlur(win, () => {
+  const hasBlur = applyBlur(win, () => {
     throw new Error('koffi introuvable')
-  })
-  assert.equal(isApplied, false)
+  }, 'win32')
+  assert.equal(hasBlur, true)
   assert.deepEqual(win.materials, ['acrylic'])
 })
 
 test('a refused call also falls back to the Electron acrylic', () => {
   const win = windowOf()
-  const isApplied = applyBlur(win, () => () => false)
-  assert.equal(isApplied, false)
+  const hasBlur = applyBlur(win, () => () => false, 'win32')
+  assert.equal(hasBlur, true)
   assert.deepEqual(win.materials, ['acrylic'])
+})
+
+test('on Windows 10 without any material API there is no blur and no crash', () => {
+  const win = { getNativeWindowHandle: () => Buffer.alloc(8) }
+  const hasBlur = applyBlur(win, () => () => false, 'win32')
+  assert.equal(hasBlur, false)
+})
+
+test('on macOS the window gets the vibrancy and never touches Win32', () => {
+  const vibrancies = []
+  const win = { setVibrancy: name => vibrancies.push(name) }
+  const hasBlur = applyBlur(win, () => { throw new Error('ne doit pas être appelé') }, 'darwin')
+  assert.equal(hasBlur, true)
+  assert.deepEqual(vibrancies, ['under-window'])
+})
+
+test('on Linux there is no native blur and nothing crashes', () => {
+  const win = {}
+  const hasBlur = applyBlur(win, () => { throw new Error('ne doit pas être appelé') }, 'linux')
+  assert.equal(hasBlur, false)
 })

@@ -4,6 +4,7 @@
 /inbox/
 mod/.claude-plugin/types/
 desktop/node_modules/
+.DS_Store
 /session-index.json
 /session-index.json.tmp
 /session-cache.json

@@ -6,10 +6,13 @@ const { applyBlur } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 
 const COCKPIT_URL = 'http://127.0.0.1:48123/'
-const MINI_URL = `${COCKPIT_URL}?mini=1&glass=1`
-const COCKPIT_GLASS_URL = `${COCKPIT_URL}?glass=1`
-const LAUNCHER_URL = `${COCKPIT_URL}?launcher=1&glass=1`
-const LAUNCHER_SHORTCUTS = ['Alt+Space', 'Control+Alt+Space']
+// The page only switches to the OS-glass look when the window really has a native blur behind it.
+let hasOsBlur = false
+const glassParam = () => (hasOsBlur ? '&glass=1' : '')
+const miniUrl = () => `${COCKPIT_URL}?mini=1${glassParam()}`
+const cockpitUrl = () => (hasOsBlur ? `${COCKPIT_URL}?glass=1` : COCKPIT_URL)
+const launcherUrl = () => `${COCKPIT_URL}?launcher=1${glassParam()}`
+const LAUNCHER_SHORTCUTS = process.platform === 'darwin' ? ['Command+Alt+Space', 'Control+Alt+Space'] : ['Alt+Space', 'Control+Alt+Space']
 const RETRY_MS = 5000
 const ERR_ABORTED = -3
 const DOCK_MIN_WIDTH = 120
@@ -85,7 +88,7 @@ const rememberAnchor = () => {
 
 const loadCockpit = () => {
   if (win === null) return
-  win.loadURL(MINI_URL).catch(() => {})
+  win.loadURL(miniUrl()).catch(() => {})
 }
 
 const openOutside = url => {
@@ -110,7 +113,7 @@ const guardNavigation = target => {
   })
 }
 
-const cockpitUrlOf = section => (section === 'search' ? `${COCKPIT_GLASS_URL}#recherche` : COCKPIT_GLASS_URL)
+const cockpitUrlOf = section => (section === 'search' ? `${cockpitUrl()}#recherche` : cockpitUrl())
 
 const openCockpitWindow = section => {
   const target = cockpitUrlOf(section)
@@ -130,7 +133,7 @@ const openCockpitWindow = section => {
     autoHideMenuBar: true,
     webPreferences: SECURE_WEB_PREFERENCES,
   })
-  applyBlur(cockpitWin)
+  hasOsBlur = applyBlur(cockpitWin)
   guardNavigation(cockpitWin)
   cockpitWin.on('closed', () => { cockpitWin = null })
   cockpitWin.loadURL(target).catch(() => {})
@@ -162,7 +165,7 @@ const createLauncherWindow = () => {
     backgroundColor: CLEAR,
     webPreferences: { ...SECURE_WEB_PREFERENCES, preload: path.join(__dirname, 'preload.js') },
   })
-  applyBlur(launcherWin)
+  hasOsBlur = applyBlur(launcherWin)
   launcherWin.setAlwaysOnTop(true, 'pop-up-menu')
   guardNavigation(launcherWin)
   launcherWin.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
@@ -170,14 +173,14 @@ const createLauncherWindow = () => {
   })
   launcherWin.on('blur', hideLauncher)
   launcherWin.on('closed', () => { launcherWin = null })
-  launcherWin.loadURL(LAUNCHER_URL).catch(() => {})
+  launcherWin.loadURL(launcherUrl()).catch(() => {})
 }
 
 const showLauncher = () => {
   if (launcherWin === null) createLauncherWindow()
   if (isLauncherBroken) {
     isLauncherBroken = false
-    launcherWin.loadURL(LAUNCHER_URL).catch(() => {})
+    launcherWin.loadURL(launcherUrl()).catch(() => {})
   }
   placeLauncher()
   launcherWin.show()
@@ -216,7 +219,7 @@ const createWindow = () => {
     backgroundColor: CLEAR,
     webPreferences: { ...SECURE_WEB_PREFERENCES, preload: path.join(__dirname, 'preload.js') },
   })
-  applyBlur(win)
+  hasOsBlur = applyBlur(win)
   win.setAlwaysOnTop(true, 'floating')
   applyBounds()
   guardNavigation(win)
@@ -273,6 +276,7 @@ if (!app.requestSingleInstanceLock()) {
     if (win !== null) win.showInactive()
   })
   app.whenReady().then(() => {
+    if (process.platform === 'darwin') app.dock?.hide()
     nativeTheme.themeSource = 'dark'
     createWindow()
     createLauncherWindow()

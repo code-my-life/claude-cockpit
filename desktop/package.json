@@ -2,10 +2,16 @@
   "name": "cockpit-desktop",
   "private": true,
   "main": "main.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron ."
+  },
   "devDependencies": {
     "electron": "^44.7.0"
   },
-  "dependencies": {
+  "optionalDependencies": {
     "koffi": "^2.16.3"
   }
 }

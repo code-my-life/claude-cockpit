@@ -37,10 +37,27 @@ const tryAccent = (win, loadSetter) => {
   }
 }
 
-const applyBlur = (win, loadSetter = loadCompositionSetter) => {
-  const isApplied = tryAccent(win, loadSetter)
-  if (!isApplied) win.setBackgroundMaterial(FALLBACK_MATERIAL)
-  return isApplied
+const MAC_VIBRANCY = 'under-window'
+
+const applyWindowsBlur = (win, loadSetter) => {
+  if (tryAccent(win, loadSetter)) return true
+  if (typeof win.setBackgroundMaterial !== 'function') return false
+  win.setBackgroundMaterial(FALLBACK_MATERIAL)
+  return true
+}
+
+const applyMacBlur = win => {
+  if (typeof win.setVibrancy !== 'function') return false
+  win.setVibrancy(MAC_VIBRANCY)
+  return true
+}
+
+// Returns true when the operating system blurs what is behind the window.
+// Linux has no native blur: the page then draws its own CSS glass.
+const applyBlur = (win, loadSetter = loadCompositionSetter, platform = process.platform) => {
+  if (platform === 'win32') return applyWindowsBlur(win, loadSetter)
+  if (platform === 'darwin') return applyMacBlur(win)
+  return false
 }
 
 module.exports = { accentOf, applyBlur, ACCENT_ACRYLIC, WCA_ACCENT_POLICY, NIGHT_TINT }

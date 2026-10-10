@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process'
 
 import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, saveIndex, saveSessionList, scanHostFiles, sessionsOf } from './session-index.mjs'
 import { findMatches, hostsByEngineOf, isLocalHost, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
+import { hostSessionsDirOf, terminalCandidatesOf } from './terminal.mjs'
 
 const [, , rootDir, portArg] = process.argv
 const PORT = Number(portArg || 48123)
@@ -18,7 +19,7 @@ const SEARCH_CACHE_FILE = path.join(rootDir, 'search-cache.json')
 const TRANSCRIPTS_DIR = path.join(os.homedir(), '.claude', 'projects')
 const SEARCH_SAVE_MS = 60000
 const INDEX_REFRESH_MS = 3000
-const HOST_SESSIONS_DIR = path.join(process.env.APPDATA || '', 'Claude', 'claude-code-sessions')
+const HOST_SESSIONS_DIR = hostSessionsDirOf(process.platform, os.homedir(), process.env)
 const LIVE_SESSIONS_DIR = path.join(os.homedir(), '.claude', 'sessions')
 const STATIC_FILES = {
   '/mod/assets/identity.js': 'text/javascript; charset=utf-8',
@@ -37,7 +38,6 @@ const IMAGE_EXTENSIONS = new Map([['image/png', 'png'], ['image/jpeg', 'jpg'], [
 const ENGINE_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/
 const PARK_KINDS = new Set(['blocked', 'later'])
 const UNSAFE_FOLDER_PATTERN = /[\u0000-\u001f";]/
-const UNSAFE_FOR_CMD_PATTERN = /[&|<>^%!`]/
 const FOREIGN_SITES = new Set(['cross-site', 'same-site'])
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -185,9 +185,11 @@ const isKnownFolder = folder => {
   return roots.some(root => isInside(root, folder) || siblingsAllowed(root))
 }
 
-const launchTerminal = (command, args, onError) => {
-  const child = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true })
-  child.on('error', onError)
+const launchFirstWorking = candidates => {
+  const [candidate, ...others] = candidates
+  if (candidate === undefined) return reportError('terminal', new Error('aucun terminal disponible'))
+  const child = spawn(candidate.command, candidate.args, { detached: true, stdio: 'ignore', windowsHide: true })
+  child.on('error', () => launchFirstWorking(others))
   child.unref()
 }
 
@@ -196,11 +198,7 @@ const openTerminal = cwd => {
   if (!isKnownFolder(cwd)) throw new HttpError(403, 'dossier inconnu du cockpit')
   const isFolder = fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
   if (!isFolder) throw new HttpError(404, 'dossier introuvable')
-  const viaCmd = () => {
-    if (UNSAFE_FOR_CMD_PATTERN.test(cwd)) return reportError('terminal', new Error('dossier non ouvrable avec cmd'))
-    launchTerminal('cmd.exe', ['/d', '/c', 'start', '""', 'wt.exe', '-d', cwd], error => reportError('terminal', error))
-  }
-  launchTerminal('wt.exe', ['-d', cwd], viaCmd)
+  launchFirstWorking(terminalCandidatesOf(process.platform, cwd))
 }
 
 const POST_ROUTES = {

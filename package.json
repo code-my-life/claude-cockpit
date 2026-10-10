@@ -1,0 +1,11 @@
+{
+  "name": "claude-cockpit",
+  "private": true,
+  "description": "Cockpit pour suivre toutes les conversations Claude Code",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
