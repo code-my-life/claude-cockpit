@@ -37,9 +37,10 @@ const trayIconBitmap = (size = TRAY_ICON_SIZE) => {
   return bitmap
 }
 
-const trayMenuOf = ({ isDockVisible, isAutostart, canOpenInBrowser = false }) => [
+const trayMenuOf = ({ isDockVisible, isAutostart, canOpenInBrowser = false, canInstallMod = false }) => [
   { id: 'open-cockpit', label: 'Ouvrir le cockpit' },
   ...(canOpenInBrowser ? [{ id: 'open-browser', label: 'Ouvrir dans le navigateur' }] : []),
+  ...(canInstallMod ? [{ id: 'install-mod', label: 'Installer le mod dans Claude' }] : []),
   { id: 'toggle-dock', label: isDockVisible ? 'Masquer la mini-équipe' : 'Afficher la mini-équipe' },
   { id: 'autostart', label: 'Lancer au démarrage', type: 'checkbox', checked: isAutostart },
   { type: 'separator' },

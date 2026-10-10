@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:">
+<title>Installer le cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="../../mod/assets/liquid-paper/theme.css">
+<link rel="stylesheet" href="../../mod/assets/liquid-paper/bundle.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  .wizard { position: relative; max-width: 560px; margin: 0 auto; padding: var(--space-10) var(--space-6); display: flex; flex-direction: column; gap: var(--space-6); }
+  .wizard h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 40px; line-height: 1.05; }
+  .lead { margin: 0; color: var(--ink-2); line-height: 1.6; }
+  .change { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3) var(--space-4); padding: var(--space-5); align-items: baseline; }
+  .change code { overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+  .change .note { grid-column: 1 / -1; margin: 0; color: var(--ink-2); font-size: 14px; }
+  .actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body class="ep-root">
+<div class="ep-scene__bg" aria-hidden="true"><ep-flow-bg fill tone="paper" seed="cockpit" disc="none" animate="none"></ep-flow-bg></div>
+<main class="wizard">
+  <h1>Relier le <em>cockpit</em> à Claude</h1>
+  <p class="lead">Le cockpit charge un petit mod dans tes conversations Claude Code : c’est lui qui leur transmet tes ordres et lit leur état. Pour cela, il ajoute une ligne à ton fichier de réglages de Claude Code.</p>
+
+  <section class="ep-plate change" id="change" hidden>
+    <span class="label-mono">Fichier</span><code id="file"></code>
+    <span class="label-mono">Réglage</span><code id="key"></code>
+    <span class="label-mono">Avant</span><code id="from"></code>
+    <span class="label-mono">Après</span><code id="to"></code>
+    <p class="note">Une copie datée de ton fichier est gardée à côté. Le reste du fichier, hooks et permissions compris, ne change pas.</p>
+  </section>
+
+  <label class="ep-check" id="autostart-row" hidden><input type="checkbox" id="autostart" checked> Lancer le cockpit à l’ouverture de ma session</label>
+
+  <div id="result" hidden></div>
+
+  <div class="actions">
+    <button type="button" class="ep-btn ep-btn--ghost" id="later">Plus tard</button>
+    <button type="button" class="ep-btn ep-btn--primary" id="install" hidden>Installer le mod</button>
+    <button type="button" class="ep-btn ep-btn--primary" id="close" hidden>Fermer</button>
+  </div>
+</main>
+<script src="../../mod/assets/liquid-paper/bundle.js"></script>
+<script>
+  const wizard = window.cockpitWizard;
+  const byId = id => document.getElementById(id);
+  const show = (id, isShown) => { byId(id).hidden = !isShown; };
+
+  const alertOf = (tone, word, title, message) => {
+    const box = document.createElement('div');
+    box.className = `ep-alert ep-tone-${tone}`;
+    box.setAttribute('role', tone === 'danger' ? 'alert' : 'status');
+    const heading = document.createElement('p');
+    heading.className = 'ep-alert__title';
+    const label = document.createElement('span');
+    label.textContent = `${word} : `;
+    heading.append(label, title);
+    const body = document.createElement('p');
+    body.className = 'ep-alert__msg';
+    body.textContent = message;
+    const content = document.createElement('div');
+    content.append(heading, body);
+    box.append(content);
+    return box;
+  };
+
+  const showResult = (alert, { keepPreview = false } = {}) => {
+    const result = byId('result');
+    result.replaceChildren(alert);
+    show('change', keepPreview);
+    show('autostart-row', false);
+    show('result', true);
+    show('install', false);
+    show('later', false);
+    show('close', true);
+    byId('close').focus();
+  };
+
+  const showPlan = plan => {
+    if (!plan.ok) return showResult(alertOf('danger', 'Erreur', 'réglages illisibles', `${plan.error} (${plan.file})`));
+    if (plan.status === 'unchanged') return showResult(alertOf('success', 'Succès', 'mod déjà installé', 'Tes conversations Claude Code chargent déjà le mod du cockpit.'));
+    byId('file').textContent = plan.file;
+    byId('key').textContent = plan.change.key;
+    byId('from').textContent = plan.change.from ?? '(absent)';
+    byId('to').textContent = plan.change.to;
+    byId('autostart').checked = true;
+    show('change', true);
+    show('autostart-row', true);
+    show('install', true);
+    byId('install').focus();
+  };
+
+  byId('install').addEventListener('click', async () => {
+    byId('install').disabled = true;
+    const result = await wizard.apply({ autostart: byId('autostart').checked });
+    if (!result.ok) {
+      byId('install').disabled = false;
+      return showResult(alertOf('danger', 'Erreur', 'installation impossible', result.error), { keepPreview: true });
+    }
+    const backupNote = result.backup ? ` Copie de l’ancien fichier : ${result.backup}.` : '';
+    showResult(alertOf('success', 'Succès', 'mod installé', `Redémarre Claude Desktop pour que tes conversations le chargent.${backupNote}`));
+  });
+  byId('later').addEventListener('click', () => wizard.close());
+  byId('close').addEventListener('click', () => wizard.close());
+
+  wizard.plan().then(showPlan);
+</script>
+</body>
+</html>

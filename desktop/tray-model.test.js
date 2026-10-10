@@ -41,6 +41,13 @@ test('opening in the browser is offered only when the app serves the cockpit its
   assert.ok(!fallback.some(item => item.id === 'open-browser'))
 })
 
+test('installing the mod is offered only while it is not installed', () => {
+  const missing = trayMenuOf({ isDockVisible: true, isAutostart: false, canInstallMod: true })
+  assert.ok(missing.some(item => item.id === 'install-mod' && item.label === 'Installer le mod dans Claude'))
+  const installed = trayMenuOf({ isDockVisible: true, isAutostart: false, canInstallMod: false })
+  assert.ok(!installed.some(item => item.id === 'install-mod'))
+})
+
 test('quitting is set apart from the other actions', () => {
   const menu = trayMenuOf({ isDockVisible: true, isAutostart: false })
   const quitIndex = menu.findIndex(item => item.id === 'quit')

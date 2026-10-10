@@ -7,6 +7,7 @@ const { applyBlur } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
+const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
 
 // The app serves the cockpit itself; when its server cannot start, the windows
 // fall back on the server a conversation with the mod runs on this port.
@@ -312,8 +313,8 @@ const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLo
 
 const refreshTrayMenu = () => {
   if (tray === null) return
-  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
-  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, canOpenInBrowser: embeddedServer !== null }
+  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
+  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
 }
@@ -371,6 +372,8 @@ if (!app.requestSingleInstanceLock()) {
     createLauncherWindow()
     registerLauncherShortcut()
     createTray()
+    registerWizardIpc(refreshTrayMenu)
+    if (!isModInstalled()) openWizard(SECURE_WEB_PREFERENCES)
   })
   app.on('will-quit', () => {
     globalShortcut.unregisterAll()
