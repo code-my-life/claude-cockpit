@@ -48,6 +48,19 @@ const call = (method, route, { headers = {}, body } = {}) =>
     request.end(body)
   })
 
+// The server answers the HTTP request before its line reaches our standard
+// output reader: wait for the message instead of reading it at once.
+const MESSAGE_WAIT_MS = 3000
+const waitForMessage = async predicate => {
+  const deadline = Date.now() + MESSAGE_WAIT_MS
+  while (Date.now() < deadline) {
+    const found = messages.findLast(predicate)
+    if (found !== undefined) return found
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  return undefined
+}
+
 const postJson = (route, payload, extraHeaders = {}) =>
   call('POST', route, {
     headers: { 'content-type': 'application/json', 'x-cockpit-token': token, ...extraHeaders },
@@ -109,7 +122,7 @@ test('a POST coming from a foreign Origin is refused', async () => {
 test('a valid POST is accepted and reaches the mod', async () => {
   const response = await postJson('/ack', { engineId: 'abc-123', seen: true }, { origin: `http://127.0.0.1:${PORT}` })
   assert.equal(response.status, 202)
-  assert.ok(messages.some(message => message.type === 'ack' && message.engineId === 'abc-123' && message.seen === true))
+  assert.ok(await waitForMessage(message => message.type === 'ack' && message.engineId === 'abc-123' && message.seen === true))
 })
 
 test('an engine id with unexpected characters is refused', async () => {
@@ -142,7 +155,7 @@ test('a pasted image cannot escape the inbox through its mime type', async () =>
 test('a pasted image is stored in the inbox under a generated name', async () => {
   const response = await postJson('/reply', { engineId: 'abc', text: 'hello', images: [{ type: 'image/jpeg', base64: PNG_BASE64 }] })
   assert.equal(response.status, 202)
-  const reply = messages.findLast(message => message.type === 'reply')
+  const reply = await waitForMessage(message => message.type === 'reply' && message.text === 'hello')
   assert.equal(reply.images.length, 1)
   assert.equal(path.dirname(reply.images[0]), path.join(rootDir, 'inbox'))
   assert.match(path.basename(reply.images[0]), /^[0-9a-f-]{36}\.jpg$/)
