@@ -1588,7 +1588,7 @@
     if (!force && isTyping()) return;
     state.lastRenderedKey = key;
     if (isIsland) {
-      renderMiniFrame();
+      renderIslandFrame();
       return;
     }
     const scroll = captureScroll();
