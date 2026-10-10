@@ -278,6 +278,10 @@
   .dock .mini-head.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: 50%; --glass-bezel: 12px; --glass-thickness: 28px; transition: transform 150ms ease-out; }
   .dock .mini-head.ep-glass:hover { transform: translateY(-2px); }
   .dock[data-layout="column"] .mini-head.ep-glass:hover { transform: translateX(-2px); }
+  /* Pression : la pastille se tasse à 97 % (150 ms, sans rebond). */
+  .dock .mini-head.ep-glass:active { transform: scale(0.97); }
+  .dock .mini-head.ep-glass:hover:active { transform: translateY(-2px) scale(0.97); }
+  .dock[data-layout="column"] .mini-head.ep-glass:hover:active { transform: translateX(-2px) scale(0.97); }
   .mini-head.working > *, .mini-head.later > * { opacity: var(--opacity-muted); }
   .mini-head.working:hover { opacity: 1; }
   /* Sur papier les visages perdent leur teinte de verre : la teinte d'identité passe sur le visage. */
@@ -302,7 +306,7 @@
   body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
   .t-sheet { --panel-width: 1100; }
   .dock-menu { --panel-width: 380; }
-  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } .dock, html[data-island="hidden"] .dock { transition: none; } body.mini-mode .t-sheet.enter, body.mini-mode .t-sheet.leave { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } .dock .mini-head.ep-glass { transition: none; } .dock, html[data-island="hidden"] .dock { transition: none; } body.mini-mode .t-sheet.enter, body.mini-mode .t-sheet.leave { animation: none; } }
   body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
   .search-bar { margin-top: var(--space-4); min-height: 46px; }
   .search-bar[hidden] { display: none !important; }
@@ -426,7 +430,9 @@
 <div id="newconv" data-surface="paper"></div>
 
 <script src="mod/assets/liquid-paper/bundle.js"></script>
+<script src="mod/assets/identity-motion.js"></script>
 <script src="mod/assets/identity.js"></script>
+<script src="mod/assets/identity-chrome.js"></script>
 <script src="mod/assets/dock.js"></script>
 <script src="mod/assets/island.js"></script>
 <script>
@@ -759,7 +765,7 @@
     const badge = withBadge ? badgeOf(row) : '';
     const glassClass = isBare ? '' : 'face-glass ep-glass';
     const glassStyle = isBare ? '' : faceStyleOf(row.engineId);
-    return `<span class="t-face ${glassClass} ${extraClass}" style="${glassStyle}" aria-hidden="true"><span class="ident" data-ident="${escapeHtml(row.engineId)}" data-ident-size="${size}" data-ident-state="${identStateOf(row)}" style="--ident-size: ${size}px"><span class="ident-fallback">${initials}</span></span>${badge}</span>`;
+    return `<span class="t-face ${glassClass} ${extraClass}" style="${glassStyle}" aria-hidden="true"><span class="ident" data-ident="${escapeHtml(row.engineId)}" data-ident-size="${size}" data-ident-state="${identStateOf(row)}" data-ident-status="${escapeHtml(row.status || '')}" style="--ident-size: ${size}px"><span class="ident-fallback">${initials}</span></span>${badge}</span>`;
   };
 
   const PR_LABELS = {
@@ -804,8 +810,38 @@
     return tags.length > 0 ? `<span class="ctx">${tags.join('')}</span>` : '';
   };
 
+  // Réactions des identités : passage à « terminé » ou en erreur (après l'hydratation, qui pose l'état de fond).
+  let identStatuses = null;
+
+  const reactToStatusChanges = () => {
+    const { CockpitIdentity: identity, CockpitIdentityMotion: motion } = window;
+    if (!identity || !motion || !state.data) return;
+    for (const event of motion.eventsOf(identStatuses, state.data.rows)) identity.react(event.engineId, event.kind);
+    identStatuses = motion.statusMapOf(state.data.rows);
+  };
+
   const hydrateIdentities = () => {
-    if (window.CockpitIdentity) window.CockpitIdentity.hydrate();
+    if (!window.CockpitIdentity) return;
+    window.CockpitIdentity.hydrate();
+    reactToStatusChanges();
+  };
+
+  // Survol (la tête se tourne vers toi) et pression (coup de phase) : uniquement la tête visée, pas de pointeur tactile.
+  const headOf = target => (target && target.closest ? target.closest('.mini-head') || target.closest('.t-face') : null);
+
+  const wireIdentityPointer = () => {
+    const move = isOn => event => {
+      const head = headOf(event.target);
+      const isInside = head && event.relatedTarget && head.contains(event.relatedTarget);
+      if (!head || isInside || event.pointerType === 'touch' || !window.CockpitIdentity) return;
+      window.CockpitIdentity.hover(head, isOn);
+    };
+    document.addEventListener('pointerover', move(true));
+    document.addEventListener('pointerout', move(false));
+    document.addEventListener('pointerdown', event => {
+      const head = headOf(event.target);
+      if (head && window.CockpitIdentity) window.CockpitIdentity.press(head);
+    });
   };
 
   const withOptimisticWorking = data => {
@@ -2465,12 +2501,13 @@
   document.getElementById('banner').classList.toggle('show', !isServer);
   const isDesignSystemLoaded = () => {
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
-    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitDock && window.CockpitIsland && ink);
+    return Boolean(window.EncrePapier && window.CockpitIdentity && window.CockpitIdentityMotion && window.CockpitDock && window.CockpitIsland && ink);
   };
   window.addEventListener('load', () => {
     document.getElementById('ds-banner').classList.toggle('show', !isDesignSystemLoaded());
     hydrateIdentities();
   });
+  wireIdentityPointer();
   updateBell();
   renderStats();
   tickClock();

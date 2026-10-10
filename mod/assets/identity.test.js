@@ -11,6 +11,7 @@ const {
   surfaceOf,
   stateOf,
   speedOf,
+  viewAnglesOf,
 } = require('./identity.js');
 
 const SURFACE_FAMILIES = ['helix', 'loft', 'mobius'];
@@ -218,4 +219,34 @@ test('motion is faster when the session waits for you, slowest at rest', () => {
   assert.ok(working > rest);
   assert.ok(rest > 0);
   assert.equal(unknown, rest);
+});
+
+test('the view angles follow the phase of every family', () => {
+  for (const family of FAMILIES) {
+    const identity = manyIdentities('angles', 40).find(candidate => candidate.family === family);
+    const start = viewAnglesOf(identity, 0);
+    const later = viewAnglesOf(identity, 5);
+    assert.equal(start.yaw, identity.params.yaw, family);
+    assert.notEqual(later.yaw, start.yaw, family);
+    assert.ok(Number.isFinite(later.tilt), family);
+  }
+});
+
+test('a pose offset turns the drawn volume, a null pose changes nothing', () => {
+  const identity = manyIdentities('pose', 40).find(candidate => candidate.family === 'mobius');
+  const plain = Float32Array.from(surfaceOf(identity, 1.5).sx);
+  const same = Float32Array.from(surfaceOf(identity, 1.5, { yaw: 0, tilt: 0 }).sx);
+  const turned = Float32Array.from(surfaceOf(identity, 1.5, { yaw: 0.8, tilt: -0.3 }).sx);
+  assert.deepEqual(same, plain);
+  assert.notDeepEqual(turned, plain);
+});
+
+test('turning by the gap to the face pose lands exactly on the face pose', () => {
+  const { faceGapOf, FACE_POSES } = require('./identity-motion.js');
+  const identity = manyIdentities('face', 40).find(candidate => candidate.family === 'helix');
+  const current = viewAnglesOf(identity, 3.2);
+  const gap = faceGapOf('helix', current);
+  const landed = viewAnglesOf(identity, 3.2);
+  assert.ok(Math.abs(landed.tilt + gap.tiltGap - FACE_POSES.helix.tilt) < 1e-9);
+  assert.ok(Math.abs(Math.cos(landed.yaw + gap.yawGap) - Math.cos(FACE_POSES.helix.yaw)) < 1e-9);
 });

@@ -188,9 +188,31 @@
     }
   };
 
-  const viewOf = (phase, tilt, sway, scale, turn, yawStart) => {
-    const yaw = yawStart + phase * turn;
-    const pitch = tilt + sway * Math.sin(phase * 0.4);
+  const NO_POSE = Object.freeze({ yaw: 0, tilt: 0 });
+  // Vitesse de rotation et balancement de chaque famille à volume ; chrome a ses propres angles.
+  const VIEW_SPECS = {
+    helix: { turn: 0.45, sway: 0.12 },
+    mobius: { turn: 0.6, sway: 0.16 },
+    loft: { turn: 0.28, sway: 0.08, tilt: 0.55 },
+  };
+  const CHROME_PACE = 0.9;
+
+  const chromeAnglesOf = (params, phase) => {
+    const t = phase * CHROME_PACE;
+    return { yaw: params.yaw + t * 0.2, tilt: params.tilt + 0.22 * Math.sin(t * 0.33) };
+  };
+
+  // Lacet et inclinaison de la vue à une phase donnée (sans réaction) : de quoi viser une pose de face.
+  const viewAnglesOf = (identity, phase) => {
+    const { family, params } = identity;
+    if (family === 'chrome') return chromeAnglesOf(params, phase);
+    const spec = VIEW_SPECS[family];
+    return { yaw: params.yaw + phase * spec.turn, tilt: (spec.tilt ?? params.tilt) + spec.sway * Math.sin(phase * 0.4) };
+  };
+
+  const viewOf = (phase, tilt, sway, scale, turn, yawStart, pose = NO_POSE) => {
+    const yaw = yawStart + phase * turn + pose.yaw;
+    const pitch = tilt + sway * Math.sin(phase * 0.4) + pose.tilt;
     return { ca: Math.cos(yaw), sa: Math.sin(yaw), cxa: Math.cos(pitch), sxa: Math.sin(pitch), scale };
   };
 
@@ -341,25 +363,20 @@
   const FIT_MAX_SCALE = 60;
   const FIT_SPANS = { helix: TAU / 0.45, mobius: TAU / 0.6, loft: 22.4 };
 
-  const fillSurface = (identity, grid, phase, scale) => {
+  const fillSurface = (identity, grid, phase, scale, pose) => {
     const { family, params } = identity;
-    if (family === 'helix') {
-      const view = viewOf(phase, params.tilt, 0.12, scale, 0.45, params.yaw);
-      fillBand(grid, view, params.halfWidth, angle => (params.twists * (angle - Math.PI)) / 2, params.stretch);
-    } else if (family === 'mobius') {
-      const view = viewOf(phase, params.tilt, 0.16, scale, 0.6, params.yaw);
-      fillBand(grid, view, params.halfWidth, angle => (params.twists * angle) / 2, params.stretch);
-    } else {
-      const view = viewOf(phase, 0.55, 0.08, scale, 0.28, params.yaw);
-      fillLoft(grid, view, params, phase);
-    }
+    const spec = VIEW_SPECS[family];
+    const view = viewOf(phase, spec.tilt ?? params.tilt, spec.sway, scale, spec.turn, params.yaw, pose);
+    if (family === 'helix') fillBand(grid, view, params.halfWidth, angle => (params.twists * (angle - Math.PI)) / 2, params.stretch);
+    else if (family === 'mobius') fillBand(grid, view, params.halfWidth, angle => (params.twists * angle) / 2, params.stretch);
+    else fillLoft(grid, view, params, phase);
   };
 
   const fitOf = (identity, grid) => {
     let farthest = 1e-6;
     for (let step = 0; step < FIT_SAMPLES; step++) {
       const phase = (FIT_SPANS[identity.family] * step) / FIT_SAMPLES;
-      fillSurface(identity, grid, phase, 1);
+      fillSurface(identity, grid, phase, 1, NO_POSE);
       for (let index = 0; index < grid.sx.length; index++) {
         const reach = Math.hypot(grid.sx[index] - CENTER, grid.sy[index] - CENTER);
         farthest = Math.max(farthest, reach);
@@ -368,7 +385,7 @@
     return Math.min(FIT_MAX_SCALE, FIT_RADIUS / farthest);
   };
 
-  const surfaceOf = (identity, phase) => {
+  const surfaceOf = (identity, phase, pose = NO_POSE) => {
     if (identity.family === 'chrome') return null;
     let grid = surfaces.get(identity.key);
     if (grid === undefined) {
@@ -376,29 +393,32 @@
       grid.fit = fitOf(identity, grid);
       surfaces.set(identity.key, grid);
     }
-    fillSurface(identity, grid, phase, grid.fit);
+    fillSurface(identity, grid, phase, grid.fit, pose);
     shadeGrid(grid);
     return grid;
   };
 
-  const api = { FAMILIES, BACKGROUNDS, INK, PARAM_SPECS, SPEEDS, identityOf, tintOf, stateOf, speedOf, surfaceOf };
+  const api = { FAMILIES, BACKGROUNDS, INK, PARAM_SPECS, SPEEDS, identityOf, tintOf, stateOf, speedOf, surfaceOf, viewAnglesOf, chromeAnglesOf };
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
     return;
   }
 
+  const Motion = root.CockpitIdentityMotion;
+  // 15 images/s au repos ; l'instance qui réagit monte à Motion.REACT_FPS, puis revient.
   const FPS = 15;
   const CLIP_RADIUS = 50;
-  const CHROME_BLEED = 6;
   const REDRAW_PHASE = 0.02;
-  const GL_SIZE = 112;
+  const REDRAW_MOTION = 0.002;
   const phases = new Map();
   const instances = [];
   let isLooping = false;
   let isPaused = false;
   let lastFrameAt = 0;
-  const prefersCalm = () => root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const calmQuery = root.matchMedia ? root.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const prefersCalm = () => Boolean(calmQuery && calmQuery.matches);
+  const clock = () => root.performance.now();
 
   const visibility = typeof IntersectionObserver === 'undefined'
     ? null
@@ -433,10 +453,14 @@
     context.stroke();
   };
 
-  const drawSurface = (context, grid, pixel) => {
+  const inked = (alpha, bias) => Math.min(1, Math.max(0, alpha + bias));
+
+  // Les faces se tracent dans l'ordre de profondeur (du fond vers l'avant) : `progress` en dessine la part voulue.
+  const drawSurface = (context, grid, pixel, { inkBias, drawProgress }) => {
     context.lineJoin = 'round';
     context.lineCap = 'round';
-    for (let slot = 0; slot < grid.order.length; slot++) {
+    const drawn = Math.ceil(grid.order.length * drawProgress);
+    for (let slot = 0; slot < drawn; slot++) {
       const quad = grid.order[slot];
       const i = Math.floor(quad / grid.nv);
       const j = quad - i * grid.nv;
@@ -456,172 +480,35 @@
       context.fillStyle = '#000';
       context.fill();
       context.globalCompositeOperation = 'source-over';
-      context.globalAlpha = 0.02 + 0.34 * Math.pow(shadow, 1.25);
+      context.globalAlpha = inked(0.02 + 0.34 * Math.pow(shadow, 1.25), inkBias);
       context.fillStyle = INK;
       context.fill();
       context.strokeStyle = INK;
       if (shadow > 0.62) {
-        context.globalAlpha = 0.55;
+        context.globalAlpha = inked(0.55, inkBias);
         context.lineWidth = pixel * 0.55;
         const fractions = hatchFractionsOf(shadow);
         traceHatch(context, grid, fractions, a, b, d, e);
       }
-      context.globalAlpha = 0.18;
+      context.globalAlpha = inked(0.18, inkBias);
       context.lineWidth = pixel * 0.4;
       context.stroke();
       const mask = grid.silhouette[quad];
       if (mask === 0) continue;
-      context.globalAlpha = 0.9;
+      context.globalAlpha = inked(0.9, inkBias);
       context.lineWidth = pixel * 1.1;
       traceEdges(context, grid, mask, a, b, d, e);
     }
     context.globalAlpha = 1;
   };
 
-  const CHROME_FRAGMENT = [
-    '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
-    'uniform vec2 uRes;uniform mat3 uM;uniform vec3 uS[6];uniform float uSr[6];uniform float uT;uniform float uBob;uniform vec3 uRing;',
-    'float smin(float a,float b,float k){float h=max(k-abs(a-b),0.0)/k;return min(a,b)-h*h*k*0.25;}',
-    'float ringD(vec3 l){vec3 q=vec3(l.x/uRing.z,l.y,l.z);float r=length(q.xz)-uRing.x;return (length(vec2(r,q.y))-uRing.y)*min(1.0,uRing.z);}',
-    'float map(vec3 p){vec3 l=uM*p;float d=ringD(l);',
-    ' for(int i=0;i<6;i++){float s=length(l-uS[i])-uSr[i];if(i<3){d=smin(d,s,0.14);}else{d=min(d,s);}}return d;}',
-    'float bx(float x,float a,float b,float s){return smoothstep(a-s,a+s,x)*(1.0-smoothstep(b-s,b+s,x));}',
-    'float room(vec3 d){float L;if(d.y>=0.0){float e=d.y/0.025;L=0.04+0.85*pow(smoothstep(0.0,1.0,d.y),1.4)+0.7*exp(-e*e);',
-    ' float az=atan(d.z,d.x)-uT*0.12;L+=1.9*bx(az,0.3,1.2,0.07)*bx(d.y,0.22,0.85,0.1);L+=1.1*bx(az,-2.35,-2.1,0.04)*bx(d.y,0.05,1.0,0.1);',
-    ' L+=0.9*bx(az,2.4,2.62,0.05)*bx(d.y,0.1,0.8,0.1);}else{L=0.1+0.62*smoothstep(0.0,0.7,-d.y);}return L;}',
-    'void main(){vec2 fc=gl_FragCoord.xy;float u=fc.x/uRes.x*2.0-1.0;float v=(fc.y/uRes.y*2.0-1.0)*uRes.y/uRes.x;',
-    ' vec3 rd=normalize(vec3(u*0.36,v*0.36,1.0));vec3 ro=vec3(0.0,-uBob,-5.0);',
-    ' float b=dot(ro,rd);float cc=dot(ro,ro)-6.25;float disc=b*b-cc;',
-    ' vec4 col=vec4(0.0);',
-    ' if(disc>0.0){float t=-b-sqrt(disc);bool hit=false;vec3 p=ro;',
-    '  for(int i=0;i<72;i++){p=ro+rd*t;float d=map(p);if(d<0.0015){hit=true;break;}t+=d*0.85;if(t>8.0)break;}',
-    '  if(hit){float e=0.0015;vec3 n=normalize(vec3(1.,-1.,-1.)*map(p+vec3(e,-e,-e))+vec3(-1.,-1.,1.)*map(p+vec3(-e,-e,e))+vec3(-1.,1.,-1.)*map(p+vec3(-e,e,-e))+vec3(1.,1.,1.)*map(p+vec3(e,e,e)));',
-    '   float dt=dot(rd,n);vec3 r=rd-2.0*dt*n;float L=room(r)*0.94;float fr=pow(1.0-abs(dt),4.0);L=clamp(L*(1.0-0.3*fr),0.0,1.0);',
-    '   col=vec4(vec3(L*0.98,L*0.99,L*1.02),1.0);}}',
-    ' gl_FragColor=col;}',
-  ].join('\n');
-
-  const multiplyMatrices = (left, right) => {
-    const product = new Array(9);
-    for (let row = 0; row < 3; row++) {
-      for (let column = 0; column < 3; column++) {
-        product[row * 3 + column] = left[row * 3] * right[column] + left[row * 3 + 1] * right[3 + column] + left[row * 3 + 2] * right[6 + column];
-      }
-    }
-    return product;
-  };
-
-  const compileShader = (gl, type, source) => {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
-  };
-
-  let chromeGl;
-
-  const createChromeGl = () => {
-    const canvas = root.document.createElement('canvas');
-    canvas.width = GL_SIZE;
-    canvas.height = GL_SIZE;
-    const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: false });
-    if (!gl) return null;
-    const vertex = compileShader(gl, gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}');
-    const fragment = compileShader(gl, gl.FRAGMENT_SHADER, CHROME_FRAGMENT);
-    if (!vertex || !fragment) return null;
-    const program = gl.createProgram();
-    gl.attachShader(program, vertex);
-    gl.attachShader(program, fragment);
-    gl.linkProgram(program);
-    gl.useProgram(program);
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    const position = gl.getAttribLocation(program, 'p');
-    gl.enableVertexAttribArray(position);
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-    const uniform = name => gl.getUniformLocation(program, name);
-    gl.viewport(0, 0, GL_SIZE, GL_SIZE);
-    gl.uniform2f(uniform('uRes'), GL_SIZE, GL_SIZE);
-    const locations = { matrix: uniform('uM'), spheres: uniform('uS[0]'), radii: uniform('uSr[0]'), time: uniform('uT'), bob: uniform('uBob'), ring: uniform('uRing') };
-    return { canvas, gl, locations, spheres: new Float32Array(18), radii: new Float32Array(6) };
-  };
-
-  const chromeOf = () => {
-    if (chromeGl === undefined) chromeGl = createChromeGl();
-    return chromeGl;
-  };
-
-  const fraction = value => value - Math.floor(value);
-
-  const renderChrome = (identity, phase) => {
-    const shared = chromeOf();
-    if (!shared || shared.gl.isContextLost()) return null;
-    const { gl, locations, spheres, radii } = shared;
-    const { ringRadius, thickness, stretch, tilt, roll, dropCount, dropSize, dropSeed, yaw } = identity.params;
-    const t = phase * 0.9;
-    const ax = tilt + 0.22 * Math.sin(t * 0.33);
-    const ay = yaw + t * 0.2;
-    const az = roll + 0.2 * Math.sin(t * 0.21);
-    const turnX = [1, 0, 0, 0, Math.cos(ax), -Math.sin(ax), 0, Math.sin(ax), Math.cos(ax)];
-    const turnY = [Math.cos(ay), 0, Math.sin(ay), 0, 1, 0, -Math.sin(ay), 0, Math.cos(ay)];
-    const turnZ = [Math.cos(az), -Math.sin(az), 0, Math.sin(az), Math.cos(az), 0, 0, 0, 1];
-    const turnXY = multiplyMatrices(turnX, turnY);
-    const matrix = multiplyMatrices(turnZ, turnXY);
-    gl.uniformMatrix3fv(locations.matrix, false, new Float32Array(matrix));
-    const scale = ringRadius / 1.05;
-    const shift = dropSeed * Math.PI * 2;
-    const baseAngles = [0.85, 3.55, 5.3];
-    const baseHeights = [0.02, -0.04, 0.06];
-    const baseRadii = [0.44, 0.4, 0.34, 0.3, 0.17, 0.1];
-    const centres = [
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0],
-      [(0.05 + 0.25 * Math.sin(t * 0.7)) * scale, 0.12 + 0.15 * Math.sin(t * 0.9), (0.05 + 0.25 * Math.cos(t * 0.6)) * scale],
-      [(0.15 + 0.45 * Math.sin(t * 0.5)) * scale, 1.02 + 0.15 * Math.sin(t * 0.8), (0.3 + 0.35 * Math.cos(t * 0.5)) * scale],
-      [(-0.72 + 0.15 * Math.sin(t * 0.6)) * scale, -0.95 + 0.1 * Math.cos(t * 0.7), (0.2 + 0.2 * Math.sin(t * 0.4)) * scale],
-    ];
-    for (let index = 0; index < 3; index++) {
-      const angle = baseAngles[index] + shift + t * (0.28 + 0.09 * index);
-      centres[index] = [ringRadius * stretch * Math.cos(angle), baseHeights[index] + 0.05 * Math.sin(t + index), ringRadius * Math.sin(angle)];
-    }
-    for (let index = 0; index < 6; index++) {
-      const isActive = index < dropCount;
-      const variation = 0.7 + 0.6 * fraction(Math.sin((index + 1) * 12.9898 + dropSeed * 78.233) * 43758.5453);
-      const breathing = 1 + 0.15 * Math.sin(t * 0.9 + index * 2.1);
-      const centre = isActive ? centres[index] : [0, 0, 9];
-      spheres[index * 3] = centre[0];
-      spheres[index * 3 + 1] = centre[1];
-      spheres[index * 3 + 2] = centre[2];
-      radii[index] = isActive ? baseRadii[index] * (dropSize / 0.35) * variation * breathing : 0.001;
-    }
-    gl.uniform3fv(locations.spheres, spheres);
-    gl.uniform1fv(locations.radii, radii);
-    gl.uniform1f(locations.time, t);
-    gl.uniform1f(locations.bob, 0.07 * Math.sin(t * 0.8));
-    gl.uniform3f(locations.ring, ringRadius, thickness, stretch);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    return shared.canvas;
-  };
-
-  const drawChrome = (context, identity, phase) => {
-    const source = renderChrome(identity, phase);
-    if (source === null) return;
-    context.imageSmoothingEnabled = true;
-    context.drawImage(source, -CHROME_BLEED, -CHROME_BLEED, VIRTUAL + 2 * CHROME_BLEED, VIRTUAL + 2 * CHROME_BLEED);
-  };
-
-  const drawFamily = (context, instance, phase) => {
+  const drawFamily = (context, instance, { phase, pose, mod }) => {
     const { identity, size } = instance;
     if (identity.family === 'chrome') {
-      drawChrome(context, identity, phase);
+      if (root.CockpitIdentityChrome) root.CockpitIdentityChrome.draw(context, identity, phase, pose, mod.inkBias);
       return;
     }
-    const grid = surfaceOf(identity, phase);
-    drawSurface(context, grid, VIRTUAL / size);
+    drawSurface(context, surfaceOf(identity, phase, pose), VIRTUAL / size, mod);
   };
 
   let hasReportedDrawError = false;
@@ -632,8 +519,20 @@
     root.console.error(`identité ${identity.family} : dessin impossible`, error);
   };
 
+  const phaseOf = (instance, mod) => (phases.get(instance.identity.key) || 0) + instance.trim + mod.phaseKick;
+
+  const faceGapOf = instance => {
+    const base = (phases.get(instance.identity.key) || 0) + instance.trim + instance.motion.phaseOffset;
+    return Motion.faceGapOf(instance.identity.family, viewAnglesOf(instance.identity, base));
+  };
+
+  const modulationOf = (instance, now) => {
+    if (prefersCalm()) return Motion.finalModulationOf(instance.motion.persistent);
+    return Motion.motionAt(instance.motion, now, () => faceGapOf(instance));
+  };
+
   const drawInstance = instance => {
-    const { canvas, context, identity, size } = instance;
+    const { canvas, context, identity, size, mod } = instance;
     const ratio = root.devicePixelRatio || 1;
     const pixels = Math.round(size * ratio);
     if (canvas.width !== pixels) {
@@ -641,8 +540,9 @@
       canvas.height = pixels;
     }
     const scale = pixels / VIRTUAL;
-    const phase = phases.get(identity.key) || 0;
+    const phase = phaseOf(instance, mod);
     instance.drawnPhase = phase;
+    instance.drawnMod = mod;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.globalAlpha = 1;
     context.clearRect(0, 0, pixels, pixels);
@@ -651,10 +551,10 @@
     context.lineJoin = 'round';
     context.save();
     context.beginPath();
-    context.arc(CENTER, CENTER, CLIP_RADIUS, 0, TAU);
+    context.arc(CENTER, CENTER, identity.family === 'chrome' ? CLIP_RADIUS * mod.drawProgress : CLIP_RADIUS, 0, TAU);
     context.clip();
     try {
-      drawFamily(context, instance, phase);
+      drawFamily(context, instance, { phase, pose: { yaw: mod.yawOffset, tilt: mod.tiltOffset }, mod });
     } catch (error) {
       context.restore();
       reportDrawError(identity, error);
@@ -663,10 +563,12 @@
     context.restore();
   };
 
-  const needsDraw = instance => {
-    const phase = phases.get(instance.identity.key) || 0;
-    return Math.abs(phase - instance.drawnPhase) > REDRAW_PHASE;
-  };
+  const hasMotionChanged = (mod, drawn) => drawn === null
+    || ['inkBias', 'yawOffset', 'tiltOffset', 'drawProgress'].some(key => Math.abs(mod[key] - drawn[key]) > REDRAW_MOTION);
+
+  const needsDraw = instance => Math.abs(phaseOf(instance, instance.mod) - instance.drawnPhase) > REDRAW_PHASE || hasMotionChanged(instance.mod, instance.drawnMod);
+
+  const paces = new Map();
 
   const advancePhases = elapsedSeconds => {
     const seen = new Set();
@@ -674,24 +576,51 @@
       const { identity } = instance;
       if (seen.has(identity.key)) continue;
       seen.add(identity.key);
-      const step = elapsedSeconds * speedOf(instance.state) * identity.tempo * identity.direction;
-      const current = phases.get(identity.key) || 0;
-      phases.set(identity.key, current + step);
+      const pace = speedOf(instance.state) * identity.tempo * identity.direction;
+      paces.set(identity.key, pace);
+      phases.set(identity.key, (phases.get(identity.key) || 0) + elapsedSeconds * pace);
     }
   };
 
+  // Chaque instance garde sa propre avance (vitesse x facteur de réaction) par rapport à la phase partagée de son identité.
+  const trimOf = (instance, elapsedSeconds, speedFactor) => {
+    const { identity } = instance;
+    const own = speedOf(instance.state) * speedFactor * identity.tempo * identity.direction;
+    return elapsedSeconds * (own - (paces.get(identity.key) || 0));
+  };
+
+  const FRAME_SLACK_MS = 2;
+  let isBoosted = false;
+
+  // Retourne true quand l'instance réagit (elle a droit à la cadence haute).
+  const tickInstance = (instance, now, elapsedSeconds) => {
+    instance.motion = Motion.settle(instance.motion, now);
+    const mod = modulationOf(instance, now);
+    instance.trim += trimOf(instance, elapsedSeconds, mod.speedFactor);
+    instance.mod = mod;
+    if (!instance.isVisible || !instance.canvas.isConnected) return mod.isAnimating;
+    const fps = mod.isAnimating ? Motion.REACT_FPS : FPS;
+    if (now - instance.lastDrawAt < 1000 / fps - FRAME_SLACK_MS) return mod.isAnimating;
+    if (!needsDraw(instance)) return mod.isAnimating;
+    instance.lastDrawAt = now;
+    drawInstance(instance);
+    return mod.isAnimating;
+  };
+
   const frame = now => {
-    if (instances.length === 0 || isPaused) {
+    if (instances.length === 0 || isPaused || prefersCalm()) {
       isLooping = false;
       return;
     }
     root.requestAnimationFrame(frame);
-    if (now - lastFrameAt < 1000 / FPS) return;
+    const tickFps = isBoosted ? Motion.REACT_FPS : FPS;
+    if (now - lastFrameAt < 1000 / tickFps - FRAME_SLACK_MS) return;
     const elapsedSeconds = lastFrameAt === 0 ? 0 : Math.min(0.5, (now - lastFrameAt) / 1000);
     lastFrameAt = now;
     advancePhases(elapsedSeconds);
+    isBoosted = false;
     for (const instance of instances) {
-      if (instance.isVisible && instance.canvas.isConnected && needsDraw(instance)) drawInstance(instance);
+      if (tickInstance(instance, now, elapsedSeconds)) isBoosted = true;
     }
   };
 
@@ -716,24 +645,58 @@
     canvas.className = 'ident-canvas';
     canvas.setAttribute('aria-hidden', 'true');
     const context = canvas.getContext('2d');
-    const instance = { key, size, canvas, context, identity: null, state: 'rest', isVisible: true, drawnPhase: NaN };
+    const instance = {
+      key, size, canvas, context, identity: null, state: 'rest', isVisible: true, drawnPhase: NaN, drawnMod: null,
+      motion: Motion.createMotionState(), trim: 0, mod: { ...Motion.NEUTRAL }, lastDrawAt: 0, status: undefined, badgeEvent: null,
+    };
     if (visibility) visibility.observe(canvas);
     return instance;
   };
 
   const forgetUnused = () => {
     const liveKeys = new Set(instances.map(instance => instance.identity.key));
-    for (const store of [phases, surfaces]) {
+    for (const store of [phases, surfaces, paces]) {
       for (const key of [...store.keys()]) {
         if (!liveKeys.has(key)) store.delete(key);
       }
     }
   };
 
+  // La pastille d'état (badge) bouge avec la même modulation : saut à l'arrivée en « terminé », secousse en erreur.
+  const playBadge = (instance, kind, elapsedMs) => {
+    const badgeMotion = Motion.badgeMotionOf(kind);
+    const face = instance.canvas.closest('.t-face');
+    const badge = face ? face.querySelector('.ident-badge') : null;
+    if (!badgeMotion || !badge || typeof badge.animate !== 'function' || elapsedMs >= badgeMotion.duration) return;
+    badge.animate(badgeMotion.keyframes, { duration: badgeMotion.duration, delay: -elapsedMs, easing: 'linear' });
+  };
+
+  // Les têtes sont réécrites à chaque rendu : la réaction en cours de la pastille se poursuit sur le nouvel élément.
+  const resumeBadge = instance => {
+    if (instance.badgeEvent === null || prefersCalm()) return;
+    playBadge(instance, instance.badgeEvent.kind, clock() - instance.badgeEvent.at);
+  };
+
+  const withReaction = (instance, reaction, now) => { instance.motion = Motion.startReaction(instance.motion, reaction, now); };
+
+  // Le statut donne la réaction de fond de la tête ; elle ne change que quand le statut change.
+  const syncStatus = (instance, status, now) => {
+    if (status === undefined || status === instance.status) return;
+    instance.status = status;
+    withReaction(instance, Motion.kindOfStatus(status) || 'none', now);
+  };
+
+  const releaseHover = (instance, placeholder, now) => {
+    const face = placeholder.closest('.mini-head') || placeholder.closest('.t-face');
+    if (!face || !Motion.hasHover(instance.motion) || face.matches(':hover')) return;
+    withReaction(instance, 'unhover', now);
+  };
+
   const hydrate = (scope = root.document) => {
     const placeholders = [...scope.querySelectorAll('[data-ident]')];
     const free = instances.filter(instance => !instance.canvas.isConnected);
     const used = new Set(instances.filter(instance => instance.canvas.isConnected));
+    const now = clock();
     for (const placeholder of placeholders) {
       const engineId = placeholder.dataset.ident;
       const size = Number(placeholder.dataset.identSize) || 48;
@@ -744,8 +707,12 @@
       used.add(instance);
       instance.identity = identityOf(engineId);
       instance.state = placeholder.dataset.identState || 'rest';
+      syncStatus(instance, placeholder.dataset.identStatus, now);
       placeholder.replaceChildren(instance.canvas);
+      releaseHover(instance, placeholder, now);
+      instance.mod = modulationOf(instance, now);
       drawInstance(instance);
+      resumeBadge(instance);
     }
     for (let index = instances.length - 1; index >= 0; index--) {
       const instance = instances[index];
@@ -758,5 +725,65 @@
     return true;
   };
 
-  root.CockpitIdentity = { ...api, hydrate, pause, resume };
+  const redrawNow = (targets, now) => {
+    for (const instance of targets) {
+      if (!instance.canvas.isConnected) continue;
+      instance.mod = modulationOf(instance, now);
+      instance.lastDrawAt = now;
+      drawInstance(instance);
+    }
+  };
+
+  const BADGE_KINDS = ['finish', 'error'];
+  const STATIC_KINDS = Motion.PERSISTENT_KINDS;
+
+  // Une réaction à des têtes : un événement, le survol, la pression. Mouvement réduit : seuls les états finaux comptent.
+  const startOn = (targets, kind, options) => {
+    const now = clock();
+    const isCalm = prefersCalm();
+    for (const instance of targets) {
+      if (isCalm && !STATIC_KINDS.includes(kind)) continue;
+      withReaction(instance, { kind, isEvent: kind === 'error' || undefined, ...options }, now);
+      if (BADGE_KINDS.includes(kind) && !isCalm) {
+        instance.badgeEvent = { kind, at: now };
+        playBadge(instance, kind, 0);
+      }
+    }
+    if (isCalm || kind === 'appear') redrawNow(targets, now);
+    startLoop();
+    return targets.length;
+  };
+
+  const targetsOf = (engineId, scope) => {
+    const key = identityOf(engineId).key;
+    return instances.filter(instance => instance.identity.key === key && (!scope || scope.contains(instance.canvas)));
+  };
+
+  // react(engineId, 'finish' | 'error' | 'wait' | 'permission' | 'blocked' | 'later' | 'press' | ...)
+  const react = (engineId, kind, { scope = null, ...options } = {}) => startOn(targetsOf(engineId, scope), kind, options);
+
+  const targetsIn = scope => instances.filter(instance => scope && scope.contains(instance.canvas));
+
+  // Survol et pression : uniquement les têtes de la zone survolée.
+  const hover = (scope, isOn) => startOn(targetsIn(scope), isOn ? 'hover' : 'unhover', {});
+  const press = scope => startOn(targetsIn(scope), 'press', {});
+
+  // Apparition de l'île : les volumes se tracent, décalés de 40 ms par tête dans l'ordre de l'écran.
+  const appear = scope => {
+    const canvases = [...scope.querySelectorAll('.ident-canvas')];
+    canvases.forEach((canvas, index) => {
+      const instance = instances.find(candidate => candidate.canvas === canvas);
+      if (instance) startOn([instance], 'appear', { index });
+    });
+    return canvases.length;
+  };
+
+  if (calmQuery && typeof calmQuery.addEventListener === 'function') {
+    calmQuery.addEventListener('change', () => {
+      if (calmQuery.matches) redrawNow(instances, clock());
+      else startLoop();
+    });
+  }
+
+  root.CockpitIdentity = { ...api, hydrate, pause, resume, react, hover, press, appear };
 })(typeof window !== 'undefined' ? window : globalThis);

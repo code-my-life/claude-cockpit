@@ -136,6 +136,8 @@
       const previous = phase;
       phase = next;
       setPhase(next);
+      // Apparition de l'île : les volumes se tracent à mesure qu'elle se révèle.
+      if (previous === 'hidden' && next !== 'hidden') identity?.appear?.(doc.getElementById('dock'));
       if (next === 'open') keepSheets();
       else foldSheets();
       if (shouldAnnounce(previous, next, cause)) {

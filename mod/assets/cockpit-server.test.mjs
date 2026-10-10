@@ -52,6 +52,24 @@ test('an order posted to the factory server reaches the sink, not standard outpu
   })
 })
 
+test('the identity scripts (motion, volumes, chrome) are served from the assets folder', async () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-root-'))
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-data-'))
+  fs.mkdirSync(path.join(rootDir, 'mod', 'assets'), { recursive: true })
+  const names = ['identity-motion.js', 'identity.js', 'identity-chrome.js']
+  for (const name of names) fs.writeFileSync(path.join(rootDir, 'mod', 'assets', name), `// ${name}`)
+  const cockpit = createCockpitServer({ rootDir, dataDir, port: 0, sink: () => {}, homeDir: dataDir, env: {} })
+  try {
+    const port = await cockpit.listen()
+    for (const name of names) {
+      const asset = await call(port, 'GET', `/mod/assets/${name}`)
+      assert.equal(asset.text, `// ${name}`)
+    }
+  } finally {
+    await cockpit.close()
+  }
+})
+
 test('with a data folder, the page and pasted images live there while the fixed assets stay in the root', async () => {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-root-'))
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-data-'))
