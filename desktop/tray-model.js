@@ -2,9 +2,10 @@
 // icon is an ink ring drawn in code: light ink with a dark rim, readable on a
 // light or a dark taskbar.
 const TRAY_ICON_SIZE = 32
-const OUTER_RADIUS = 14.5
-const INNER_RADIUS = 7
-const RIM_WIDTH = 1.5
+// Proportions of the ring, drawn the same at any size (tray, app icon).
+const OUTER_RATIO = 14.5 / 32
+const INNER_RATIO = 7 / 32
+const RIM_RATIO = 1.5 / 32
 const INK = [0xec, 0xec, 0xe6]
 const RIM = [0x17, 0x18, 0x1b]
 const BYTES_PER_PIXEL = 4
@@ -13,8 +14,8 @@ const OPAQUE = 255
 // How much of a pixel at `distance` from the centre falls inside `radius`.
 const coverage = (distance, radius) => Math.min(1, Math.max(0, radius - distance))
 
-const colourAt = distance => {
-  const isOnRim = OUTER_RADIUS - distance < RIM_WIDTH || distance - INNER_RADIUS < RIM_WIDTH
+const colourAt = (distance, outer, inner, rim) => {
+  const isOnRim = outer - distance < rim || distance - inner < rim
   return isOnRim ? RIM : INK
 }
 
@@ -22,11 +23,12 @@ const colourAt = distance => {
 const trayIconBitmap = (size = TRAY_ICON_SIZE) => {
   const bitmap = Buffer.alloc(size * size * BYTES_PER_PIXEL)
   const centre = size / 2
+  const [outer, inner, rim] = [OUTER_RATIO * size, INNER_RATIO * size, RIM_RATIO * size]
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const distance = Math.hypot(x + 0.5 - centre, y + 0.5 - centre)
-      const alpha = coverage(distance, OUTER_RADIUS) * (1 - coverage(distance, INNER_RADIUS))
-      const [red, green, blue] = colourAt(distance)
+      const alpha = coverage(distance, outer) * (1 - coverage(distance, inner))
+      const [red, green, blue] = colourAt(distance, outer, inner, rim)
       const offset = (y * size + x) * BYTES_PER_PIXEL
       bitmap[offset] = blue
       bitmap[offset + 1] = green

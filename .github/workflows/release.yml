@@ -1,0 +1,56 @@
+name: Release
+
+# A tag vX.Y.Z builds the Windows installer, then a separate job with write
+# access publishes it. The build job only reads the repository.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests
+        run: npm test
+      - name: The tag matches the app version
+        shell: bash
+        run: test "v$(node -p "require('./desktop/package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Installer
+        working-directory: desktop
+        run: npm run dist
+      - name: Checksums
+        shell: bash
+        working-directory: desktop/dist
+        run: sha256sum *.exe > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/SHA256SUMS.txt
+          retention-days: 3
+
+  publish:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --title "Claude Cockpit $GITHUB_REF_NAME" --notes "Installeur Windows (non signé pour l'instant), sommes de contrôle dans SHA256SUMS.txt."

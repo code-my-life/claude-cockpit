@@ -1,16 +1,59 @@
 {
   "name": "cockpit-desktop",
+  "productName": "Claude Cockpit",
   "version": "0.2.0",
+  "description": "Cockpit pour suivre et piloter ses conversations Claude Code",
+  "author": "Code My Life",
   "private": true,
   "main": "main.js",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "icon": "node scripts/make-icon.js",
+    "pack": "electron-builder --win dir --publish never",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "build": {
+    "appId": "fr.codemylife.claude-cockpit",
+    "productName": "Claude Cockpit",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!**/*.test.*",
+      "!scripts/**",
+      "!dist/**",
+      "!build/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../mod",
+        "to": "mod",
+        "filter": [
+          "**/*",
+          "!**/*.test.*",
+          "!.claude-plugin/types/**"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "shortcutName": "Claude Cockpit"
+    }
   },
   "devDependencies": {
-    "electron": "^44.7.0"
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
   },
   "optionalDependencies": {
     "koffi": "^2.16.3"

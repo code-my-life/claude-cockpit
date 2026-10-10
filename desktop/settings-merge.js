@@ -50,11 +50,13 @@ const planWith = (text, settings, nextValue) => {
 }
 
 // `text` is the current settings.json, or null when it does not exist yet.
-const planAddPluginDir = (text, modDir, platform) => {
+// `replaces` spots older copies of the same mod, dropped so it never loads twice.
+const planAddPluginDir = (text, modDir, platform, { replaces = () => false } = {}) => {
   const settings = parseSettings(text)
   const folders = foldersOf(settings.env?.[KEY], platform)
   if (folders.some(folder => sameFolder(folder, modDir, platform))) return { status: 'unchanged', before: fingerprint(text), change: null, after: text }
-  return planWith(text, settings, [...folders, modDir].join(separatorOf(platform)))
+  const kept = folders.filter(folder => !replaces(folder))
+  return planWith(text, settings, [...kept, modDir].join(separatorOf(platform)))
 }
 
 const planRemovePluginDir = (text, modDir, platform) => {

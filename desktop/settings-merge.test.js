@@ -31,6 +31,13 @@ test('another plugin folder already listed is kept, ours joins it with the syste
   assert.equal(planAddPluginDir(before, MOD_DIR, 'linux').change.to, `D:/other/mod:${MOD_DIR}`)
 })
 
+test('an older copy of the cockpit mod is replaced, never loaded twice; other mods are kept', () => {
+  const before = JSON.stringify({ env: { [KEY]: 'D:/other/mod;C:/repos/claude-cockpit/mod' } })
+  const isOldCockpitMod = folder => folder.includes('claude-cockpit')
+  const plan = planAddPluginDir(before, MOD_DIR, 'win32', { replaces: isOldCockpitMod })
+  assert.equal(plan.change.to, `D:/other/mod;${MOD_DIR}`)
+})
+
 test('a mod folder already listed, in any spelling on Windows, changes nothing', () => {
   const before = JSON.stringify({ env: { [KEY]: 'c:\\users\\x\\appdata\\local\\claude-cockpit\\mod' } })
   assert.equal(planAddPluginDir(before, MOD_DIR, 'win32').status, 'unchanged')

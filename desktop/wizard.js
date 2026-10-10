@@ -9,7 +9,8 @@ const { applyPlan, planAddPluginDir } = require('./settings-merge')
 const SETTINGS_FILE = process.env.COCKPIT_SETTINGS_FILE || path.join(os.homedir(), '.claude', 'settings.json')
 const MOD_DIR = path.join(__dirname, '..', 'mod').replace(/\\/g, '/')
 const WIZARD_WIDTH = 640
-const WIZARD_HEIGHT = 660
+const WIZARD_HEIGHT = 720
+const MOD_NAME = 'sessions'
 const PAPER = '#17181b'
 
 let wizardWin = null
@@ -17,7 +18,18 @@ let shownPlan = null
 
 const readSettingsText = () => (fs.existsSync(SETTINGS_FILE) ? fs.readFileSync(SETTINGS_FILE, 'utf8') : null)
 
-const currentPlan = () => planAddPluginDir(readSettingsText(), MOD_DIR, process.platform)
+// Another copy of the cockpit mod (an older install, a working copy) is
+// replaced so the conversations never load it twice.
+const isCockpitMod = folder => {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(folder, '.claude-plugin', 'plugin.json'), 'utf8'))
+    return manifest.name === MOD_NAME && fs.existsSync(path.join(folder, 'assets', 'conversations.html'))
+  } catch {
+    return false
+  }
+}
+
+const currentPlan = () => planAddPluginDir(readSettingsText(), MOD_DIR, process.platform, { replaces: isCockpitMod })
 
 const isModInstalled = () => {
   try {

@@ -11,3 +11,4 @@ desktop/node_modules/
 /session-cache.json.tmp
 /search-cache.json
 /search-cache.json.tmp
+desktop/dist/
