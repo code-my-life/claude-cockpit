@@ -308,3 +308,55 @@ test('player: unlock resumes a suspended context on a gesture, and does nothing 
   player.unlock();
   assert.equal(audio.log.resumes, 2);
 });
+
+test('a setting that is not exactly true means muted (fail closed)', () => {
+  const { isMutedBySetting } = sound;
+  assert.equal(isMutedBySetting(true), false);
+  for (const value of [false, undefined, null, 'true', 1, {}, 'oui']) assert.equal(isMutedBySetting(value), true, String(value));
+});
+
+test('player: a failed resume plays nothing, is reported, and does not use up the burst allowance', async () => {
+  const audio = createFakeAudio('suspended');
+  const reports = [];
+  let shouldFail = true;
+  audio.context.resume = () => (shouldFail ? Promise.reject(new Error('refusé')) : (audio.context.state = 'running', Promise.resolve()));
+  const player = createPlayer({ createContext: () => audio.context, clock: () => 0, setTimer: () => 1, clearTimer: () => {}, onError: (message, error) => reports.push([message, error.message]) });
+  player.play('call', 1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(audio.log.oscillators.length, 0);
+  assert.equal(reports.length, 1);
+  assert.match(reports[0][0], /reprise/);
+  assert.equal(reports[0][1], 'refusé');
+  shouldFail = false;
+  player.play('call', 1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(audio.log.oscillators.length, 1);
+});
+
+test('player: during a burst, resumes that finish together still give one sound per kind', async () => {
+  const audio = createFakeAudio('suspended');
+  const player = createPlayer({ createContext: () => audio.context, clock: () => 0, setTimer: () => 1, clearTimer: () => {} });
+  player.play('call', 1);
+  player.play('call', 2);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(audio.log.oscillators.length, 1);
+});
+
+test('player: the context is suspended even if the voices never report their end', () => {
+  const { player, audio, timers } = createTestPlayer();
+  player.play('done', 3);
+  const idle = timers[timers.length - 1];
+  assert.ok(idle.delay >= 500);
+  idle.run();
+  assert.equal(audio.log.suspends, 1);
+  assert.equal(player.activeVoices(), 0);
+});
+
+test('player: the idle timer reads the real state of the context', () => {
+  const { player, audio, timers } = createTestPlayer();
+  player.play('call', 3);
+  finishAll(audio.log);
+  audio.context.state = 'suspended';
+  timers[timers.length - 1].run();
+  assert.equal(audio.log.suspends, 0);
+});

@@ -99,7 +99,7 @@
 
   const shouldAnnounce = (previousPhase, phase, cause) => previousPhase === 'hidden' && phase !== 'hidden' && cause === CAUSE_EVENT;
 
-  const init = ({ desktop, doc, win, identity, closeSheets, announce, playSound = () => {} }) => {
+  const init = ({ desktop, doc, win, identity, closeSheets, announce, playSound = () => {}, onReveal = () => {} }) => {
     const html = doc.documentElement;
     const motion = typeof win.matchMedia === 'function' ? win.matchMedia(REDUCED_MOTION_QUERY) : { matches: false };
     const reportPointer = createPointerReporter(isInside => desktop.islandPointer(isInside));
@@ -140,6 +140,7 @@
       if (previous === 'hidden' && next !== 'hidden') {
         identity?.appear?.(doc.getElementById('dock'));
         playSound('appear');
+        onReveal();
       }
       if (next === 'open') keepSheets();
       else foldSheets();

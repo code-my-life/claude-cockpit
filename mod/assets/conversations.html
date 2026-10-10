@@ -816,10 +816,25 @@
   let identStatuses = null;
   // Sons : uniquement dans l'île de l'app (le lecteur n'existe que là), même île cachée ; pas de son au survol ni à la pression.
   let soundPlayer = null;
+  let areSoundsOn = false;
+  let isIntroAsked = false;
+  const SOUND_INTRO_MS = 12000;
 
+  // L'app décide au moment du son s'il faut se taire (plein écran, présentation, occupé, heures calmes) ; en cas de doute, silence.
   const playSound = (kind, engineId) => {
     if (soundPlayer === null || !window.CockpitIdentity) return;
-    soundPlayer.play(kind, engineId ? window.CockpitIdentity.identityOf(engineId).seed : 0);
+    const seed = engineId ? window.CockpitIdentity.identityOf(engineId).seed : 0;
+    desktop.soundSilent().then(isSilent => { if (isSilent === false) soundPlayer.play(kind, seed); }).catch(() => {});
+  };
+
+  // Annonce unique du premier lancement, à la première apparition de l'île ; l'app la mémorise.
+  const announceSoundsOnce = () => {
+    if (soundPlayer === null || isIntroAsked) return;
+    isIntroAsked = true;
+    desktop.soundIntro().then(shouldShow => {
+      if (shouldShow !== true) return;
+      window.EncrePapier.toast({ tone: 'info', title: 'Sons actifs', message: 'Les alertes sonores sont actives. Tu peux les couper dans la disposition du dock ou dans le menu de la barre d’état.', duration: SOUND_INTRO_MS });
+    }).catch(() => {});
   };
 
   const reactToStatusChanges = () => {
@@ -842,9 +857,15 @@
   // Lecteur de sons de l'île : réglage global venu de l'app (menu de la barre d'état), contexte audio relancé au premier geste.
   const setUpSounds = () => {
     if (!window.CockpitIdentitySound) return;
-    soundPlayer = window.CockpitIdentitySound.createPlayer();
-    desktop.soundSetting().then(isEnabled => soundPlayer.setMuted(!isEnabled)).catch(() => {});
-    desktop.onSoundSetting(isEnabled => soundPlayer.setMuted(!isEnabled));
+    soundPlayer = window.CockpitIdentitySound.createPlayer({ onError: (message, error) => desktop.logSound(`${message} (${error && error.message})`) });
+    soundPlayer.setMuted(true);
+    const apply = value => {
+      areSoundsOn = !window.CockpitIdentitySound.isMutedBySetting(value);
+      soundPlayer.setMuted(!areSoundsOn);
+      if (state.dockMenuOpen) render({ force: true });
+    };
+    desktop.soundSetting().then(apply).catch(() => apply(undefined));
+    desktop.onSoundSetting(apply);
     for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, () => soundPlayer.unlock(), { capture: true });
   };
 
@@ -1385,6 +1406,8 @@
         <div class="dock-menu-row ep-toggle" role="group" aria-label="Taille">${sizes}</div>
         <span class="nc-label">Forme</span>
         <div class="dock-menu-row ep-toggle" role="group" aria-label="Forme">${layouts}</div>
+        <span class="nc-label">Sons</span>
+        <label class="ep-switch dock-menu-sounds"><input type="checkbox" role="switch" data-dock-sounds ${areSoundsOn ? 'checked' : ''}><span class="ep-icon ep-icon--volume" aria-hidden="true"></span>Alertes sonores</label>
       </div>
     </div>`;
   };
@@ -2426,7 +2449,7 @@
     document.documentElement.classList.add('mini-mode');
     document.body.classList.add('mini-mode');
     if (desktop) setUpSounds();
-    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce, playSound });
+    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce, playSound, onReveal: announceSoundsOnce });
     window.addEventListener('resize', syncDesktopWindow);
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');
@@ -2435,6 +2458,8 @@
         desktop.openLink(appLink.href);
         return;
       }
+      const soundSwitch = event.target.closest('[data-dock-sounds]');
+      if (soundSwitch) { if (desktop) desktop.setSounds(soundSwitch.checked); return; }
       const sizeChoice = event.target.closest('[data-dock-size]');
       if (sizeChoice) { applyDockChoice('size', sizeChoice.dataset.dockSize); return; }
       const layoutChoice = event.target.closest('[data-dock-layout]');

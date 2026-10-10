@@ -9,7 +9,8 @@ const { createFullscreenProbe } = require('./island/fullscreen')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
-const { SOUND_FILE_NAME, readSoundSetting, serializeSoundSetting } = require('./sound-setting')
+const { SOUND_FILE_NAME, readSoundState, serializeSoundState, parseSoundChoice, introDecision } = require('./sound-setting')
+const { writeFileAtomic } = require('./atomic-write')
 
 // The app serves the cockpit itself; when its server cannot start, the windows
 // fall back on the server a conversation with the mod runs on this port.
@@ -301,28 +302,38 @@ const showIsland = () => {
   island.showAndFocus()
 }
 
-// Réglage global des sons, gardé dans userData et transmis à la page de l'île.
+// Réglage global des sons, gardé dans userData (écriture atomique) et transmis à la page de l'île.
 const soundFile = () => path.join(app.getPath('userData'), SOUND_FILE_NAME)
-let areSoundsOn = true
+let soundState = { enabled: true, isIntroShown: false }
+const areSoundsOn = () => soundState.enabled
 
 const loadSoundSetting = () => {
   let raw = null
   try { raw = fs.readFileSync(soundFile(), 'utf8') } catch { raw = null }
-  areSoundsOn = readSoundSetting(raw)
+  soundState = readSoundState(raw)
 }
 
-const toggleSounds = () => {
-  areSoundsOn = !areSoundsOn
-  try { fs.writeFileSync(soundFile(), serializeSoundSetting(areSoundsOn)) } catch (error) { logLine(`sons : réglage non enregistré (${error.message})`) }
-  win?.webContents.send('sound-setting', areSoundsOn)
+const saveSoundState = next => {
+  soundState = next
+  try { writeFileAtomic(soundFile(), serializeSoundState(next)) } catch (error) { logLine(`sons : réglage non enregistré (${error.message})`) }
 }
+
+// Une seule voie pour le menu de la barre d'état et l'interrupteur du dock : écrire, prévenir la page, remettre le menu à jour.
+const setSounds = enabled => {
+  if (enabled === soundState.enabled) return
+  saveSoundState({ ...soundState, enabled })
+  win?.webContents.send('sound-setting', enabled)
+  refreshTrayMenu()
+}
+
+const toggleSounds = () => setSounds(!soundState.enabled)
 
 const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLoginItemSettings().openAtLogin })
 
 const refreshTrayMenu = () => {
   if (tray === null) return
   const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-dock': toggleDock, autostart: toggleAutostart, 'toggle-sounds': toggleSounds, quit: () => app.quit() }
-  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, areSoundsOn, canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
+  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, areSoundsOn: areSoundsOn(), canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
 }
@@ -368,7 +379,20 @@ onTrusted('launcher-height', (event, height) => {
 onTrusted('launcher-hide', hideLauncher)
 
 handleTrusted('launcher-shortcut', () => activeShortcut)
-handleTrusted('sound-setting', () => areSoundsOn)
+handleTrusted('sound-setting', () => areSoundsOn())
+onTrusted('set-sound', (event, value) => {
+  const choice = parseSoundChoice(value)
+  if (choice !== null) setSounds(choice)
+})
+// Pas de son en plein écran, présentation, état occupé ni heures calmes : décidé ici, au moment du son.
+handleTrusted('sound-silent', () => fullscreenProbe.isSilent())
+// L'annonce du premier lancement : vraie une seule fois, puis mémorisée.
+handleTrusted('sound-intro', () => {
+  const { shouldShow, next } = introDecision(soundState)
+  if (shouldShow) saveSoundState(next)
+  return shouldShow
+})
+onTrusted('sound-log', (event, message) => logLine(String(message).slice(0, 300)))
 
 onTrusted('quit', () => app.quit())
 

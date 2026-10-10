@@ -77,16 +77,23 @@
 
   const createGate = clock => {
     const lastAt = new Map();
+    const isFree = kind => {
+      const last = lastAt.get(kind);
+      return last === undefined || clock() - last >= MIN_GAP_MS;
+    };
     return {
+      // `canPlay` regarde sans consommer ; `allow` consomme l'allocation du type.
+      canPlay: isFree,
       allow(kind) {
-        const now = clock();
-        const last = lastAt.get(kind);
-        if (last !== undefined && now - last < MIN_GAP_MS) return false;
-        lastAt.set(kind, now);
+        if (!isFree(kind)) return false;
+        lastAt.set(kind, clock());
         return true;
       },
     };
   };
+
+  // Tout ce que l'app ne dit pas clairement « actif » (échec de l'IPC, valeur inattendue) vaut coupé.
+  const isMutedBySetting = isEnabled => isEnabled !== true;
 
   // Le réglage global « couper les sons » l'emporte sur les interrupteurs par type.
   const shouldPlay = ({ isMuted, kinds }, kind) => !isMuted && kinds[kind] === true;
@@ -121,7 +128,7 @@
     for (const [time, level] of points.slice(1)) gainNode.gain.linearRampToValueAtTime(level, start + time);
   };
 
-  const createPlayer = ({ createContext = defaultContext, clock = () => root.performance.now(), setTimer = (run, delay) => root.setTimeout(run, delay), clearTimer = handle => root.clearTimeout(handle) } = {}) => {
+  const createPlayer = ({ createContext = defaultContext, clock = () => root.performance.now(), setTimer = (run, delay) => root.setTimeout(run, delay), clearTimer = handle => root.clearTimeout(handle), onError = () => {} } = {}) => {
     const gate = createGate(clock);
     const state = { isMuted: false, kinds: { ...DEFAULT_ENABLED }, volume: DEFAULT_VOLUME };
     let context = null;
@@ -142,12 +149,14 @@
       idleTimer = null;
     };
 
-    const suspendWhenIdle = () => {
+    // La suspension ne dépend pas de l'événement « ended » des voix : un minuteur posé à chaque son relit l'état du contexte.
+    const suspendWhenIdle = lastEndMs => {
       cancelIdle();
       idleTimer = setTimer(() => {
         idleTimer = null;
-        if (activeVoices === 0 && context.state === 'running') context.suspend();
-      }, IDLE_SUSPEND_MS);
+        activeVoices = 0;
+        if (context.state === 'running') context.suspend();
+      }, lastEndMs + IDLE_SUSPEND_MS);
     };
 
     const startVoice = (voice, start) => {
@@ -162,24 +171,26 @@
       oscillator.onended = () => {
         oscillator.disconnect();
         gainNode.disconnect();
-        activeVoices--;
-        if (activeVoices === 0) suspendWhenIdle();
+        activeVoices = Math.max(0, activeVoices - 1);
       };
       oscillator.start(start + voice.delay);
       oscillator.stop(start + voice.delay + durationOf(voice) / MS_PER_SECOND);
     };
 
-    const schedule = voices => {
+    // L'allocation anti rafale n'est consommée qu'ici, une fois le contexte bien en marche.
+    const schedule = (kind, voices) => {
+      if (!gate.allow(kind)) return;
       cancelIdle();
       const start = context.currentTime + LEAD_S;
       for (const voice of voices) startVoice(voice, start);
+      suspendWhenIdle(Math.max(...voices.map(voice => voice.delay * MS_PER_SECOND + durationOf(voice))));
     };
 
     const play = (kind, seed) => {
-      if (!shouldPlay(state, kind) || contextOf() === null || !gate.allow(kind)) return false;
+      if (!shouldPlay(state, kind) || contextOf() === null || !gate.canPlay(kind)) return false;
       const voices = planOf(kind, seed);
-      if (context.state === 'running') schedule(voices);
-      else context.resume().then(() => schedule(voices), () => {});
+      if (context.state === 'running') schedule(kind, voices);
+      else context.resume().then(() => schedule(kind, voices), error => onError('sons : reprise du contexte audio refusée', error));
       return true;
     };
 
@@ -200,7 +211,7 @@
 
   const api = {
     SOUND_KINDS, DEFAULT_ENABLED, DEFAULT_VOLUME, MAX_VOLUME, MIN_GAP_MS, ROOT_HZ, IDLE_SUSPEND_MS,
-    clampVolume, noteIndexOf, semitonesOf, frequencyOf, planOf, envelopePoints, durationOf, createGate, shouldPlay, soundEventsOf, createPlayer,
+    clampVolume, isMutedBySetting, noteIndexOf, semitonesOf, frequencyOf, planOf, envelopePoints, durationOf, createGate, shouldPlay, soundEventsOf, createPlayer,
   };
 
   if (typeof module !== 'undefined' && module.exports) {
