@@ -994,7 +994,7 @@ const versionOf = (text: string) => {
   return String(hash >>> 0)
 }
 
-const inlineScriptSafe = (json: string) => json.replace(/</g, '\\u003c').replace(/ /g, '\\u2028').replace(/ /g, '\\u2029')
+const inlineScriptSafe = (json: string) => json.replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
 
 const writePage = async ($: EngineInterface, payload: string, template: string, version: string) => {
   const seed = `<script>window.__PAGE_VERSION__ = ${inlineScriptSafe(JSON.stringify(version))}; window.__CONVERSATIONS__ = ${inlineScriptSafe(payload)};</script>`
