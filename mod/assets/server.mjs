@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -27,6 +28,43 @@ const STATIC_FILES = {
   '/mod/assets/liquid-paper/bundle.js': 'text/javascript; charset=utf-8',
 }
 
+const TOKEN = crypto.randomBytes(24).toString('hex')
+const TOKEN_HEADER = 'x-cockpit-token'
+const TOKEN_META_ANCHOR = '<head>'
+const MAX_IMAGES = 10
+const MAX_REASON_LENGTH = 500
+const IMAGE_EXTENSIONS = new Map([['image/png', 'png'], ['image/jpeg', 'jpg'], ['image/gif', 'gif'], ['image/webp', 'webp']])
+const ENGINE_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/
+const PARK_KINDS = new Set(['blocked', 'later'])
+const UNSAFE_FOLDER_PATTERN = /[\u0000-\u001f";]/
+const UNSAFE_FOR_CMD_PATTERN = /[&|<>^%!`]/
+const FOREIGN_SITES = new Set(['cross-site', 'same-site'])
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  'font-src https://fonts.gstatic.com',
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'none'",
+].join('; ')
+const SECURITY_HEADERS = {
+  'content-security-policy': CONTENT_SECURITY_POLICY,
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'no-referrer',
+}
+
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message)
+    this.status = status
+  }
+}
+
 const say = payload => process.stdout.write(`${JSON.stringify(payload)}\n`)
 
 const readBody = request =>
@@ -36,8 +74,10 @@ const readBody = request =>
     request.on('data', chunk => {
       size += chunk.length
       if (size > MAX_BODY_BYTES) {
-        reject(new Error('corps trop volumineux'))
-        request.destroy()
+        chunks.length = 0
+        request.removeAllListeners('data')
+        request.resume()
+        reject(new HttpError(413, 'corps trop volumineux'))
         return
       }
       chunks.push(chunk)
@@ -47,7 +87,7 @@ const readBody = request =>
   })
 
 const send = (response, status, body, type = 'application/json; charset=utf-8') => {
-  response.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' })
+  response.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', ...SECURITY_HEADERS })
   response.end(body)
 }
 
@@ -60,94 +100,166 @@ const serveFile = (response, name, type) => {
   }
 }
 
-const extensionOf = mimeType => {
-  const subtype = (mimeType || 'image/png').split('/')[1] || 'png'
-  return subtype === 'jpeg' ? 'jpg' : subtype
+const servePage = response => {
+  try {
+    const html = fs.readFileSync(path.join(rootDir, 'conversations.html'), 'utf8')
+    const meta = `${TOKEN_META_ANCHOR}<meta name="cockpit-token" content="${TOKEN}">`
+    send(response, 200, html.replace(TOKEN_META_ANCHOR, () => meta), 'text/html; charset=utf-8')
+  } catch {
+    send(response, 404, 'introuvable', 'text/plain; charset=utf-8')
+  }
+}
+
+const allowedOrigins = () => [`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]
+
+const guardRead = (request, isPage) => {
+  if (!isLocalHost(request.headers.host, PORT)) throw new HttpError(403, 'hôte refusé')
+  const isForeign = FOREIGN_SITES.has(request.headers['sec-fetch-site'])
+  const isNavigation = request.headers['sec-fetch-mode'] === 'navigate'
+  if (isForeign && !(isPage && isNavigation)) throw new HttpError(403, 'origine refusée')
+}
+
+const tokenMatches = given => {
+  if (typeof given !== 'string' || given.length !== TOKEN.length) return false
+  return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(TOKEN))
+}
+
+const guardWrite = request => {
+  guardRead(request, false)
+  const origin = request.headers.origin
+  if (origin !== undefined && !allowedOrigins().includes(origin)) throw new HttpError(403, 'origine refusée')
+  if (!tokenMatches(request.headers[TOKEN_HEADER])) throw new HttpError(403, 'jeton refusé : recharge la page')
+  const contentType = String(request.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
+  if (contentType !== 'application/json') throw new HttpError(415, 'JSON attendu')
+}
+
+const readJsonBody = async request => {
+  const raw = await readBody(request)
+  let body
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    throw new HttpError(400, 'requête invalide')
+  }
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'requête invalide')
+  return body
+}
+
+const engineIdOf = body => {
+  if (typeof body.engineId !== 'string' || !ENGINE_ID_PATTERN.test(body.engineId)) throw new HttpError(400, 'identifiant de conversation invalide')
+  return body.engineId
 }
 
 const saveImages = images => {
   if (images.length === 0) return []
+  if (images.length > MAX_IMAGES) throw new HttpError(400, 'trop d’images')
+  const decoded = images.map(image => {
+    const extension = IMAGE_EXTENSIONS.get(String(image?.type))
+    if (extension === undefined || typeof image.base64 !== 'string') throw new HttpError(400, `image refusée (type ${String(image?.type).slice(0, 40)}), formats admis : png, jpeg, gif, webp`)
+    return { extension, data: Buffer.from(image.base64, 'base64') }
+  })
   fs.mkdirSync(INBOX, { recursive: true })
-  const stamp = Date.now()
-  return images.map((image, index) => {
-    const file = path.join(INBOX, `${stamp}-${index + 1}.${extensionOf(image.type)}`)
-    fs.writeFileSync(file, Buffer.from(image.base64, 'base64'))
+  return decoded.map(({ extension, data }) => {
+    const file = path.join(INBOX, `${crypto.randomUUID()}.${extension}`)
+    fs.writeFileSync(file, data)
     return file
   })
 }
 
-const openTerminal = cwd => {
-  const isFolder = cwd.length > 0 && fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
-  if (!isFolder) throw new Error(`dossier introuvable : ${cwd}`)
-  const child = spawn('cmd.exe', ['/d', '/c', 'start', '""', 'wt.exe', '-d', cwd], { detached: true, stdio: 'ignore', windowsHide: true })
+const comparable = folder => (process.platform === 'win32' ? folder.toLowerCase() : folder)
+
+const isInside = (parent, child) => {
+  const relative = path.relative(comparable(path.resolve(parent)), comparable(path.resolve(child)))
+  const isOutside = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
+  return !isOutside
+}
+
+const isBroadFolder = folder => {
+  const isDriveRoot = path.resolve(folder) === path.parse(path.resolve(folder)).root
+  return isDriveRoot || isInside(folder, os.homedir())
+}
+
+const isKnownFolder = folder => {
+  const roots = sessionsOf(sessionIndex).map(session => session.cwd).filter(cwd => typeof cwd === 'string' && cwd !== '')
+  const siblingsAllowed = root => !isBroadFolder(path.dirname(root)) && isInside(path.dirname(root), folder)
+  return roots.some(root => isInside(root, folder) || siblingsAllowed(root))
+}
+
+const launchTerminal = (command, args, onError) => {
+  const child = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true })
+  child.on('error', onError)
   child.unref()
+}
+
+const openTerminal = cwd => {
+  if (cwd === '' || UNSAFE_FOLDER_PATTERN.test(cwd) || !path.isAbsolute(cwd)) throw new HttpError(400, 'dossier invalide')
+  if (!isKnownFolder(cwd)) throw new HttpError(403, 'dossier inconnu du cockpit')
+  const isFolder = fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
+  if (!isFolder) throw new HttpError(404, 'dossier introuvable')
+  const viaCmd = () => {
+    if (UNSAFE_FOR_CMD_PATTERN.test(cwd)) return reportError('terminal', new Error('dossier non ouvrable avec cmd'))
+    launchTerminal('cmd.exe', ['/d', '/c', 'start', '""', 'wt.exe', '-d', cwd], error => reportError('terminal', error))
+  }
+  launchTerminal('wt.exe', ['-d', cwd], viaCmd)
+}
+
+const POST_ROUTES = {
+  '/reply': body => {
+    const engineId = engineIdOf(body)
+    const images = saveImages(Array.isArray(body.images) ? body.images : [])
+    say({ type: 'reply', engineId, text: String(body.text || ''), images })
+  },
+  '/terminal': body => openTerminal(typeof body.cwd === 'string' ? body.cwd : ''),
+  '/park': body => {
+    const engineId = engineIdOf(body)
+    if (!PARK_KINDS.has(body.kind)) throw new HttpError(400, 'type de mise de côté invalide')
+    say({ type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
+  },
+  '/unpark': body => say({ type: 'unpark', engineId: engineIdOf(body) }),
+  '/ack': body => say({ type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
+  '/summarize': body => say({ type: 'summarize', engineId: engineIdOf(body) }),
+}
+
+const handleSearch = async (url, response) => {
+  await refreshSearch()
+  const sessions = sessionsOf(sessionIndex)
+  const hosts = hostsByEngineOf(sessions)
+  const found = findMatches(searchIndex, url.searchParams.get('q') || '', hosts)
+  send(response, 200, JSON.stringify({ ok: true, ...found }))
+}
+
+const handleGet = async (url, request, response) => {
+  const isPage = url.pathname === '/' || url.pathname === '/conversations.html'
+  guardRead(request, isPage)
+  if (isPage) return servePage(response)
+  if (url.pathname === '/conversations-data.js') return serveFile(response, 'conversations-data.js', 'text/javascript; charset=utf-8')
+  if (url.pathname === '/ping') return send(response, 200, '{"ok":true}')
+  if (url.pathname === '/search') return handleSearch(url, response)
+  const staticType = Object.hasOwn(STATIC_FILES, url.pathname) ? STATIC_FILES[url.pathname] : undefined
+  if (staticType) return serveFile(response, url.pathname.slice(1), staticType)
+  send(response, 404, 'introuvable', 'text/plain; charset=utf-8')
+}
+
+const handlePost = async (url, request, response) => {
+  const route = Object.hasOwn(POST_ROUTES, url.pathname) ? POST_ROUTES[url.pathname] : undefined
+  if (route === undefined) return send(response, 404, 'introuvable', 'text/plain; charset=utf-8')
+  guardWrite(request)
+  route(await readJsonBody(request))
+  send(response, 202, '{"ok":true}')
 }
 
 const handle = async (request, response) => {
   const url = new URL(request.url, 'http://127.0.0.1')
-  const isGet = request.method === 'GET'
-  const isPost = request.method === 'POST'
-  if (isGet && (url.pathname === '/' || url.pathname === '/conversations.html')) {
-    return serveFile(response, 'conversations.html', 'text/html; charset=utf-8')
-  }
-  if (isGet && url.pathname === '/conversations-data.js') {
-    return serveFile(response, 'conversations-data.js', 'text/javascript; charset=utf-8')
-  }
-  if (isGet && url.pathname === '/ping') return send(response, 200, '{"ok":true}')
-  if (isGet && url.pathname === '/search') {
-    if (!isLocalHost(request.headers.host, PORT)) return send(response, 403, '{"ok":false,"error":"hôte refusé"}')
-    await refreshSearch()
-    const sessions = sessionsOf(sessionIndex)
-    const hosts = hostsByEngineOf(sessions)
-    const query = url.searchParams.get('q') || ''
-    const found = findMatches(searchIndex, query, hosts)
-    return send(response, 200, JSON.stringify({ ok: true, ...found }))
-  }
-  const staticType = isGet && Object.hasOwn(STATIC_FILES, url.pathname) ? STATIC_FILES[url.pathname] : undefined
-  if (staticType) return serveFile(response, url.pathname.slice(1), staticType)
-  if (isPost && url.pathname === '/reply') {
-    const raw = await readBody(request)
-    const body = JSON.parse(raw)
-    const images = saveImages(Array.isArray(body.images) ? body.images : [])
-    say({ type: 'reply', engineId: String(body.engineId), text: String(body.text || ''), images })
-    return send(response, 202, '{"ok":true}')
-  }
-  if (isPost && url.pathname === '/terminal') {
-    const raw = await readBody(request)
-    const body = JSON.parse(raw)
-    openTerminal(String(body.cwd || ''))
-    return send(response, 202, '{"ok":true}')
-  }
-  if (isPost && url.pathname === '/park') {
-    const raw = await readBody(request)
-    const body = JSON.parse(raw)
-    say({ type: 'park', engineId: String(body.engineId), kind: String(body.kind), reason: String(body.reason || '') })
-    return send(response, 202, '{"ok":true}')
-  }
-  if (isPost && url.pathname === '/unpark') {
-    const raw = await readBody(request)
-    const body = JSON.parse(raw)
-    say({ type: 'unpark', engineId: String(body.engineId) })
-    return send(response, 202, '{"ok":true}')
-  }
-  if (isPost && url.pathname === '/ack') {
-    const raw = await readBody(request)
-    const body = JSON.parse(raw)
-    say({ type: 'ack', engineId: String(body.engineId), seen: body.seen === true })
-    return send(response, 202, '{"ok":true}')
-  }
-  if (isPost && url.pathname === '/summarize') {
-    const raw = await readBody(request)
-    const body = JSON.parse(raw)
-    say({ type: 'summarize', engineId: String(body.engineId) })
-    return send(response, 202, '{"ok":true}')
-  }
-  send(response, 404, 'introuvable', 'text/plain; charset=utf-8')
+  if (request.method === 'GET') return handleGet(url, request, response)
+  if (request.method === 'POST') return handlePost(url, request, response)
+  send(response, 405, 'méthode non permise', 'text/plain; charset=utf-8')
 }
 
 const server = http.createServer((request, response) => {
   handle(request, response).catch(error => {
-    send(response, 400, JSON.stringify({ ok: false, error: String(error.message || error) }))
+    if (error instanceof HttpError) return send(response, error.status, JSON.stringify({ ok: false, error: error.message }))
+    reportError('requête', error)
+    send(response, 500, JSON.stringify({ ok: false, error: 'erreur interne du cockpit' }))
   })
 })
 

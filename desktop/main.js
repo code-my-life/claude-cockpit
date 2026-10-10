@@ -22,6 +22,7 @@ const COCKPIT_HEIGHT = 900
 const CLEAR = '#00000000'
 const TITLE_SYMBOLS = '#ecece6'
 const TITLE_BAR_HEIGHT = 36
+const SECURE_WEB_PREFERENCES = { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }
 const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:0;background:transparent;height:100vh;display:flex;align-items:center;justify-content:center;font:500 11px/1 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae">Cockpit éteint : ouvre une conversation Claude</body>')}`
 
 let win = null
@@ -88,8 +89,14 @@ const loadCockpit = () => {
 }
 
 const openOutside = url => {
-  if (/^(https?|claude):/.test(url)) shell.openExternal(url)
+  if (/^(https?|claude):\/\//i.test(url)) shell.openExternal(url)
 }
+
+const isTrusted = event => typeof event.senderFrame?.url === 'string' && event.senderFrame.url.startsWith(COCKPIT_URL)
+
+const onTrusted = (channel, listener) => ipcMain.on(channel, (event, ...args) => { if (isTrusted(event)) listener(event, ...args) })
+
+const handleTrusted = (channel, listener) => ipcMain.handle(channel, (event, ...args) => (isTrusted(event) ? listener(event, ...args) : undefined))
 
 const guardNavigation = target => {
   target.webContents.setWindowOpenHandler(({ url }) => {
@@ -121,6 +128,7 @@ const openCockpitWindow = section => {
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: CLEAR, symbolColor: TITLE_SYMBOLS, height: TITLE_BAR_HEIGHT },
     autoHideMenuBar: true,
+    webPreferences: SECURE_WEB_PREFERENCES,
   })
   applyBlur(cockpitWin)
   guardNavigation(cockpitWin)
@@ -152,7 +160,7 @@ const createLauncherWindow = () => {
     skipTaskbar: true,
     alwaysOnTop: true,
     backgroundColor: CLEAR,
-    webPreferences: { preload: path.join(__dirname, 'preload.js') },
+    webPreferences: { ...SECURE_WEB_PREFERENCES, preload: path.join(__dirname, 'preload.js') },
   })
   applyBlur(launcherWin)
   launcherWin.setAlwaysOnTop(true, 'pop-up-menu')
@@ -206,7 +214,7 @@ const createWindow = () => {
     skipTaskbar: true,
     alwaysOnTop: true,
     backgroundColor: CLEAR,
-    webPreferences: { preload: path.join(__dirname, 'preload.js') },
+    webPreferences: { ...SECURE_WEB_PREFERENCES, preload: path.join(__dirname, 'preload.js') },
   })
   applyBlur(win)
   win.setAlwaysOnTop(true, 'floating')
@@ -227,13 +235,13 @@ const createWindow = () => {
   loadCockpit()
 }
 
-ipcMain.on('dock-size', (event, width, height) => {
+onTrusted('dock-size', (event, width, height) => {
   dockWidth = Math.round(Number(width) || DOCK_MIN_WIDTH)
   dockHeight = Math.round(Number(height) || DOCK_HEIGHT)
   if (!isExpanded) applyBounds()
 })
 
-ipcMain.on('expanded', (event, expanded, width, height) => {
+onTrusted('expanded', (event, expanded, width, height) => {
   isExpanded = expanded === true
   sheetWidth = Math.round(Number(width) || 0)
   sheetHeight = Math.round(Number(height) || SHEET_MAX_HEIGHT)
@@ -241,20 +249,20 @@ ipcMain.on('expanded', (event, expanded, width, height) => {
   if (isExpanded && win !== null) win.focus()
 })
 
-ipcMain.on('open-cockpit', (event, section) => openCockpitWindow(section === 'search' ? 'search' : null))
+onTrusted('open-cockpit', (event, section) => openCockpitWindow(section === 'search' ? 'search' : null))
 
-ipcMain.on('open-link', (event, url) => openOutside(String(url)))
+onTrusted('open-link', (event, url) => openOutside(String(url)))
 
-ipcMain.on('launcher-height', (event, height) => {
+onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
   if (launcherWin !== null && launcherWin.isVisible()) placeLauncher()
 })
 
-ipcMain.on('launcher-hide', hideLauncher)
+onTrusted('launcher-hide', hideLauncher)
 
-ipcMain.handle('launcher-shortcut', () => activeShortcut)
+handleTrusted('launcher-shortcut', () => activeShortcut)
 
-ipcMain.on('quit', () => app.quit())
+onTrusted('quit', () => app.quit())
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()

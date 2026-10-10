@@ -455,6 +455,16 @@
   const isLocalFile = location.protocol === 'file:';
   const isServer = /^https?:$/.test(location.protocol);
   const serverBase = isServer ? '' : `http://127.0.0.1:${SERVER_PORT}`;
+  const tokenOf = root => root.querySelector('meta[name="cockpit-token"]')?.content || '';
+  let cockpitToken = tokenOf(document);
+  const refreshToken = async () => {
+    const response = await fetch(`${serverBase}/`);
+    if (!response.ok) return false;
+    const fresh = tokenOf(new DOMParser().parseFromString(await response.text(), 'text/html'));
+    if (!fresh || fresh === cockpitToken) return false;
+    cockpitToken = fresh;
+    return true;
+  };
 
   const state = {
     data: window.__CONVERSATIONS__ || { generatedAt: 0, rows: [] },
@@ -485,7 +495,7 @@
   };
 
   const iconOf = name => (name ? `<span class="ep-icon ep-icon--${name}" aria-hidden="true"></span>` : '');
-  const escapeHtml = text => String(text ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const escapeHtml = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const folderOf = cwd => (cwd || '').split(/[\\/]/).filter(Boolean).at(-1) || cwd || '';
 
   const inlineMarkdown = text => {
@@ -821,7 +831,7 @@
     const label = `${row.title}, ${isWaiting ? 'attend tes ordres' : 'en mission'}`;
     const pop = state.popId === row.engineId ? 'pop' : '';
     const face = renderFace(row, 56, { extraClass: pop });
-    return `<button type="button" class="av ${isWaiting ? '' : 'inert'}" data-av="${row.engineId}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
+    return `<button type="button" class="av ${isWaiting ? '' : 'inert'}" data-av="${escapeHtml(row.engineId)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
       ${face}
       <span class="av-level">${row.stats ? `${row.stats.messages} msg` : ''}</span>
     </button>`;
@@ -849,7 +859,7 @@
       const role = message.role === 'user' ? 'user' : 'assistant';
       return `<div class="bubble-row ${role}"><div class="bubble ${role}">${renderMarkdown(message.text)}</div></div>`;
     }).join('');
-    return `${toggle}<div class="thread" data-engine-thread="${row.engineId}">${bubbles}</div>`;
+    return `${toggle}<div class="thread" data-engine-thread="${escapeHtml(row.engineId)}">${bubbles}</div>`;
   };
 
   const renderComposer = row => {
@@ -908,7 +918,7 @@
       </div>` : '';
     const body = isOpen ? renderCardBody(row) : '';
     const face = renderFace(row, 52, { withBadge: false });
-    return `<article class="card ep-plate ${kind} ${isOpen ? 'open' : ''} ${isBig ? 'big' : ''}" data-engine="${row.engineId}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">
+    return `<article class="card ep-plate ${kind} ${isOpen ? 'open' : ''} ${isBig ? 'big' : ''}" data-engine="${escapeHtml(row.engineId)}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">
       <div class="card-head">
         ${face}
         <div class="card-text">
@@ -924,7 +934,7 @@
         </div>
         <div class="card-side">
           <span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}">${escapeHtml(bonus.label)}</span>
-          ${openUrl ? `<a href="${openUrl}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : ''}
+          ${openUrl ? `<a href="${escapeHtml(openUrl)}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : ''}
           ${isServer ? `<button type="button" class="${ICON_BUTTON}" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : ''}
           ${parkButtons(row)}
         </div>
@@ -944,7 +954,7 @@
     const terminal = isServer && row.cwd
       ? `<button type="button" class="${ICON_BUTTON}" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal dans ${folderLabel}">${ICONS.terminal}</button>`
       : '';
-    const open = openUrl ? `<a href="${openUrl}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const open = openUrl ? `<a href="${escapeHtml(openUrl)}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
     const face = renderFace(row, 40, { extraClass: pop, withBadge: false });
     const head = `<div class="mrow">
         ${face}
@@ -958,8 +968,8 @@
         <span class="mrow-tools">${parkButtons(row)}${terminal}${open}</span>
         <span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span>
       </div>`;
-    if (!isOpen) return `<div class="mission" data-engine="${row.engineId}">${head}</div>`;
-    return `<article class="card mission open ${isBig ? 'big' : ''}" data-engine="${row.engineId}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">${head}${renderCardBody(row)}</article>`;
+    if (!isOpen) return `<div class="mission" data-engine="${escapeHtml(row.engineId)}">${head}</div>`;
+    return `<article class="card mission open ${isBig ? 'big' : ''}" data-engine="${escapeHtml(row.engineId)}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">${head}${renderCardBody(row)}</article>`;
   };
 
   const parkButtons = row => (isServer && !row.isCurrent
@@ -975,7 +985,7 @@
     const reason = park.reason ? escapeHtml(park.reason) : '<em>sans raison</em>';
     const moved = park.hasMoved ? '<span class="ep-tag ep-tag--warning moved" title="La conversation a bougé depuis">A bougé</span>' : '';
     const terminal = isServer && row.cwd ? `<button type="button" class="${ICON_BUTTON}" data-action="terminal" aria-label="Ouvrir un terminal" title="Terminal">${ICONS.terminal}</button>` : '';
-    const open = openUrl ? `<a href="${openUrl}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
+    const open = openUrl ? `<a href="${escapeHtml(openUrl)}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '';
     const resume = isServer ? `<button type="button" class="ep-btn ep-btn--sm resume" data-action="unpark">${iconOf('arrow')} Reprendre</button>` : '';
     const face = renderFace(row, 40, { withBadge: false });
     const kindClass = row.status === 'blocked' ? 'blocked-kind' : '';
@@ -992,8 +1002,8 @@
         <span class="mrow-age" title="Mise de côté">depuis <span class="park-age" data-updated="${park.at}">${formatAge(park.at, now)}</span></span>
       </div>`;
     const parkClass = row.status === 'blocked' ? 'parked-blocked' : 'parked-later';
-    if (!isOpen) return `<div class="mission parked ${parkClass}" data-engine="${row.engineId}">${head}</div>`;
-    return `<article class="card mission parked ${parkClass} open ${isBig ? 'big' : ''}" data-engine="${row.engineId}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">${head}${renderCardBody(row)}</article>`;
+    if (!isOpen) return `<div class="mission parked ${parkClass}" data-engine="${escapeHtml(row.engineId)}">${head}</div>`;
+    return `<article class="card mission parked ${parkClass} open ${isBig ? 'big' : ''}" data-engine="${escapeHtml(row.engineId)}" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">${head}${renderCardBody(row)}</article>`;
   };
 
   const closeParkMenu = () => {
@@ -1051,10 +1061,10 @@
 
   const renderRestRow = (row, now) => {
     const openUrl = openUrlOf(row);
-    const title = openUrl ? `<a class="trunc" href="${openUrl}">${escapeHtml(row.title)}</a>` : `<span class="trunc">${escapeHtml(row.title)}</span>`;
+    const title = openUrl ? `<a class="trunc" href="${escapeHtml(openUrl)}">${escapeHtml(row.title)}</a>` : `<span class="trunc">${escapeHtml(row.title)}</span>`;
     const back = row.status === 'seen' && isServer ? '<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="unseen">Remettre en attente</button>' : '';
     const label = REST_LABELS[row.status] || row.status;
-    return `<div class="rest-row" data-engine="${row.engineId}">${title}<span class="rest-side">${back}<span>${escapeHtml(label)} · <span class="rest-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span></span></div>`;
+    return `<div class="rest-row" data-engine="${escapeHtml(row.engineId)}">${title}<span class="rest-side">${back}<span>${escapeHtml(label)} · <span class="rest-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span></span></div>`;
   };
 
   const renderEmpty = () => {
@@ -1123,7 +1133,7 @@
     const messages = row.stats ? `<span>${row.stats.messages} msg</span>` : '';
     const pop = state.popId === row.engineId ? 'pop' : '';
     const label = `${row.title} : ${face.bubble}`;
-    return `<button type="button" class="t-agent" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(row.title)}">
+    return `<button type="button" class="t-agent" data-engine="${escapeHtml(row.engineId)}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(row.title)}">
       <span class="t-bubble" style="${bubbleStyleOf(row)}"><span class="t-clamp">${escapeHtml(face.bubble)}</span></span>
       ${renderFace(row, 64, { extraClass: pop })}
       <span class="t-name"><span class="t-title trunc">${escapeHtml(row.title)}</span><span class="t-meta">${messages}${meta}</span></span>
@@ -1155,8 +1165,8 @@
       const stateLabel = REST_LABELS[row.status] || row.status;
       const inner = `<span class="trunc t-chip-title">${escapeHtml(row.title)}</span><span class="t-chip-state">${escapeHtml(stateLabel)}</span>`;
       return openUrl
-        ? `<a href="${openUrl}" class="ep-tag t-chip" data-engine="${row.engineId}">${inner}</a>`
-        : `<span class="ep-tag t-chip" data-engine="${row.engineId}">${inner}</span>`;
+        ? `<a href="${escapeHtml(openUrl)}" class="ep-tag t-chip" data-engine="${escapeHtml(row.engineId)}">${inner}</a>`
+        : `<span class="ep-tag t-chip" data-engine="${escapeHtml(row.engineId)}">${inner}</span>`;
     }).join('');
     return `<div class="t-rest">
       <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm rest-toggle" data-action="team-rest" aria-expanded="${state.othersOpen}">${escapeHtml(toggleLabel)}</button>
@@ -1198,7 +1208,7 @@
       : (isServer && !row.isCurrent ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="blocked">${iconOf('block')} Bloquée</button><button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="later">${iconOf('later')} Plus tard</button>` : '');
     const sendLabel = WAITING_STATUSES.includes(row.status) ? 'Relancer l\'agent' : 'Envoyer à l\'agent';
     const enter = state.teamPopFresh ? 'enter' : '';
-    return `<div class="t-modal" data-engine="${row.engineId}">
+    return `<div class="t-modal" data-engine="${escapeHtml(row.engineId)}">
       <div class="t-backdrop" data-action="team-close"></div>
       <div class="t-sheet ep-glass ${enter}" role="dialog" aria-modal="true" aria-labelledby="t-pop-title" style="${tintStyleOf(row.engineId, TINT_BLOCK)}">
         <div class="t-sheet-head">
@@ -1218,7 +1228,7 @@
         ${composer}
         <div class="card-actions">
           <div class="group">
-            ${openUrl ? `<a href="${openUrl}" class="ep-btn ep-btn--ghost ep-btn--sm">${ICONS.open} Ouvrir</a>` : ''}
+            ${openUrl ? `<a href="${escapeHtml(openUrl)}" class="ep-btn ep-btn--ghost ep-btn--sm">${ICONS.open} Ouvrir</a>` : ''}
             ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
             ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
             ${restButton}
@@ -1271,7 +1281,7 @@
     const face = teamFaceOf(row);
     const label = `${row.title} : ${face.bubble}`;
     const tip = `${row.title}\n${face.state}\n${face.bubble}`;
-    return `<button type="button" class="mini-head ep-glass ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${row.engineId}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}" style="${faceStyleOf(row.engineId)}">
+    return `<button type="button" class="mini-head ep-glass ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${escapeHtml(row.engineId)}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}" style="${faceStyleOf(row.engineId)}">
       ${renderFace(row, head, { isBare: true })}
     </button>`;
   };
@@ -1795,11 +1805,14 @@
     render();
   };
 
+  const sendPost = (path, payload) => fetch(`${serverBase}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-cockpit-token': cockpitToken }, body: JSON.stringify(payload) });
+
   const post = async (path, payload) => {
-    const response = await fetch(`${serverBase}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    let response = await sendPost(path, payload);
+    if (response.status === 403 && await refreshToken()) response = await sendPost(path, payload);
     if (response.ok) return;
     const body = await response.text();
-    let reason = `HTTP ${response.status}`;
+    let reason = `Le cockpit a refusé la requête (code ${response.status}). Recharge la page.`;
     try { reason = JSON.parse(body).error || reason; } catch { }
     throw new Error(reason);
   };
@@ -2145,7 +2158,7 @@
       const row = rowOf(avatar.dataset.av);
       if (!row || !WAITING_STATUSES.includes(row.status)) return;
       expand(row.engineId);
-      document.querySelector(`.card[data-engine="${row.engineId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      document.querySelector(`.card[data-engine="${escapeHtml(row.engineId)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
     if (event.target.closest('a')) return;

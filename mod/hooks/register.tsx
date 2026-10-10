@@ -672,9 +672,11 @@ const refreshStats = async ($: EngineInterface) => {
   }
 }
 
+const powershellQuoted = (text: string) => text.replace(/'/g, "''")
+
 const buildTailScript = (path: string) => `
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
-$stream = [System.IO.File]::Open('${path}', 'Open', 'Read', 'ReadWrite')
+$stream = [System.IO.File]::Open('${powershellQuoted(path)}', 'Open', 'Read', 'ReadWrite')
 try {
   $size = $stream.Length
   $window = [Math]::Min($size, ${TRANSCRIPT_TAIL_BYTES})
@@ -992,8 +994,10 @@ const versionOf = (text: string) => {
   return String(hash >>> 0)
 }
 
+const inlineScriptSafe = (json: string) => json.replace(/</g, '\\u003c').replace(/ /g, '\\u2028').replace(/ /g, '\\u2029')
+
 const writePage = async ($: EngineInterface, payload: string, template: string, version: string) => {
-  const seed = `<script>window.__PAGE_VERSION__ = ${JSON.stringify(version)}; window.__CONVERSATIONS__ = ${payload};</script>`
+  const seed = `<script>window.__PAGE_VERSION__ = ${inlineScriptSafe(JSON.stringify(version))}; window.__CONVERSATIONS__ = ${inlineScriptSafe(payload)};</script>`
   const page = template.replace(SEED_MARKER, () => seed)
   await $.fs.write(`${pageDir($)}/${PAGE_FILE}`, page)
 }
