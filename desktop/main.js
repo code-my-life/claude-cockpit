@@ -4,14 +4,20 @@ const fs = require('node:fs')
 const { boundsOf, MARGIN, SHEET_MAX_HEIGHT } = require('./bounds')
 const { applyBlur } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
+const { startEmbeddedServer } = require('./embedded-server')
 
-const COCKPIT_URL = 'http://127.0.0.1:48123/'
+// The app serves the cockpit itself; when its server cannot start, the windows
+// fall back on the server a conversation with the mod runs on this port.
+const MOD_SERVER_PORT = 48123
+let serverPort = MOD_SERVER_PORT
+let embeddedServer = null
+const cockpitBase = () => `http://127.0.0.1:${serverPort}/`
 // The page only switches to the OS-glass look when the window really has a native blur behind it.
 let hasOsBlur = false
 const glassParam = () => (hasOsBlur ? '&glass=1' : '')
-const miniUrl = () => `${COCKPIT_URL}?mini=1${glassParam()}`
-const cockpitUrl = () => (hasOsBlur ? `${COCKPIT_URL}?glass=1` : COCKPIT_URL)
-const launcherUrl = () => `${COCKPIT_URL}?launcher=1${glassParam()}`
+const miniUrl = () => `${cockpitBase()}?mini=1${glassParam()}`
+const cockpitUrl = () => (hasOsBlur ? `${cockpitBase()}?glass=1` : cockpitBase())
+const launcherUrl = () => `${cockpitBase()}?launcher=1${glassParam()}`
 const LAUNCHER_SHORTCUTS = process.platform === 'darwin' ? ['Command+Alt+Space', 'Control+Alt+Space'] : ['Alt+Space', 'Control+Alt+Space']
 const RETRY_MS = 5000
 const ERR_ABORTED = -3
@@ -43,6 +49,20 @@ let anchor = null
 let selfMovedAt = 0
 
 const anchorFile = () => path.join(app.getPath('userData'), 'anchor.json')
+
+const logLine = message => {
+  try { fs.appendFileSync(path.join(app.getPath('userData'), 'cockpit.log'), `${new Date().toISOString()} ${message}
+`) } catch { }
+}
+
+const startServer = async () => {
+  try {
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), onError: message => logLine(`serveur : ${message}`) })
+    serverPort = embeddedServer.port
+  } catch (error) {
+    logLine(`serveur intégré indisponible, repli sur celui du mod : ${error.message}`)
+  }
+}
 
 const loadAnchor = () => {
   try {
@@ -95,7 +115,7 @@ const openOutside = url => {
   if (/^(https?|claude):\/\//i.test(url)) shell.openExternal(url)
 }
 
-const isTrusted = event => typeof event.senderFrame?.url === 'string' && event.senderFrame.url.startsWith(COCKPIT_URL)
+const isTrusted = event => typeof event.senderFrame?.url === 'string' && event.senderFrame.url.startsWith(cockpitBase())
 
 const onTrusted = (channel, listener) => ipcMain.on(channel, (event, ...args) => { if (isTrusted(event)) listener(event, ...args) })
 
@@ -107,7 +127,7 @@ const guardNavigation = target => {
     return { action: 'deny' }
   })
   target.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith(COCKPIT_URL)) return
+    if (url.startsWith(cockpitBase())) return
     event.preventDefault()
     openOutside(url)
   })
@@ -275,13 +295,17 @@ if (!app.requestSingleInstanceLock()) {
     applyBounds()
     if (win !== null) win.showInactive()
   })
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     if (process.platform === 'darwin') app.dock?.hide()
     nativeTheme.themeSource = 'dark'
+    await startServer()
     createWindow()
     createLauncherWindow()
     registerLauncherShortcut()
   })
-  app.on('will-quit', () => globalShortcut.unregisterAll())
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll()
+    embeddedServer?.stop()
+  })
   app.on('window-all-closed', () => app.quit())
 }
