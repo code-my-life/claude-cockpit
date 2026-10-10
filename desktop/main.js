@@ -353,9 +353,11 @@ const createTray = () => {
 
 onTrusted('dock-size', (event, width, height) => island?.setDockSize(Math.round(Number(width)), Math.round(Number(height))))
 
-onTrusted('expanded', (event, expanded, width, height) => {
-  island?.setExpanded(expanded === true, Math.round(Number(width)), Math.round(Number(height)))
-  if (expanded === true && win !== null) win.focus()
+onTrusted('island-toasts', (event, width, height) => island?.setToasts(Number(width), Number(height)))
+
+onTrusted('expanded', (event, expanded, width, height, byHover) => {
+  island?.setExpanded(expanded === true, Math.round(Number(width)), Math.round(Number(height)), byHover === true)
+  if (expanded === true && byHover !== true && win !== null) win.focus()
 })
 
 onTrusted('island-pointer', (event, isInside) => island?.pointer(isInside === true))

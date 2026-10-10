@@ -38,6 +38,8 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
   let isHeld = false
   let pin = PIN_NONE
   let isDonePinExpired = false
+  // Ouverte par le seul survol : elle se replie 0,6 s après le départ du pointeur, tant qu'on ne la touche pas.
+  let isOpenedByHover = false
   let timer = null
   let intentTimer = null
   let pinTimer = null
@@ -54,6 +56,7 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
     if (next === current) return
     const previous = current
     current = next
+    if (next !== OPEN) isOpenedByHover = false
     onChange(next, previous, cause)
   }
 
@@ -73,7 +76,7 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
   function rearm(graceMs) {
     clearTimer()
     if (current === HIDDEN || isHovered || isHeld || isPinned()) return
-    timer = clock.setTimer(onTimer, delayOf() + graceMs)
+    timer = clock.setTimer(onTimer, current === OPEN && isOpenedByHover ? HOVER_GRACE_MS : delayOf() + graceMs)
   }
 
   const showCompact = () => { if (current === HIDDEN) go(COMPACT) }
@@ -123,11 +126,16 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
       showCompact()
       rearm(0)
     },
-    activity() { rearm(0) },
-    open() {
+    activity() {
+      isOpenedByHover = false
+      rearm(0)
+    },
+    open(byHover = false) {
       markEvent()
       clearIntent()
+      const wasOpen = current === OPEN
       go(OPEN)
+      if (wasOpen === false) isOpenedByHover = byHover === true
       rearm(0)
     },
     fold() {

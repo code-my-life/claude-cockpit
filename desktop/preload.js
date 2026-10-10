@@ -2,7 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('cockpitDesktop', {
   setDockSize: (width, height) => ipcRenderer.send('dock-size', width, height),
-  setExpanded: (expanded, width, height) => ipcRenderer.send('expanded', expanded, width, height),
+  setExpanded: (expanded, width, height, byHover) => ipcRenderer.send('expanded', expanded, width, height, byHover === true),
+  setToasts: (width, height) => ipcRenderer.send('island-toasts', width, height),
   islandPointer: isInside => ipcRenderer.send('island-pointer', isInside),
   islandEvent: () => ipcRenderer.send('island-event'),
   islandPinned: isPinned => ipcRenderer.send('island-pinned', isPinned),

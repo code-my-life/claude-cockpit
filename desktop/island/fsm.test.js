@@ -349,3 +349,47 @@ test('retenir une ile cachee ne la montre pas', () => {
   fsm.hold(true)
   assert.equal(fsm.state(), 'hidden')
 })
+
+test('ouverte au survol : repli 0,6 s apres le depart du pointeur, pas 15 s', () => {
+  const { clock, fsm } = setup()
+  fsm.reveal()
+  fsm.hover(true)
+  fsm.open(true)
+  fsm.hover(false)
+  clock.advance(HOVER_GRACE_MS - 1)
+  assert.equal(fsm.state(), 'open')
+  clock.advance(1)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('ouverte au survol puis touchee : elle devient ordinaire et garde 15 s', () => {
+  const { clock, fsm } = setup()
+  fsm.reveal()
+  fsm.hover(true)
+  fsm.open(true)
+  fsm.activity()
+  fsm.hover(false)
+  clock.advance(HOVER_GRACE_MS + 1000)
+  assert.equal(fsm.state(), 'open')
+  clock.advance(FOLD_DELAY_MS)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('ouverte au survol : tant que le pointeur reste dessus, elle ne se replie pas', () => {
+  const { clock, fsm } = setup()
+  fsm.reveal()
+  fsm.hover(true)
+  fsm.open(true)
+  clock.advance(FOLD_DELAY_MS * 2)
+  assert.equal(fsm.state(), 'open')
+})
+
+test('ouverte au clic : le comportement reste celui de 15 s apres le depart', () => {
+  const { clock, fsm } = setup()
+  fsm.reveal()
+  fsm.open()
+  fsm.hover(true)
+  fsm.hover(false)
+  clock.advance(HOVER_GRACE_MS + 1000)
+  assert.equal(fsm.state(), 'open')
+})

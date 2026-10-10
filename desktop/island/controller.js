@@ -5,7 +5,7 @@ const { createIslandFsm, HIDDEN } = require('./fsm')
 const { islandBoundsOf, shapeRectsOf, settleDelayOf } = require('../bounds')
 const { createEdgePoller } = require('./edge')
 
-const DEFAULT_DOCK = { width: 120, height: 96 }
+const DEFAULT_DOCK = { width: 320, height: 44 }
 
 const realClock = {
   setTimer: (callback, delay) => setTimeout(callback, delay),
@@ -13,7 +13,7 @@ const realClock = {
 }
 
 const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, setVisible, focusWindow = () => {}, isFullscreenActive = () => false, isScreenReaderActive = () => false, send, clock = realClock }) => {
-  let sizes = { dockWidth: DEFAULT_DOCK.width, dockHeight: DEFAULT_DOCK.height, sheetWidth: 0, sheetHeight: 0 }
+  let sizes = { dockWidth: DEFAULT_DOCK.width, dockHeight: DEFAULT_DOCK.height, sheetWidth: 0, sheetHeight: 0, toastWidth: 0, toastHeight: 0 }
   let appliedPhase = HIDDEN
   let hasReducedMotion = false
   let isOffline = false
@@ -33,7 +33,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
       setVisible(false)
       return
     }
-    const bounds = islandBoundsOf(getArea(), { ...sizes, phase })
+    const bounds = islandBoundsOf(getArea())
     applyBounds(bounds)
     applyShape(shapeRectsOf(bounds, { ...sizes, phase }))
     setVisible(true)
@@ -94,14 +94,19 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
       sizes = { ...sizes, dockWidth: width, dockHeight: height }
       resize()
     },
-    setExpanded(isOpen, width, height) {
+    setExpanded(isOpen, width, height, byHover = false) {
       // À la fermeture on garde la taille de la fiche : la fenêtre ne rétrécit qu'une fois l'animation finie.
       if (isOpen) sizes = { ...sizes, sheetWidth: width, sheetHeight: height }
-      if (isOpen) fsm.open()
+      if (isOpen) fsm.open(byHover === true)
       else fsm.fold()
       // La page a déjà fermé sa fiche : inutile d'attendre la fin de l'animation.
       if (isOpen) resize()
       else settleNow()
+    },
+    // Les toasts : une zone de plus sous la forme, sans toucher à l'automate.
+    setToasts(width, height) {
+      sizes = { ...sizes, toastWidth: Math.max(0, Math.round(Number(width)) || 0), toastHeight: Math.max(0, Math.round(Number(height)) || 0) }
+      resize()
     },
     setOffline(isDown, width, height) {
       isOffline = isDown === true
