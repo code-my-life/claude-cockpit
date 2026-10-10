@@ -69,6 +69,35 @@
 
   const shouldPauseLoops = phase => phase === 'hidden';
 
+  // Les toasts de l'île se posent sous le dock : la fenêtre compacte s'arrête là, elle doit donc s'agrandir le temps
+  // des toasts visibles (même mécanisme que les fiches, forme cliquable comprise) puis se rétrécir au dernier.
+  // Largeur des toasts du modèle (min(380px, ...)) et marge sous le dernier.
+  const TOAST_WIDTH = 380;
+  const TOAST_MARGIN = 8;
+
+  const toastExtentOf = (count, scrollHeight) => (count > 0 ? { width: TOAST_WIDTH, height: Math.ceil(scrollHeight) + TOAST_MARGIN } : { width: 0, height: 0 });
+
+  const expansionOf = ({ sheet, toast }) => ({
+    isOpen: sheet.isOpen || toast.height > 0,
+    width: Math.max(sheet.width, toast.width),
+    height: Math.max(sheet.height, toast.height),
+  });
+
+  // Prévient quand la zone des toasts change (arrivée, départ, hauteur) ; la zone est créée à la demande par le modèle.
+  const watchToasts = (doc, win, onChange) => {
+    let host = null;
+    const attach = () => {
+      const found = doc.querySelector('.ep-toasts');
+      if (found === null || found === host) return;
+      host = found;
+      new win.MutationObserver(onChange).observe(host, { childList: true });
+      if (typeof win.ResizeObserver === 'function') new win.ResizeObserver(onChange).observe(host);
+      onChange();
+    };
+    new win.MutationObserver(attach).observe(doc.body, { childList: true });
+    attach();
+  };
+
   const createThrottle = (action, intervalMs, clock = Date.now) => {
     let lastAt = -Infinity;
     return () => {
@@ -186,7 +215,7 @@
 
   const api = {
     SHAPE_SELECTOR, ACTIVITY_THROTTLE_MS, LEAVE_MS, isInsideShape, createPointerReporter, statusChanges, waitingCountOf,
-    pinKindOf, announcementOf, hasNewWaiting, focusSelectorOf, zoneWordOf, shouldPauseLoops, shouldAnnounce, createThrottle, createLeaveTimer, init,
+    pinKindOf, announcementOf, hasNewWaiting, focusSelectorOf, zoneWordOf, shouldPauseLoops, TOAST_WIDTH, TOAST_MARGIN, toastExtentOf, expansionOf, watchToasts, shouldAnnounce, createThrottle, createLeaveTimer, init,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

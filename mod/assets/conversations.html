@@ -1493,11 +1493,13 @@
 
   const syncDesktopWindow = () => {
     if (!desktop) return;
-    const isOpen = state.teamPopId !== null || state.newConv !== null || state.dockMenuOpen || state.soundIntroOpen;
+    const isSheetOpen = state.teamPopId !== null || state.newConv !== null || state.dockMenuOpen || state.soundIntroOpen;
     const sheet = document.querySelector('.t-sheet');
-    const sheetHeight = sheet ? sheet.scrollHeight + 4 : 0;
     const panelWidth = sheet ? getComputedStyle(sheet).getPropertyValue('--panel-width') : '';
-    const sheetWidth = Number.parseInt(panelWidth, 10) || 0;
+    const sheetSize = { isOpen: isSheetOpen, width: Number.parseInt(panelWidth, 10) || 0, height: sheet ? sheet.scrollHeight + 4 : 0 };
+    const toastHost = document.querySelector('.ep-toasts');
+    const toastSize = window.CockpitIsland.toastExtentOf(toastHost ? toastHost.children.length : 0, toastHost ? toastHost.scrollHeight : 0);
+    const { isOpen, width: sheetWidth, height: sheetHeight } = window.CockpitIsland.expansionOf({ sheet: sheetSize, toast: toastSize });
     const hasChanged = isOpen !== miniExpanded || (isOpen && (sheetHeight !== miniSheetHeight || sheetWidth !== miniSheetWidth));
     if (hasChanged) {
       miniExpanded = isOpen;
@@ -2483,6 +2485,7 @@
     if (desktop) setUpSounds();
     if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce, playSound, onReveal: announceSoundsOnce });
     window.addEventListener('resize', syncDesktopWindow);
+    window.CockpitIsland.watchToasts(document, window, syncDesktopWindow);
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');
       if (appLink) {

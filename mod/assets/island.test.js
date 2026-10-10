@@ -174,3 +174,32 @@ test('zoneWordOf : un mot pour les etats voiles ; l attente a deja le sien dans 
   assert.equal(zoneWordOf('waiting'), "");
   assert.equal(zoneWordOf('rest'), '');
 });
+
+const { TOAST_WIDTH, TOAST_MARGIN, toastExtentOf, expansionOf } = require('./island.js');
+
+test('toasts: no toast takes no room, toasts take their height plus a margin and a fixed width', () => {
+  assert.deepEqual(toastExtentOf(0, 0), { width: 0, height: 0 });
+  assert.deepEqual(toastExtentOf(0, 120), { width: 0, height: 0 });
+  assert.deepEqual(toastExtentOf(1, 96), { width: TOAST_WIDTH, height: 96 + TOAST_MARGIN });
+  assert.equal(toastExtentOf(2, 200.4).height, 201 + TOAST_MARGIN);
+});
+
+test('expansion: nothing open, window stays compact', () => {
+  assert.deepEqual(expansionOf({ sheet: { isOpen: false, width: 0, height: 0 }, toast: { width: 0, height: 0 } }), { isOpen: false, width: 0, height: 0 });
+});
+
+test('expansion: a sheet alone keeps its size', () => {
+  const sheet = { isOpen: true, width: 380, height: 300 };
+  assert.deepEqual(expansionOf({ sheet, toast: { width: 0, height: 0 } }), sheet);
+});
+
+test('expansion: a toast alone opens the window to the size of the toast, so it is never cut', () => {
+  const room = expansionOf({ sheet: { isOpen: false, width: 0, height: 0 }, toast: { width: TOAST_WIDTH, height: 110 } });
+  assert.deepEqual(room, { isOpen: true, width: TOAST_WIDTH, height: 110 });
+});
+
+test('expansion: a sheet and a toast together take the larger of each, and a closing toast gives the room back', () => {
+  const sheet = { isOpen: true, width: 1100, height: 80 };
+  assert.deepEqual(expansionOf({ sheet, toast: { width: TOAST_WIDTH, height: 140 } }), { isOpen: true, width: 1100, height: 140 });
+  assert.deepEqual(expansionOf({ sheet, toast: { width: 0, height: 0 } }), sheet);
+});
