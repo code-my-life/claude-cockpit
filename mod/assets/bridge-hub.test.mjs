@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { createBridgeHub, BRIDGE_TIMEOUT_MS, REDELIVER_MS } from './bridge-hub.mjs'
+import { createBridgeHub, BRIDGE_TIMEOUT_MS, MAX_BRIDGES, MAX_PENDING_ORDERS, REDELIVER_MS } from './bridge-hub.mjs'
 
 const REPLY_TTL_MS = 60000
 
@@ -28,6 +28,31 @@ test('the first bridge to say hello is the hub, the next ones are peers', () => 
   assert.equal(first.role, 'hub')
   assert.equal(second.role, 'peer')
   assert.notEqual(first.bridgeId, second.bridgeId)
+})
+
+test('a conversation saying hello again replaces its previous bridge', () => {
+  const { hub } = hubWith()
+  const before = hub.hello({ engineId: 'a' })
+  const other = hub.hello({ engineId: 'b' })
+  const again = hub.hello({ engineId: 'a' })
+  assert.equal(hub.poll(before.bridgeId), null)
+  assert.equal(hub.bridgeCount(), 2)
+  assert.equal(hub.roleOf(other.bridgeId), 'hub')
+  hub.dispatch({ type: 'reply', engineId: 'a', text: 'pour a' })
+  assert.deepEqual(hub.poll(again.bridgeId).orders.map(entry => entry.text), ['pour a'])
+})
+
+test('the hub refuses bridges beyond its limit', () => {
+  const { hub } = hubWith()
+  for (let index = 0; index < MAX_BRIDGES; index++) hub.hello({ engineId: `conv-${index}` })
+  assert.equal(hub.hello({ engineId: 'one-too-many' }), null)
+})
+
+test('orders beyond the waiting limit are refused', () => {
+  const { hub } = hubWith()
+  hub.hello({ engineId: 'a' })
+  for (let index = 0; index < MAX_PENDING_ORDERS; index++) assert.equal(hub.dispatch({ type: 'ack', engineId: 'a', seen: true }), true)
+  assert.equal(hub.dispatch({ type: 'ack', engineId: 'a', seen: true }), false)
 })
 
 test('without any bridge an order cannot be delivered', () => {

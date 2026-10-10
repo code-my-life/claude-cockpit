@@ -29,8 +29,9 @@ const withApp = async run => {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-bridge-'))
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-home-'))
   const secret = crypto.randomBytes(32).toString('hex')
+  const proof = crypto.randomBytes(32).toString('hex')
   const hub = createBridgeHub()
-  const cockpit = createCockpitServer({ rootDir, port: 0, sink: order => hub.dispatch(order), homeDir: home, env: {}, bridge: { hub, secret } })
+  const cockpit = createCockpitServer({ rootDir, port: 0, sink: order => hub.dispatch(order), homeDir: home, env: {}, bridge: { hub, secret, proof } })
   try {
     const port = await cockpit.listen()
     const bridge = (method, route, body, extraHeaders = {}) => call(port, method, route, {
@@ -41,7 +42,7 @@ const withApp = async run => {
       headers: { 'content-type': 'application/json', 'x-cockpit-token': cockpit.token },
       body: JSON.stringify(body),
     })
-    await run({ port, secret, hub, bridge, page })
+    await run({ port, secret, proof, hub, bridge, page })
   } finally {
     await cockpit.close()
     fs.rmSync(rootDir, { recursive: true, force: true })
@@ -80,6 +81,20 @@ test('a mod of another protocol is told to update', async () => {
   await withApp(async ({ bridge }) => {
     const response = await bridge('POST', '/bridge/v1/hello', { ...HELLO, protocol: 2 })
     assert.equal(response.status, 426)
+  })
+})
+
+test('hello proves the app knows the link, so the mod can trust its orders', async () => {
+  await withApp(async ({ bridge, proof }) => {
+    const response = await bridge('POST', '/bridge/v1/hello', HELLO)
+    assert.equal(response.json.proof, proof)
+  })
+})
+
+test('a malformed secret of the right length is refused, not an internal error', async () => {
+  await withApp(async ({ bridge }) => {
+    const response = await bridge('POST', '/bridge/v1/hello', HELLO, { authorization: 'Bearer ' + 'é'.repeat(64) })
+    assert.equal(response.status, 401)
   })
 })
 

@@ -33,6 +33,8 @@ test('a new link carries the protocol, the port, the data folder and a fresh 32-
   assert.equal(first.port, 48124)
   assert.equal(first.dataDir, DATA_DIR)
   assert.match(first.secret, /^[0-9a-f]{64}$/)
+  assert.match(first.proof, /^[0-9a-f]{64}$/)
+  assert.notEqual(first.proof, first.secret)
   assert.notEqual(first.secret, second.secret)
   assert.equal(typeof first.startedAt, 'number')
 })
@@ -65,6 +67,7 @@ test('a link from another protocol or with a malformed field is ignored', () => 
     { ...link, protocol: 99 },
     { ...link, port: 70000 },
     { ...link, secret: 'short' },
+    { ...link, proof: undefined },
     { ...link, pid: -1 },
     { ...link, dataDir: '' },
     { ...link, dataDir: 'relative/folder' },

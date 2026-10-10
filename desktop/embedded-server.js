@@ -31,10 +31,11 @@ const startEmbeddedServer = async ({ appVersion, onError }) => {
   const linkFile = linkFileOf(process.platform, process.env, os.homedir())
   const dataDir = dataDirOf(linkFile)
   const secret = createSecret()
+  const proof = createSecret()
   const child = utilityProcess.fork(path.join(__dirname, 'app-server.cjs'), [], { serviceName: 'Serveur du cockpit', stdio: 'ignore' })
   try {
-    const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret }, onError)
-    writeLink(linkFile, createLink({ port, appVersion, pid: process.pid, dataDir, secret }))
+    const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret, proof }, onError)
+    writeLink(linkFile, createLink({ port, appVersion, pid: process.pid, dataDir, secret, proof }))
     const stop = () => {
       removeLink(linkFile, process.pid)
       child.kill()

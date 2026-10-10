@@ -75,8 +75,10 @@ export const engineIdOf = body => {
 }
 
 export const secretMatches = (given, expected) => {
-  if (typeof given !== 'string' || given.length !== expected.length) return false
-  return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected))
+  if (typeof given !== 'string') return false
+  const givenBytes = Buffer.from(given)
+  const expectedBytes = Buffer.from(expected)
+  return givenBytes.length === expectedBytes.length && crypto.timingSafeEqual(givenBytes, expectedBytes)
 }
 
 export const guardHost = (request, port) => {

@@ -11,31 +11,44 @@ export const PREFERRED_PORT = 48123
 const ANY_FREE_PORT = 0
 const SEED_MARKER = '<!--SEED-->'
 const EMPTY_DATA = { generatedAt: 0, rows: [], folders: [] }
+const INBOX_MAX_AGE_MS = 7 * 24 * 3600 * 1000
+export const STARTER_MARK = '<!--cockpit-starter-->'
 
-const writeIfMissing = (file, text) => {
-  if (fs.existsSync(file)) return
-  fs.writeFileSync(file, text)
-}
+const isStarterOrMissing = file => !fs.existsSync(file) || fs.readFileSync(file, 'utf8').includes(STARTER_MARK)
 
 // Until a conversation with the mod writes the real page, the app shows the
-// same page with no conversation in it.
+// same page with no conversation in it. The starter page carries a mark so a
+// newer template replaces it at the next start.
 const ensureStarterPage = (rootDir, dataDir) => {
   fs.mkdirSync(dataDir, { recursive: true })
+  const pageFile = path.join(dataDir, 'conversations.html')
+  if (!isStarterOrMissing(pageFile)) return
   const emptyJson = JSON.stringify(EMPTY_DATA)
   const template = fs.readFileSync(path.join(rootDir, 'mod', 'assets', 'conversations.html'), 'utf8')
-  const seed = `<script>window.__CONVERSATIONS__ = ${emptyJson};</script>`
-  writeIfMissing(path.join(dataDir, 'conversations.html'), template.replace(SEED_MARKER, () => seed))
-  writeIfMissing(path.join(dataDir, 'conversations-data.js'), `window.__CONVERSATIONS__ = ${emptyJson};`)
+  const seed = `${STARTER_MARK}<script>window.__CONVERSATIONS__ = ${emptyJson};</script>`
+  fs.writeFileSync(pageFile, template.replace(SEED_MARKER, () => seed))
+  fs.writeFileSync(path.join(dataDir, 'conversations-data.js'), `window.__CONVERSATIONS__ = ${emptyJson};`)
 }
 
-export const startAppServer = async ({ rootDir, dataDir, secret, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {} }) => {
+const purgeOldImages = (dataDir, now = Date.now()) => {
+  const inbox = path.join(dataDir, 'inbox')
+  if (!fs.existsSync(inbox)) return
+  for (const name of fs.readdirSync(inbox)) {
+    const file = path.join(inbox, name)
+    const stat = fs.statSync(file)
+    if (stat.isFile() && now - stat.mtimeMs > INBOX_MAX_AGE_MS) fs.rmSync(file, { force: true })
+  }
+}
+
+export const startAppServer = async ({ rootDir, dataDir, secret, proof, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {} }) => {
   ensureStarterPage(rootDir, dataDir)
+  purgeOldImages(dataDir)
   const hub = createBridgeHub()
   const sink = order => {
     if (order.type === 'error') return onError(order.message)
     return hub.dispatch(order)
   }
-  const build = port => createCockpitServer({ rootDir, dataDir, port, sink, bridge: { hub, secret }, homeDir, env })
+  const build = port => createCockpitServer({ rootDir, dataDir, port, sink, bridge: { hub, secret, proof }, homeDir, env })
   let cockpit = build(preferredPort)
   let port
   try {

@@ -6,6 +6,8 @@ import crypto from 'node:crypto'
 export const BRIDGE_TIMEOUT_MS = 35000
 export const REDELIVER_MS = 10000
 export const MAX_WAIT_MS = 25000
+export const MAX_BRIDGES = 50
+export const MAX_PENDING_ORDERS = 200
 const ORDER_TTL_MS = { reply: 60000, summarize: 60000 }
 const DEFAULT_ORDER_TTL_MS = 600000
 const ENGINE_ROUTED = new Set(['reply', 'summarize'])
@@ -52,8 +54,12 @@ export const createBridgeHub = ({ now = Date.now, newId = () => crypto.randomUUI
     return id === hubId ? 'hub' : 'peer'
   }
 
+  // A conversation that says hello again (reconnection, module reload) replaces
+  // its previous bridge at once; null when the hub is full.
   const hello = ({ engineId }) => {
     prune()
+    for (const previous of [...bridges.values()]) if (previous.engineId === engineId) removeBridge(previous.id)
+    if (bridges.size >= MAX_BRIDGES) return null
     const bridge = { id: newId(), engineId, lastSeenAt: now(), waiters: new Set() }
     bridges.set(bridge.id, bridge)
     electHub()
@@ -84,10 +90,11 @@ export const createBridgeHub = ({ now = Date.now, newId = () => crypto.randomUUI
 
   const ownBridgeOf = engineId => [...bridges.values()].find(bridge => bridge.engineId === engineId)
 
-  // Queues an order; false when no conversation with the mod is connected.
+  // Queues an order; false when no conversation with the mod is connected or
+  // too many orders already wait.
   const dispatch = order => {
     prune()
-    if (bridges.size === 0) return false
+    if (bridges.size === 0 || pending.length >= MAX_PENDING_ORDERS) return false
     const target = ENGINE_ROUTED.has(order.type) ? (ownBridgeOf(order.engineId)?.id ?? null) : null
     const ttl = ORDER_TTL_MS[order.type] ?? DEFAULT_ORDER_TTL_MS
     pending = [...pending, { orderId: newId(), order, target, expiresAt: now() + ttl, deliveredAt: null }]

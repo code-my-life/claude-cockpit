@@ -153,7 +153,7 @@ const openTerminal = (ctx, cwd) => {
   launchFirstWorking(ctx, terminalCandidatesOf(process.platform, cwd))
 }
 
-const NO_BRIDGE_MESSAGE = 'Aucune conversation avec le mod n’est ouverte : ouvre une conversation Claude pour envoyer cet ordre.'
+const NO_BRIDGE_MESSAGE = 'Ordre non transmis : aucune conversation avec le mod n’est ouverte, ou trop d’ordres attendent déjà. Ouvre une conversation Claude puis réessaie.'
 
 // The sink answers false when nobody can carry the order (app mode, no bridge).
 const deliver = (ctx, order) => {

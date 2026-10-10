@@ -27,10 +27,13 @@ export const dataDirOf = linkFile => path.join(path.dirname(linkFile), 'data')
 
 export const createSecret = () => crypto.randomBytes(SECRET_BYTES).toString('hex')
 
-export const createLink = ({ port, appVersion, pid, dataDir, secret = createSecret() }) => ({
+// `secret` is what the mod shows the app; `proof` is what the app shows back,
+// so the mod never obeys a process that only took the port.
+export const createLink = ({ port, appVersion, pid, dataDir, secret = createSecret(), proof = createSecret() }) => ({
   protocol: LINK_PROTOCOL,
   port,
   secret,
+  proof,
   pid,
   dataDir,
   appVersion,
@@ -43,6 +46,7 @@ const isValidLink = link =>
   link.protocol === LINK_PROTOCOL &&
   Number.isInteger(link.port) && link.port > 0 && link.port <= MAX_PORT &&
   typeof link.secret === 'string' && SECRET_PATTERN.test(link.secret) &&
+  typeof link.proof === 'string' && SECRET_PATTERN.test(link.proof) &&
   Number.isInteger(link.pid) && link.pid > 0 &&
   typeof link.dataDir === 'string' && path.isAbsolute(link.dataDir)
 
@@ -59,8 +63,12 @@ export const isProcessAlive = pid => {
 export const writeLink = (file, link) => {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: PRIVATE_FOLDER_MODE })
   const temporary = `${file}.${process.pid}.tmp`
-  fs.writeFileSync(temporary, JSON.stringify(link), { mode: PRIVATE_FILE_MODE })
-  fs.renameSync(temporary, file)
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(link), { mode: PRIVATE_FILE_MODE })
+    fs.renameSync(temporary, file)
+  } finally {
+    fs.rmSync(temporary, { force: true })
+  }
 }
 
 const parseLink = file => {
