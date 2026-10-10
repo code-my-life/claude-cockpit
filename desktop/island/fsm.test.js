@@ -314,3 +314,38 @@ test('dispose annule les minuteries', () => {
   fsm.dispose()
   assert.equal(clock.pending(), 0)
 })
+
+test('un toast visible retient l ile ouverte : pas de repli apres 15 s, ni apres dix minutes', () => {
+  const { clock, changes, fsm } = setup()
+  fsm.open()
+  fsm.hold(true)
+  clock.advance(FOLD_DELAY_MS + 10 * 60 * 1000)
+  assert.equal(fsm.state(), 'open')
+  assert.deepEqual(changes, ['hidden>open'])
+})
+
+test('un toast visible retient aussi l ile reduite : elle ne se cache pas', () => {
+  const { clock, fsm } = setup()
+  fsm.reveal()
+  fsm.hold(true)
+  clock.advance(HIDE_DELAY_MS * 3)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('quand le dernier toast disparait, le compte a rebours reprend et l ile se replie', () => {
+  const { clock, fsm } = setup()
+  fsm.open()
+  fsm.hold(true)
+  clock.advance(60 * 1000)
+  fsm.hold(false)
+  clock.advance(FOLD_DELAY_MS + HOVER_GRACE_MS - 1)
+  assert.equal(fsm.state(), 'open')
+  clock.advance(1)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('retenir une ile cachee ne la montre pas', () => {
+  const { fsm } = setup()
+  fsm.hold(true)
+  assert.equal(fsm.state(), 'hidden')
+})

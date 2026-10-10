@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   islandPinned: isPinned => ipcRenderer.send('island-pinned', isPinned),
   islandActivity: () => ipcRenderer.send('island-activity'),
   islandEscape: () => ipcRenderer.send('island-escape'),
+  islandHold: isHeld => ipcRenderer.send('island-hold', isHeld),
   islandMotion: isReduced => ipcRenderer.send('island-motion', isReduced),
   onIslandState: callback => ipcRenderer.on('island-state', (event, phase, cause) => callback(phase, cause)),
   onIslandFocus: callback => ipcRenderer.on('island-focus', () => callback()),

@@ -34,6 +34,8 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
   let current = HIDDEN
   let cause = CAUSE_EVENT
   let isHovered = false
+  // Un toast visible retient l'île : ni repli ni masquage tant qu'il est là.
+  let isHeld = false
   let pin = PIN_NONE
   let isDonePinExpired = false
   let timer = null
@@ -70,7 +72,7 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
   // Le compte à rebours ne tourne que si l'île est visible, libre et non survolée.
   function rearm(graceMs) {
     clearTimer()
-    if (current === HIDDEN || isHovered || isPinned()) return
+    if (current === HIDDEN || isHovered || isHeld || isPinned()) return
     timer = clock.setTimer(onTimer, delayOf() + graceMs)
   }
 
@@ -110,6 +112,10 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
     hover(isInside) {
       isHovered = isInside === true
       rearm(isHovered ? 0 : HOVER_GRACE_MS)
+    },
+    hold(isOn) {
+      isHeld = isOn === true
+      rearm(isHeld ? 0 : HOVER_GRACE_MS)
     },
     reveal() {
       markEvent()

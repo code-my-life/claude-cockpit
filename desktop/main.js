@@ -365,6 +365,7 @@ onTrusted('island-activity', () => island?.activity())
 
 onTrusted('island-escape', () => island?.escape())
 
+onTrusted('island-hold', (event, isHeld) => island?.setHeld(isHeld === true))
 onTrusted('island-motion', (event, isReduced) => island?.setMotion(isReduced === true))
 
 onTrusted('open-cockpit', (event, section) => openCockpitWindow(section === 'search' ? 'search' : null))

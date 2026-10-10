@@ -828,11 +828,16 @@
   const SOUND_INTRO_SETTLE_MS = 450;
   let soundIntroTimer = null;
 
+  let soundIntroReturnFocus = null;
+
+  // Focus : « Compris » à l'ouverture, retour à ce qui l'avait (ou au dock) à la fermeture.
   const closeSoundIntro = () => {
     if (soundIntroTimer !== null) { clearTimeout(soundIntroTimer); soundIntroTimer = null; }
     if (!state.soundIntroOpen) return;
     state.soundIntroOpen = false;
     render({ force: true });
+    document.querySelector(window.CockpitIsland.returnFocusSelectorOf(soundIntroReturnFocus))?.focus({ preventScroll: true });
+    soundIntroReturnFocus = null;
   };
 
   // L'app décide au moment du son s'il faut se taire (plein écran, présentation, occupé, heures calmes) ; en cas de doute, silence.
@@ -850,8 +855,11 @@
       if (shouldShow !== true) return;
       // On attend la fin de l’ouverture de l’île : la fiche se place sous le dock une fois celui-ci arrivé.
       setTimeout(() => {
+        const active = document.activeElement;
+        soundIntroReturnFocus = active && active !== document.body ? window.CockpitIsland.focusSelectorOf(active) : null;
         state.soundIntroOpen = true;
         render({ force: true });
+        document.querySelector('.sound-intro [data-sound-intro="close"].ep-btn--primary')?.focus({ preventScroll: true });
         soundIntroTimer = setTimeout(() => { soundIntroTimer = null; if (state.soundIntroOpen) desktop.soundIntroSeen(); }, SOUND_INTRO_SEEN_MS);
       }, SOUND_INTRO_SETTLE_MS);
     }).catch(() => {});
@@ -1384,6 +1392,7 @@
   let miniExpanded = false;
   let miniSheetWidth = 0;
   let miniSheetHeight = 0;
+  let hasToasts = false;
   let islandUi = null;
   const DOCK_PREFS_KEY = 'cockpit.dock';
 
@@ -1501,6 +1510,11 @@
     const toastSize = window.CockpitIsland.toastExtentOf(toastHost ? toastHost.children.length : 0, toastHost ? toastHost.scrollHeight : 0);
     const { isOpen, width: sheetWidth, height: sheetHeight } = window.CockpitIsland.expansionOf({ sheet: sheetSize, toast: toastSize });
     const hasChanged = isOpen !== miniExpanded || (isOpen && (sheetHeight !== miniSheetHeight || sheetWidth !== miniSheetWidth));
+    const areToastsShown = toastSize.height > 0;
+    if (areToastsShown !== hasToasts) {
+      hasToasts = areToastsShown;
+      desktop.islandHold(areToastsShown);
+    }
     if (hasChanged) {
       miniExpanded = isOpen;
       miniSheetWidth = sheetWidth;

@@ -77,6 +77,10 @@
 
   const toastExtentOf = (count, scrollHeight) => (count > 0 ? { width: TOAST_WIDTH, height: Math.ceil(scrollHeight) + TOAST_MARGIN } : { width: 0, height: 0 });
 
+  // Après une fiche : le focus revient à ce qui l'avait, sinon au premier bouton du dock.
+  const DOCK_FIRST_BUTTON = '.dock button';
+  const returnFocusSelectorOf = saved => (saved ? saved : DOCK_FIRST_BUTTON);
+
   const expansionOf = ({ sheet, toast }) => ({
     isOpen: sheet.isOpen || toast.height > 0,
     width: Math.max(sheet.width, toast.width),
@@ -90,6 +94,8 @@
       const found = doc.querySelector('.ep-toasts');
       if (found === null || found === host) return;
       host = found;
+      // Les toasts de l'île flottent sur le bureau sans scène : surface papier, fond --plate opaque (pas de verre).
+      host.dataset.surface = 'paper';
       new win.MutationObserver(onChange).observe(host, { childList: true });
       if (typeof win.ResizeObserver === 'function') new win.ResizeObserver(onChange).observe(host);
       onChange();
@@ -215,7 +221,7 @@
 
   const api = {
     SHAPE_SELECTOR, ACTIVITY_THROTTLE_MS, LEAVE_MS, isInsideShape, createPointerReporter, statusChanges, waitingCountOf,
-    pinKindOf, announcementOf, hasNewWaiting, focusSelectorOf, zoneWordOf, shouldPauseLoops, TOAST_WIDTH, TOAST_MARGIN, toastExtentOf, expansionOf, watchToasts, shouldAnnounce, createThrottle, createLeaveTimer, init,
+    pinKindOf, announcementOf, hasNewWaiting, focusSelectorOf, zoneWordOf, shouldPauseLoops, TOAST_WIDTH, TOAST_MARGIN, DOCK_FIRST_BUTTON, returnFocusSelectorOf, toastExtentOf, expansionOf, watchToasts, shouldAnnounce, createThrottle, createLeaveTimer, init,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

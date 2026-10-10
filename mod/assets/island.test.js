@@ -203,3 +203,12 @@ test('expansion: a sheet and a toast together take the larger of each, and a clo
   assert.deepEqual(expansionOf({ sheet, toast: { width: TOAST_WIDTH, height: 140 } }), { isOpen: true, width: 1100, height: 140 });
   assert.deepEqual(expansionOf({ sheet, toast: { width: 0, height: 0 } }), sheet);
 });
+
+const { returnFocusSelectorOf, DOCK_FIRST_BUTTON } = require('./island.js');
+
+test('focus after a sheet closes: back to what had it, else to the first button of the dock', () => {
+  assert.equal(returnFocusSelectorOf('[data-mini="search"]'), '[data-mini="search"]');
+  assert.equal(returnFocusSelectorOf(null), DOCK_FIRST_BUTTON);
+  assert.equal(returnFocusSelectorOf(''), DOCK_FIRST_BUTTON);
+  assert.equal(DOCK_FIRST_BUTTON, '.dock button');
+});

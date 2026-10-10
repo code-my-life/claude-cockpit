@@ -87,6 +87,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
       pageKind = kind
       fsm.setPinned(isOffline ? 'attention' : kind)
     },
+    setHeld(isHeld) { fsm.hold(isHeld === true) },
     setMotion(isReduced) { hasReducedMotion = isReduced === true },
     pointer(isInside) { fsm.hover(isInside === true) },
     setDockSize(width, height) {
