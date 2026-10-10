@@ -521,14 +521,16 @@
 
   const phaseOf = (instance, mod) => (phases.get(instance.identity.key) || 0) + instance.trim + mod.phaseKick;
 
-  const faceGapOf = instance => {
+  // `carriedYaw` : le tour de la vue déjà acquis (terminé), à compter avant de viser la pose de face.
+  const faceGapOf = (instance, carriedYaw) => {
     const base = (phases.get(instance.identity.key) || 0) + instance.trim + instance.motion.phaseOffset;
-    return Motion.faceGapOf(instance.identity.family, viewAnglesOf(instance.identity, base));
+    const angles = viewAnglesOf(instance.identity, base);
+    return Motion.faceGapOf(instance.identity.family, { yaw: angles.yaw + carriedYaw, tilt: angles.tilt });
   };
 
   const modulationOf = (instance, now) => {
     if (prefersCalm()) return Motion.finalModulationOf(instance.motion.persistent);
-    return Motion.motionAt(instance.motion, now, () => faceGapOf(instance));
+    return Motion.motionAt(instance.motion, now, carriedYaw => faceGapOf(instance, carriedYaw));
   };
 
   const drawInstance = instance => {
@@ -662,19 +664,10 @@
     }
   };
 
-  // La pastille d'état (badge) bouge avec la même modulation : saut à l'arrivée en « terminé », secousse en erreur.
-  const playBadge = (instance, kind, elapsedMs) => {
-    const badgeMotion = Motion.badgeMotionOf(kind);
-    const face = instance.canvas.closest('.t-face');
-    const badge = face ? face.querySelector('.ident-badge') : null;
-    if (!badgeMotion || !badge || typeof badge.animate !== 'function' || elapsedMs >= badgeMotion.duration) return;
-    badge.animate(badgeMotion.keyframes, { duration: badgeMotion.duration, delay: -elapsedMs, easing: 'linear' });
-  };
-
   // Les têtes sont réécrites à chaque rendu : la réaction en cours de la pastille se poursuit sur le nouvel élément.
   const resumeBadge = instance => {
     if (instance.badgeEvent === null || prefersCalm()) return;
-    playBadge(instance, instance.badgeEvent.kind, clock() - instance.badgeEvent.at);
+    root.CockpitIdentityBadge.play(instance.canvas, instance.badgeEvent.kind, clock() - instance.badgeEvent.at);
   };
 
   const withReaction = (instance, reaction, now) => { instance.motion = Motion.startReaction(instance.motion, reaction, now); };
@@ -743,13 +736,14 @@
     const isCalm = prefersCalm();
     for (const instance of targets) {
       if (isCalm && !STATIC_KINDS.includes(kind)) continue;
-      withReaction(instance, { kind, isEvent: kind === 'error' || undefined, ...options }, now);
+      const turn = kind === 'finish' ? Motion.finishTurnOf(instance.identity.family) : undefined;
+      withReaction(instance, { kind, isEvent: kind === 'error' || undefined, turn, ...options }, now);
       if (BADGE_KINDS.includes(kind) && !isCalm) {
         instance.badgeEvent = { kind, at: now };
-        playBadge(instance, kind, 0);
+        root.CockpitIdentityBadge.play(instance.canvas, kind, 0);
       }
     }
-    if (isCalm || kind === 'appear') redrawNow(targets, now);
+    if ((isCalm && STATIC_KINDS.includes(kind)) || kind === 'appear') redrawNow(targets, now);
     startLoop();
     return targets.length;
   };
@@ -780,8 +774,9 @@
 
   if (calmQuery && typeof calmQuery.addEventListener === 'function') {
     calmQuery.addEventListener('change', () => {
-      if (calmQuery.matches) redrawNow(instances, clock());
-      else startLoop();
+      if (!calmQuery.matches) { startLoop(); return; }
+      root.CockpitIdentityBadge.stop(instances.map(instance => instance.canvas));
+      redrawNow(instances, clock());
     });
   }
 

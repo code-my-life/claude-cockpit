@@ -5,7 +5,7 @@ const motion = require('./identity-motion.js');
 const { SPEEDS } = require('./identity.js');
 
 const {
-  NEUTRAL, REST_SPEED, modulationAt, finalModulationOf, kindOfStatus, eventsOf, statusMapOf, faceGapOf, badgeMotionOf,
+  NEUTRAL, REST_SPEED, finishTurnOf, modulationAt, finalModulationOf, kindOfStatus, eventsOf, statusMapOf, faceGapOf, badgeMotionOf,
   createMotionState, startReaction, settle, motionAt, wrapAngle, hasHover,
 } = motion;
 
@@ -52,9 +52,11 @@ test('permission: kick every 3 s with a slightly denser ink', () => {
   close(modulationAt('permission', 6280).phaseKick, 1.2);
 });
 
-test('finished: a quarter turn in 600 ms, accelerated then back to the waiting speed', () => {
-  assert.equal(modulationAt('finish', 0).phaseKick, 0);
-  close(modulationAt('finish', 600).phaseKick, Math.PI / 2);
+test('finished: a visible quarter turn of the view in 600 ms, accelerated then back to the waiting speed', () => {
+  assert.equal(modulationAt('finish', 0).yawOffset, 0);
+  close(modulationAt('finish', 600).yawOffset, Math.PI / 2);
+  close(modulationAt('finish', 5000).yawOffset, Math.PI / 2);
+  assert.equal(modulationAt('finish', 600).phaseKick, 0);
   const start = modulationAt('finish', 0);
   const end = modulationAt('finish', 600);
   assert.ok(start.speedFactor > 1);
@@ -64,8 +66,18 @@ test('finished: a quarter turn in 600 ms, accelerated then back to the waiting s
 });
 
 test('finished: then back to waiting, the next relance comes 6 s later', () => {
-  close(modulationAt('finish', 5000).phaseKick, Math.PI / 2);
-  close(modulationAt('finish', 600 + 6280).phaseKick, Math.PI / 2 + 0.6);
+  assert.equal(modulationAt('finish', 5000).phaseKick, 0);
+  close(modulationAt('finish', 600 + 6280).phaseKick, 0.6);
+});
+
+test('finished: the turn is set per family so that it reads at 56 px', () => {
+  assert.equal(finishTurnOf('mobius'), Math.PI / 2);
+  assert.equal(finishTurnOf('helix'), Math.PI / 2);
+  assert.equal(finishTurnOf('loft'), Math.PI);
+  assert.ok(finishTurnOf('chrome') >= Math.PI / 2);
+  assert.equal(finishTurnOf('inconnu'), Math.PI / 2);
+  close(modulationAt({ kind: 'finish', turn: Math.PI }, 600).yawOffset, Math.PI);
+  close(modulationAt({ kind: 'finish', turn: Math.PI }, 300).yawOffset, Math.PI * (1 - Math.pow(0.5, 3)));
 });
 
 test('finished: the badge jumps by 4 px in 280 ms, once, and settles on zero', () => {
@@ -238,8 +250,23 @@ test('state: a changing reaction keeps its accumulated kicks, the head never jum
 test('state: finish is a background reaction then falls back to the waiting relances', () => {
   const state = startReaction(startReaction(createMotionState(), 'wait', 0), 'finish', 1000);
   const total = motionAt(state, 1600);
-  close(total.phaseKick, Math.PI / 2);
+  close(total.yawOffset, Math.PI / 2);
   assert.equal(total.speedFactor, 1);
+});
+
+test('state: the quarter turn is kept when the status changes again', () => {
+  const finished = startReaction(createMotionState(), 'finish', 0);
+  const blocked = startReaction(finished, 'blocked', 2000);
+  close(motionAt(blocked, 9000).yawOffset, Math.PI / 2);
+  const again = startReaction(blocked, 'finish', 9000);
+  close(motionAt(again, 9600).yawOffset, Math.PI);
+});
+
+test('state: the face pose is aimed from the view already turned by a quarter turn', () => {
+  const seen = [];
+  const state = startReaction(startReaction(createMotionState(), 'finish', 0), 'hover', 1000);
+  motionAt(state, 2000, carried => { seen.push(carried); return { yawGap: 0, tiltGap: 0 }; });
+  close(seen[0], Math.PI / 2);
 });
 
 test('state: a press keeps its kick after it ends', () => {
@@ -289,4 +316,9 @@ test('state: the appearance finishes by itself', () => {
   state = settle(state, 80 + 450);
   assert.equal(state.transients.length, 0);
   assert.equal(motionAt(state, 600).drawProgress, 1);
+});
+
+test('face pose: loft keeps its rest tilt (a tilt of 0.2 flattened it into a cut fan)', () => {
+  assert.equal(motion.FACE_POSES.loft.tilt, 0.55);
+  assert.ok(motion.FACE_POSES.loft.tilt > 0.4);
 });

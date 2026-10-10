@@ -18,6 +18,7 @@ const STATIC_FILES = {
   '/mod/assets/identity-motion.js': 'text/javascript; charset=utf-8',
   '/mod/assets/identity.js': 'text/javascript; charset=utf-8',
   '/mod/assets/identity-chrome.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/identity-badge.js': 'text/javascript; charset=utf-8',
   '/mod/assets/dock.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island.js': 'text/javascript; charset=utf-8',
   '/mod/assets/liquid-paper/theme.css': 'text/css; charset=utf-8',

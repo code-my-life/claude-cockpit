@@ -12,8 +12,10 @@
   const RELANCE_KICK_RAD = 0.6;
   const RELANCE_MS = 280;
   const PERMISSION_INK_BIAS = 0.06;
-  // Terminé : quart de tour accéléré en 600 ms, puis retour à l'attente.
-  const FINISH_KICK_RAD = Math.PI / 2;
+  // Terminé : tour de la vue accéléré en 600 ms, puis retour à l'attente. L'angle est celui de la caméra autour du volume :
+  // un quart de tour déplace les points de 20 px en moyenne à 56 px (helix, mobius) ; loft, presque de révolution, en demande deux fois plus.
+  const FINISH_TURN_RAD = Math.PI / 2;
+  const FINISH_TURNS = { loft: Math.PI, chrome: Math.PI / 2 };
   const FINISH_MS = 600;
   const FINISH_SPEED_BOOST = 1;
   // Pastille : saut de 4 px en ressort de 280 ms (une seule fois) ; erreur : deux déplacements de 2 px en 150 ms.
@@ -43,12 +45,14 @@
 
   const PERSISTENT_KINDS = ['wait', 'permission', 'finish', 'blocked', 'later', 'error'];
   const HELD_KINDS = ['hover'];
+  // Pose de face du loft : son inclinaison de repos (0,2 l'aplatissait en éventail coupé), validée à l'œil.
+  const LOFT_FACE_TILT = 0.55;
   // Pose « de face » vers laquelle se tourne la tête survolée : lacet et inclinaison en radians.
   const FACE_POSES = {
     chrome: { yaw: 0, tilt: 1.15 },
     helix: { yaw: 0, tilt: 1.1 },
     mobius: { yaw: 0, tilt: 1.1 },
-    loft: { yaw: 0, tilt: 0.2 },
+    loft: { yaw: 0, tilt: LOFT_FACE_TILT },
   };
 
   const NEUTRAL = Object.freeze({
@@ -94,11 +98,14 @@
     return withNeutral({ phaseKick: kick, inkBias: PERMISSION_INK_BIAS, isAnimating });
   };
 
-  const finishAt = ms => {
+  const finishTurnOf = family => FINISH_TURNS[family] ?? FINISH_TURN_RAD;
+
+  const finishAt = (reaction, ms) => {
     const ratio = ratioOf(ms, FINISH_MS);
     const after = relanceAt(Math.max(0, ms - FINISH_MS), WAIT_PERIOD_MS);
     return withNeutral({
-      phaseKick: FINISH_KICK_RAD * easeOut(ratio) + after.kick,
+      yawOffset: (reaction.turn ?? FINISH_TURN_RAD) * easeOut(ratio),
+      phaseKick: after.kick,
       speedFactor: 1 + FINISH_SPEED_BOOST * (1 - easeOut(ratio)),
       lift: jumpAt(ms),
       isAnimating: ms < FINISH_MS || after.isAnimating,
@@ -139,7 +146,7 @@
   const MODULATORS = {
     wait: (reaction, ms) => waitAt(ms),
     permission: (reaction, ms) => permissionAt(ms),
-    finish: (reaction, ms) => finishAt(ms),
+    finish: (reaction, ms) => finishAt(reaction, ms),
     blocked: () => blockedAt(),
     later: () => laterAt(),
     error: (reaction, ms) => errorAt(ms, reaction.isEvent === true),
@@ -212,7 +219,7 @@
   };
 
   // Suivi des réactions d'une instance (état séparé du rendu, horloge injectée par l'appelant).
-  const createMotionState = () => ({ persistent: null, persistentSince: 0, transients: [], phaseOffset: 0 });
+  const createMotionState = () => ({ persistent: null, persistentSince: 0, transients: [], phaseOffset: 0, yawBase: 0 });
 
   const isPersistent = kind => PERSISTENT_KINDS.includes(kind);
   const isHeld = kind => HELD_KINDS.includes(kind);
@@ -226,18 +233,20 @@
   // Les coups de phase d'une réaction qui change ou se termine sont gardés : la tête ne saute pas en arrière.
   const bakedKick = (reaction, elapsedMs) => modulationAt(reaction, elapsedMs).phaseKick;
 
+  // Le tour de la vue d'une réaction de fond qui s'arrête est gardé de la même façon.
+  const bakedYaw = (reaction, elapsedMs) => modulationAt(reaction, elapsedMs).yawOffset;
+
   const withPersistent = (state, reaction, now) => {
     const current = state.persistent;
     if (current !== null && current.kind === reaction.kind && current.isEvent === reaction.isEvent) return state;
-    const baked = current === null ? 0 : bakedKick(current, now - state.persistentSince);
-    return { ...state, persistent: reaction, persistentSince: now, phaseOffset: state.phaseOffset + baked };
+    return { ...withoutPersistent(state, now), persistent: reaction, persistentSince: now };
   };
 
-  const withoutPersistent = (state, now) => {
+  function withoutPersistent(state, now) {
     if (state.persistent === null) return state;
-    const baked = bakedKick(state.persistent, now - state.persistentSince);
-    return { ...state, persistent: null, phaseOffset: state.phaseOffset + baked };
-  };
+    const elapsed = now - state.persistentSince;
+    return { ...state, persistent: null, phaseOffset: state.phaseOffset + bakedKick(state.persistent, elapsed), yawBase: state.yawBase + bakedYaw(state.persistent, elapsed) };
+  }
 
   const OPPOSITES = { hover: 'unhover', unhover: 'hover' };
 
@@ -287,19 +296,24 @@
   // `faceGap` (facultatif) donne les écarts vers la pose de face, recalculés à chaque image.
   const motionAt = (state, now, faceGap = null) => {
     const parts = [];
-    if (state.persistent !== null) parts.push(modulationAt(state.persistent, now - state.persistentSince));
+    let carriedYaw = state.yawBase;
+    if (state.persistent !== null) {
+      const background = modulationAt(state.persistent, now - state.persistentSince);
+      parts.push(background);
+      carriedYaw += background.yawOffset;
+    }
     for (const entry of state.transients) {
-      const gap = faceGap !== null && (entry.reaction.kind === 'hover' || entry.reaction.kind === 'unhover') ? faceGap() : {};
+      const gap = faceGap !== null && (entry.reaction.kind === 'hover' || entry.reaction.kind === 'unhover') ? faceGap(carriedYaw) : {};
       parts.push(modulationAt({ ...entry.reaction, ...gap }, now - entry.startedAt));
     }
     const total = combine(parts);
-    return { ...total, phaseKick: total.phaseKick + state.phaseOffset };
+    return { ...total, phaseKick: total.phaseKick + state.phaseOffset, yawOffset: total.yawOffset + state.yawBase };
   };
 
   const hasHover = state => state.transients.some(entry => entry.reaction.kind === 'hover');
 
   const api = {
-    NEUTRAL, FACE_POSES, REACT_FPS, REST_SPEED, LATER_SPEED, JUMP_MS, SHAKE_MS, HOVER_MS, PRESS_MS, APPEAR_MS, APPEAR_STAGGER_MS,
+    NEUTRAL, FACE_POSES, finishTurnOf, REACT_FPS, REST_SPEED, LATER_SPEED, JUMP_MS, SHAKE_MS, HOVER_MS, PRESS_MS, APPEAR_MS, APPEAR_STAGGER_MS,
     PERSISTENT_KINDS, wrapAngle, modulationAt, finalModulationOf, kindOfStatus, eventsOf, statusMapOf, faceGapOf, badgeMotionOf,
     createMotionState, startReaction, settle, motionAt, hasHover,
   };
