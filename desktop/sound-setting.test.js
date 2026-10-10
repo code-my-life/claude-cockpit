@@ -24,7 +24,7 @@ test('the setting lives in its own small file', () => {
   assert.deepEqual(JSON.parse(serializeSoundSetting(false)), { enabled: false })
 })
 
-const { parseSoundChoice, readSoundState, serializeSoundState, introDecision } = require('./sound-setting')
+const { parseSoundChoice, readSoundState, serializeSoundState, introDecision, oneLine } = require('./sound-setting')
 
 test('only a real boolean is accepted as a sound choice from the page', () => {
   assert.equal(parseSoundChoice(true), true)
@@ -48,4 +48,10 @@ test('the first-launch notice is shown once, only while the sounds are on', () =
   const muted = introDecision({ enabled: false, isIntroShown: false })
   assert.equal(muted.shouldShow, false)
   assert.equal(muted.next.isIntroShown, false)
+})
+
+test('a log message from the page is written on one line, and kept short', () => {
+  assert.equal(oneLine('a\nb\r\nc'), 'a b c')
+  assert.equal(oneLine('x'.repeat(500)).length, 300)
+  assert.equal(oneLine(undefined), 'undefined')
 })

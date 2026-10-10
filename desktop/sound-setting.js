@@ -23,6 +23,10 @@ const readSoundSetting = raw => readSoundState(raw).enabled
 
 const serializeSoundSetting = enabled => JSON.stringify({ enabled: enabled === true })
 
+// Un message de la page dans le journal : une seule ligne, courte.
+const MAX_LOG_LENGTH = 300
+const oneLine = text => String(text).replace(/[\r\n]+/g, ' ').slice(0, MAX_LOG_LENGTH)
+
 // Ce que la page demande d'écrire : un vrai booléen, sinon rien (null).
 const parseSoundChoice = value => (typeof value === 'boolean' ? value : null)
 
@@ -32,4 +36,4 @@ const introDecision = state => {
   return { shouldShow: true, next: { ...state, isIntroShown: true } }
 }
 
-module.exports = { SOUND_FILE_NAME, readSoundState, serializeSoundState, readSoundSetting, serializeSoundSetting, parseSoundChoice, introDecision }
+module.exports = { SOUND_FILE_NAME, readSoundState, serializeSoundState, readSoundSetting, serializeSoundSetting, parseSoundChoice, introDecision, oneLine }

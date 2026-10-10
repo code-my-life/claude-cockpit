@@ -9,7 +9,7 @@ const { createFullscreenProbe } = require('./island/fullscreen')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
-const { SOUND_FILE_NAME, readSoundState, serializeSoundState, parseSoundChoice, introDecision } = require('./sound-setting')
+const { SOUND_FILE_NAME, readSoundState, serializeSoundState, parseSoundChoice, introDecision, oneLine } = require('./sound-setting')
 const { writeFileAtomic } = require('./atomic-write')
 
 // The app serves the cockpit itself; when its server cannot start, the windows
@@ -105,7 +105,7 @@ const startServer = async () => {
 
 const workArea = () => screen.getPrimaryDisplay().workArea
 
-const fullscreenProbe = createFullscreenProbe()
+const fullscreenProbe = createFullscreenProbe({ onError: error => logLine(`sonde de l'état Windows en échec, les sons ne se taisent plus selon cet état (${oneLine(error && error.message)})`) })
 
 // Le contrôleur d'île tient l'automate, la géométrie et les clics traversants.
 const createIsland = () => createIslandController({
@@ -387,12 +387,13 @@ onTrusted('set-sound', (event, value) => {
 // Pas de son en plein écran, présentation, état occupé ni heures calmes : décidé ici, au moment du son.
 handleTrusted('sound-silent', () => fullscreenProbe.isSilent())
 // L'annonce du premier lancement : vraie une seule fois, puis mémorisée.
-handleTrusted('sound-intro', () => {
+handleTrusted('sound-intro', () => introDecision(soundState).shouldShow)
+// Mémorisée seulement une fois affichée assez longtemps, pas dès la demande.
+onTrusted('sound-intro-seen', () => {
   const { shouldShow, next } = introDecision(soundState)
   if (shouldShow) saveSoundState(next)
-  return shouldShow
 })
-onTrusted('sound-log', (event, message) => logLine(String(message).slice(0, 300)))
+onTrusted('sound-log', (event, message) => logLine(oneLine(message)))
 
 onTrusted('quit', () => app.quit())
 

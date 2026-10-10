@@ -12,8 +12,8 @@ const FULLSCREEN_STATES = [QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENT
 
 const isFullscreenState = code => FULLSCREEN_STATES.includes(code)
 
-// Les sons se taisent dans ces états et aussi pendant les heures calmes (assistant de concentration).
-const SILENT_STATES = [...FULLSCREEN_STATES, QUNS_QUIET_TIME]
+// Les sons se taisent dans ces états, quand la session est absente ou verrouillée (personne n'entend) et pendant les heures calmes.
+const SILENT_STATES = [QUNS_NOT_PRESENT, ...FULLSCREEN_STATES, QUNS_QUIET_TIME]
 
 const isSilentState = code => SILENT_STATES.includes(code)
 
@@ -29,8 +29,9 @@ const loadWindowsQuery = () => {
   }
 }
 
-const createFullscreenProbe = ({ query = null, platform = process.platform } = {}) => {
+const createFullscreenProbe = ({ query = null, platform = process.platform, onError = () => {} } = {}) => {
   let run = query
+  let hasReported = false
   const stateIs = test => {
     try {
       if (run === null) {
@@ -38,7 +39,10 @@ const createFullscreenProbe = ({ query = null, platform = process.platform } = {
         run = loadWindowsQuery()
       }
       return test(run())
-    } catch {
+    } catch (error) {
+      // La sonde échoue ouvert ; l'échec n'est signalé qu'une fois.
+      if (!hasReported) onError(error)
+      hasReported = true
       return false
     }
   }

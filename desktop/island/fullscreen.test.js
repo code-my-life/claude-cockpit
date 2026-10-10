@@ -28,11 +28,11 @@ const { isSilentState, QUNS_QUIET_TIME, QUNS_APP } = require('./fullscreen')
 
 test('sounds are silenced when busy, in Direct3D full screen, in presentation and in quiet hours', () => {
   assert.equal(QUNS_QUIET_TIME, 6)
-  for (const code of [2, 3, 4, QUNS_QUIET_TIME]) assert.equal(isSilentState(code), true, String(code))
+  for (const code of [QUNS_NOT_PRESENT, 2, 3, 4, QUNS_QUIET_TIME]) assert.equal(isSilentState(code), true, String(code))
 })
 
-test('sounds play when the user accepts notifications, is away, or when the state is unknown', () => {
-  for (const code of [1, 5, QUNS_APP, 0, undefined, 99]) assert.equal(isSilentState(code), false, String(code))
+test('sounds are also silent when the session is absent or locked, and play when notifications are accepted or the state is unknown', () => {
+  for (const code of [5, QUNS_APP, 0, undefined, 99]) assert.equal(isSilentState(code), false, String(code))
 })
 
 test('the probe tells whether the sounds must stay silent, and fails open outside Windows or on error', () => {
@@ -40,4 +40,13 @@ test('the probe tells whether the sounds must stay silent, and fails open outsid
   assert.equal(createFullscreenProbe({ query: () => 5 }).isSilent(), false)
   assert.equal(createFullscreenProbe({ query: () => { throw new Error('x') } }).isSilent(), false)
   assert.equal(createFullscreenProbe({ platform: 'linux' }).isSilent(), false)
+})
+
+test('the probe reports a failing Windows query once, and still fails open', () => {
+  const reports = []
+  const probe = createFullscreenProbe({ query: () => { throw new Error('koffi absent') }, onError: error => reports.push(error.message) })
+  assert.equal(probe.isSilent(), false)
+  assert.equal(probe.isActive(), false)
+  assert.equal(probe.isSilent(), false)
+  assert.deepEqual(reports, ['koffi absent'])
 })

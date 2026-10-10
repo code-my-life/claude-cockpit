@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   setSounds: isEnabled => ipcRenderer.send('set-sound', isEnabled),
   soundSilent: () => ipcRenderer.invoke('sound-silent'),
   soundIntro: () => ipcRenderer.invoke('sound-intro'),
+  soundIntroSeen: () => ipcRenderer.send('sound-intro-seen'),
   logSound: message => ipcRenderer.send('sound-log', message),
   onSoundSetting: callback => ipcRenderer.on('sound-setting', (event, isEnabled) => callback(isEnabled)),
 })

@@ -306,6 +306,9 @@
   body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
   .t-sheet { --panel-width: 1100; }
   .dock-menu { --panel-width: 380; }
+  .sound-intro { --panel-width: 380; }
+  .sound-intro-text { margin: 0; color: var(--ink-2); }
+  .sound-intro-title-icon { vertical-align: -2px; }
   @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } .dock .mini-head.ep-glass { transition: none; } .dock, html[data-island="hidden"] .dock { transition: none; } body.mini-mode .t-sheet.enter, body.mini-mode .t-sheet.leave { animation: none; } }
   body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
   .search-bar { margin-top: var(--space-4); min-height: 46px; }
@@ -523,6 +526,7 @@
     teamPopId: null,
     teamPopFresh: false,
     dockMenuOpen: false,
+    soundIntroOpen: false,
     dockPrefs: null,
   };
 
@@ -818,7 +822,18 @@
   let soundPlayer = null;
   let areSoundsOn = false;
   let isIntroAsked = false;
-  const SOUND_INTRO_MS = 12000;
+  // L'annonce est une petite fiche de l'île (la fenêtre s'agrandit comme pour le menu) ; mémorisée après 3 s d'affichage.
+  const SOUND_INTRO_SEEN_MS = 3000;
+  // Un peu plus que --island-open (280 ms).
+  const SOUND_INTRO_SETTLE_MS = 450;
+  let soundIntroTimer = null;
+
+  const closeSoundIntro = () => {
+    if (soundIntroTimer !== null) { clearTimeout(soundIntroTimer); soundIntroTimer = null; }
+    if (!state.soundIntroOpen) return;
+    state.soundIntroOpen = false;
+    render({ force: true });
+  };
 
   // L'app décide au moment du son s'il faut se taire (plein écran, présentation, occupé, heures calmes) ; en cas de doute, silence.
   const playSound = (kind, engineId) => {
@@ -833,7 +848,12 @@
     isIntroAsked = true;
     desktop.soundIntro().then(shouldShow => {
       if (shouldShow !== true) return;
-      window.EncrePapier.toast({ tone: 'info', title: 'Sons actifs', message: 'Les alertes sonores sont actives. Tu peux les couper dans la disposition du dock ou dans le menu de la barre d’état.', duration: SOUND_INTRO_MS });
+      // On attend la fin de l’ouverture de l’île : la fiche se place sous le dock une fois celui-ci arrivé.
+      setTimeout(() => {
+        state.soundIntroOpen = true;
+        render({ force: true });
+        soundIntroTimer = setTimeout(() => { soundIntroTimer = null; if (state.soundIntroOpen) desktop.soundIntroSeen(); }, SOUND_INTRO_SEEN_MS);
+      }, SOUND_INTRO_SETTLE_MS);
     }).catch(() => {});
   };
 
@@ -1406,11 +1426,22 @@
         <div class="dock-menu-row ep-toggle" role="group" aria-label="Taille">${sizes}</div>
         <span class="nc-label">Forme</span>
         <div class="dock-menu-row ep-toggle" role="group" aria-label="Forme">${layouts}</div>
-        <span class="nc-label">Sons</span>
         <label class="ep-switch dock-menu-sounds"><input type="checkbox" role="switch" data-dock-sounds ${areSoundsOn ? 'checked' : ''}><span class="ep-icon ep-icon--volume" aria-hidden="true"></span>Alertes sonores</label>
       </div>
     </div>`;
   };
+
+  const renderSoundIntro = () => `<div class="t-modal">
+      <div class="t-backdrop" data-sound-intro="close"></div>
+      <div class="t-sheet ep-glass sound-intro" role="dialog" aria-modal="true" aria-labelledby="sound-intro-title">
+        <div class="t-sheet-head">
+          <h2 id="sound-intro-title" class="t-sheet-title" style="flex: 1 1 auto"><span class="ep-icon ep-icon--volume" aria-hidden="true"></span> Alertes sonores</h2>
+          <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-sound-intro="close" aria-label="Fermer">${iconOf('x')}</button>
+        </div>
+        <p class="sound-intro-text">Elles sont actives. Tu peux les couper dans la disposition du dock ou dans le menu de la barre d’état.</p>
+        <button type="button" class="ep-btn ep-btn--primary ep-btn--sm" data-sound-intro="close">Compris</button>
+      </div>
+    </div>`;
 
   const applyDockChoice = (key, value) => {
     const next = { ...state.dockPrefs, [key]: value };
@@ -1445,7 +1476,7 @@
     const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
     if (state.teamPopId && !popRow) state.teamPopId = null;
     const teamPopup = popRow ? renderTeamPopup(popRow, now) : '';
-    const popup = state.dockMenuOpen ? renderDockMenu() : teamPopup;
+    const popup = state.dockMenuOpen ? renderDockMenu() : state.soundIntroOpen ? renderSoundIntro() : teamPopup;
     state.teamPopFresh = false;
     const dock = document.getElementById('dock');
     dock.dataset.size = prefs.size;
@@ -1462,7 +1493,7 @@
 
   const syncDesktopWindow = () => {
     if (!desktop) return;
-    const isOpen = state.teamPopId !== null || state.newConv !== null || state.dockMenuOpen;
+    const isOpen = state.teamPopId !== null || state.newConv !== null || state.dockMenuOpen || state.soundIntroOpen;
     const sheet = document.querySelector('.t-sheet');
     const sheetHeight = sheet ? sheet.scrollHeight + 4 : 0;
     const panelWidth = sheet ? getComputedStyle(sheet).getPropertyValue('--panel-width') : '';
@@ -1484,6 +1515,7 @@
   const foldIslandSheets = () => {
     state.teamPopId = null;
     state.dockMenuOpen = false;
+    closeSoundIntro();
     if (state.newConv !== null) closeNewConv();
     render({ force: true });
   };
@@ -2458,6 +2490,7 @@
         desktop.openLink(appLink.href);
         return;
       }
+      if (event.target.closest('[data-sound-intro="close"]')) { closeSoundIntro(); return; }
       const soundSwitch = event.target.closest('[data-dock-sounds]');
       if (soundSwitch) { if (desktop) desktop.setSounds(soundSwitch.checked); return; }
       const sizeChoice = event.target.closest('[data-dock-size]');
@@ -2473,6 +2506,7 @@
       if (control.dataset.mini === 'quit' && desktop) desktop.quit();
     });
     document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && state.soundIntroOpen) { closeSoundIntro(); return; }
       if (event.key !== 'Escape' || !state.dockMenuOpen) return;
       state.dockMenuOpen = false;
       render({ force: true });
