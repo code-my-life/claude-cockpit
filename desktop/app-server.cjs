@@ -11,6 +11,9 @@ process.parentPort.once('message', async ({ data }) => {
     const core = pathToFileURL(path.join(__dirname, 'app-server-core.mjs')).href
     const { startAppServer } = await import(core)
     const started = await startAppServer({ ...data, onError: message => tell({ type: 'error', message }) })
+    process.parentPort.on('message', ({ data: message }) => {
+      if (message?.type === 'ticket' && typeof message.ticket === 'string') started.allowTicket(message.ticket)
+    })
     tell({ type: 'listening', port: started.port })
   } catch (error) {
     tell({ type: 'failed', message: String(error.message || error) })

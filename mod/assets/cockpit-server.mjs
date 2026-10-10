@@ -8,8 +8,9 @@ import { spawn } from 'node:child_process'
 import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, saveIndex, saveSessionList, scanHostFiles, sessionsOf } from './session-index.mjs'
 import { findMatches, hostsByEngineOf, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
 import { hostSessionsDirOf, terminalCandidatesOf } from './terminal.mjs'
-import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, secretMatches, send, sendNotFound } from './cockpit-server-http.mjs'
+import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, send, sendNotFound } from './cockpit-server-http.mjs'
 import { handleBridge, isBridgeRoute } from './bridge-routes.mjs'
+import { createPageSession, sendNeedsApp } from './page-session.mjs'
 
 const SEARCH_SAVE_MS = 60000
 const INDEX_REFRESH_MS = 3000
@@ -44,14 +45,15 @@ const isBroadFolder = (folder, homeDir) => {
 // Everything one cockpit server needs: the fixed assets (`rootDir`), where it
 // reads and writes the page, index and pasted images (`dataDir`), its port,
 // its session token, and where the orders for the mod go (`sink`).
-const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, homeDir = os.homedir(), env = process.env }) => ({
+const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env }) => ({
   rootDir,
   dataDir,
   port,
   sink,
   bridge,
   homeDir,
-  token: crypto.randomBytes(24).toString('hex'),
+  token,
+  session: createPageSession({ mode: pageAuth, token }),
   inbox: path.join(dataDir, 'inbox'),
   indexFile: path.join(dataDir, 'session-index.json'),
   cacheFile: path.join(dataDir, 'session-cache.json'),
@@ -92,6 +94,7 @@ const serveFile = (folder, response, name, type) => {
 const servePage = (ctx, response) => {
   try {
     const html = fs.readFileSync(path.join(ctx.dataDir, 'conversations.html'), 'utf8')
+    if (ctx.session.usesCookie) return send(response, 200, html, 'text/html; charset=utf-8')
     const meta = `${TOKEN_META_ANCHOR}<meta name="cockpit-token" content="${ctx.token}">`
     send(response, 200, html.replace(TOKEN_META_ANCHOR, () => meta), 'text/html; charset=utf-8')
   } catch {
@@ -111,7 +114,7 @@ const guardWrite = (ctx, request) => {
   const origin = request.headers.origin
   const allowedOrigins = [`http://127.0.0.1:${ctx.port}`, `http://localhost:${ctx.port}`]
   if (origin !== undefined && !allowedOrigins.includes(origin)) throw new HttpError(403, 'origine refusée')
-  if (!secretMatches(request.headers[TOKEN_HEADER], ctx.token)) throw new HttpError(403, 'jeton refusé : recharge la page')
+  if (!ctx.session.canWrite(request, request.headers[TOKEN_HEADER])) throw new HttpError(403, 'jeton refusé : recharge la page')
   guardJson(request)
 }
 
@@ -243,9 +246,14 @@ const handleSearch = async (ctx, url, response) => {
   send(response, 200, JSON.stringify({ ok: true, ...found }))
 }
 
+const SESSION_ROUTES = new Set(['/', '/conversations.html', '/conversations-data.js', '/search'])
+
 const handleGet = async (ctx, url, request, response) => {
-  const isPage = url.pathname === '/' || url.pathname === '/conversations.html'
+  const isOpening = url.pathname === '/open'
+  const isPage = url.pathname === '/' || url.pathname === '/conversations.html' || isOpening
   guardRead(ctx, request, isPage)
+  if (isOpening) return ctx.session.redeem(response, url.searchParams.get('ticket') || '')
+  if (SESSION_ROUTES.has(url.pathname) && !ctx.session.isAllowed(request)) return sendNeedsApp(response)
   if (isPage) return servePage(ctx, response)
   if (url.pathname === '/conversations-data.js') return serveFile(ctx.dataDir, response, 'conversations-data.js', 'text/javascript; charset=utf-8')
   if (url.pathname === '/ping') return send(response, 200, '{"ok":true}')
@@ -311,5 +319,5 @@ export const createCockpitServer = options => {
       clearInterval(ctx.state.indexTimer)
       server.close(() => resolve())
     })
-  return { server, token: ctx.token, listen, close }
+  return { server, token: ctx.token, listen, close, allowTicket: ctx.session.allowTicket }
 }

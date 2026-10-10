@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, shell } = require('electron')
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } = require('electron')
+const crypto = require('node:crypto')
 const path = require('node:path')
 const fs = require('node:fs')
 const { boundsOf, MARGIN, SHEET_MAX_HEIGHT } = require('./bounds')
@@ -12,6 +13,9 @@ const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const MOD_SERVER_PORT = 48123
 let serverPort = MOD_SERVER_PORT
 let embeddedServer = null
+// The page token lives only in an HttpOnly cookie of the app's own windows.
+const PAGE_TOKEN = crypto.randomBytes(32).toString('hex')
+const SESSION_COOKIE = 'cockpit_session'
 const cockpitBase = () => `http://127.0.0.1:${serverPort}/`
 // The page only switches to the OS-glass look when the window really has a native blur behind it.
 let hasOsBlur = false
@@ -80,10 +84,22 @@ const restartServer = async code => {
   reloadWindows()
 }
 
+const setSessionCookie = () =>
+  session.defaultSession.cookies.set({ url: cockpitBase(), name: SESSION_COOKIE, value: PAGE_TOKEN, httpOnly: true, sameSite: 'strict', path: '/' })
+
+// A one-time ticket hands the session cookie to the default browser.
+const openInBrowser = () => {
+  if (embeddedServer === null) return
+  const ticket = crypto.randomBytes(24).toString('hex')
+  embeddedServer.allowTicket(ticket)
+  shell.openExternal(`${cockpitBase()}open?ticket=${ticket}`)
+}
+
 const startServer = async () => {
   try {
-    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), onError: message => logLine(`serveur : ${message}`), onExit: restartServer })
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, onError: message => logLine(`serveur : ${message}`), onExit: restartServer })
     serverPort = embeddedServer.port
+    await setSessionCookie()
   } catch (error) {
     logLine(`serveur intégré indisponible, repli sur celui du mod : ${error.message}`)
   }
@@ -296,8 +312,8 @@ const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLo
 
 const refreshTrayMenu = () => {
   if (tray === null) return
-  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
-  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin }
+  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
+  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, canOpenInBrowser: embeddedServer !== null }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
 }

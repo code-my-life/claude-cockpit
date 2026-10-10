@@ -28,7 +28,7 @@ const waitForPort = (child, settings, onError) =>
 
 // `onExit` runs when the server dies while the app still runs; the link is
 // removed first so no conversation keeps sending its secret to a dead port.
-const startEmbeddedServer = async ({ appVersion, onError, onExit = () => {} }) => {
+const startEmbeddedServer = async ({ appVersion, pageToken, onError, onExit = () => {} }) => {
   const { createLink, createSecret, dataDirOf, linkFileOf, removeLink, writeLink } = await loadDiscovery()
   const linkFile = linkFileOf(process.platform, process.env, os.homedir())
   const dataDir = dataDirOf(linkFile)
@@ -36,7 +36,7 @@ const startEmbeddedServer = async ({ appVersion, onError, onExit = () => {} }) =
   const proof = createSecret()
   const child = utilityProcess.fork(path.join(__dirname, 'app-server.cjs'), [], { serviceName: 'Serveur du cockpit', stdio: 'ignore' })
   try {
-    const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret, proof }, onError)
+    const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret, proof, pageToken }, onError)
     writeLink(linkFile, createLink({ port, appVersion, pid: process.pid, dataDir, secret, proof }))
     let isStopping = false
     child.once('exit', code => {
@@ -48,7 +48,8 @@ const startEmbeddedServer = async ({ appVersion, onError, onExit = () => {} }) =
       removeLink(linkFile, process.pid)
       child.kill()
     }
-    return { port, stop }
+    const allowTicket = ticket => child.postMessage({ type: 'ticket', ticket })
+    return { port, stop, allowTicket }
   } catch (error) {
     child.kill()
     throw error

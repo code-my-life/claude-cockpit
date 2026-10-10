@@ -37,8 +37,9 @@ const trayIconBitmap = (size = TRAY_ICON_SIZE) => {
   return bitmap
 }
 
-const trayMenuOf = ({ isDockVisible, isAutostart }) => [
+const trayMenuOf = ({ isDockVisible, isAutostart, canOpenInBrowser = false }) => [
   { id: 'open-cockpit', label: 'Ouvrir le cockpit' },
+  ...(canOpenInBrowser ? [{ id: 'open-browser', label: 'Ouvrir dans le navigateur' }] : []),
   { id: 'toggle-dock', label: isDockVisible ? 'Masquer la mini-équipe' : 'Afficher la mini-équipe' },
   { id: 'autostart', label: 'Lancer au démarrage', type: 'checkbox', checked: isAutostart },
   { type: 'separator' },

@@ -34,6 +34,13 @@ test('the tray menu follows the state of the team and of the start with the sess
   assert.equal(autostart.checked, true)
 })
 
+test('opening in the browser is offered only when the app serves the cockpit itself', () => {
+  const served = trayMenuOf({ isDockVisible: true, isAutostart: false, canOpenInBrowser: true })
+  assert.equal(served[1].label, 'Ouvrir dans le navigateur')
+  const fallback = trayMenuOf({ isDockVisible: true, isAutostart: false, canOpenInBrowser: false })
+  assert.ok(!fallback.some(item => item.id === 'open-browser'))
+})
+
 test('quitting is set apart from the other actions', () => {
   const menu = trayMenuOf({ isDockVisible: true, isAutostart: false })
   const quitIndex = menu.findIndex(item => item.id === 'quit')
