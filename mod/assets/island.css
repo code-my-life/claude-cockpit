@@ -9,12 +9,15 @@
   --conv-tint: var(--paper);
   /* Lisibilité AA sur n'importe quel bureau (flou du système dessous) : le texte secondaire reste presque plein. */
   --ink-2: color-mix(in srgb, var(--ink) 92%, transparent);
-  --epf: color-mix(in srgb, var(--conv-tint) 16%, transparent);
+  --epf: color-mix(in srgb, var(--conv-tint) var(--conv-pct, 8%), transparent);
   --glass-bezel: 26px; --glass-thickness: 56px; --glass-blur: 18px;
   position: fixed; inset: 0; pointer-events: auto; margin: 0; padding: 0; overflow: hidden;
   border-radius: 0; box-shadow: var(--glass-inset);
   color: var(--ink); font: 400 15px/1.55 var(--font-sans);
 }
+/* Bureau clair derrière : thème Papier (jetons du modèle), les entités, dessinées à l'encre claire, sont assombries. */
+.island[data-theme="light"] { --conv-pct: 6%; }
+.island[data-theme="light"] canvas.ent, .island[data-theme="light"] #heroCanvas { filter: brightness(0.5) saturate(1.5); }
 #island.ep-glass { border-radius: 0; box-shadow: var(--glass-inset); }
 /* Sans flou du système (Windows 10 ancien, Linux) : plaque presque opaque, jetons --plate, lisible sur n'importe quel bureau. */
 html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, color-mix(in srgb, var(--plate) 94%, transparent)); }

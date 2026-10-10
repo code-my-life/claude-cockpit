@@ -231,8 +231,11 @@
     renderAll();
     go('hidden', 'home', { silent: true });
 
+    // Thème choisi par l'app selon le bureau derrière (Nuit ou Papier) : les jetons de l'île suivent.
+    const setTheme = theme => { ctx.islandEl.dataset.theme = theme === 'light' ? 'light' : 'dark'; };
+
     return {
-      setPhase, update, openWith, fold, pointer, dispose: () => { stopAges(); ctx.living.dispose(); },
+      setPhase, setTheme, update, openWith, fold, pointer, dispose: () => { stopAges(); ctx.living.dispose(); },
       isOpen: () => S.phase === 'open', stateOf: () => ({ phase: S.phase, view: S.view, focusId: S.focusId }),
     };
   };

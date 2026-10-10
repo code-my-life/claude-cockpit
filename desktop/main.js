@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, Tray, desktopCapturer, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } = require('electron')
 const crypto = require('node:crypto')
 const path = require('node:path')
 const fs = require('node:fs')
@@ -6,6 +6,7 @@ const { createIslandController } = require('./island/controller')
 const { applyBlur, NIGHT_TINT } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 const { createFullscreenProbe } = require('./island/fullscreen')
+const { luminanceOf, themeOf, sampleRectsOf } = require('./island/backdrop')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
@@ -31,8 +32,11 @@ const islandUrl = () => `${cockpitBase()}?island=1${hasIslandBlur ? '&glass=1' :
 const cockpitUrl = () => (hasOsBlur ? `${cockpitBase()}?glass=1` : cockpitBase())
 const launcherUrl = () => `${cockpitBase()}?launcher=1${glassParam()}`
 const LAUNCHER_SHORTCUTS = process.platform === 'darwin' ? ['Command+Alt+Space', 'Control+Alt+Space'] : ['Alt+Space', 'Control+Alt+Space']
-// Teinte du verre de l'île : légère, le bureau doit se voir nettement (la teinte du cockpit complet est à 40 %).
-const ISLAND_TINT = 0x38000000 | (NIGHT_TINT & 0x00ffffff)
+// Teinte du verre de l'île, légère : le bureau doit se voir nettement. Le verre acrylique du système est sombre à sa base ; sur un
+// bureau clair la teinte est claire et la page passe en Papier (voir island/backdrop.js). Format 0xAABBGGRR.
+const ISLAND_TINTS = { dark: 0x28121316, light: 0x40ecf0f0 }
+const BACKDROP_SCALE = 4
+const BACKDROP_EVERY_MS = 8000
 // Réglage de mise au point : ralentit la morphose (variable d'environnement du lanceur, jamais exposée à la page).
 const MOTION_SCALE = Number(process.env.COCKPIT_ISLAND_SLOW) || 1
 const RETRY_MS = 5000
@@ -113,6 +117,45 @@ const workArea = () => screen.getPrimaryDisplay().workArea
 
 const fullscreenProbe = createFullscreenProbe({ onError: error => logLine(`sonde de l'état Windows en échec, les sons ne se taisent plus selon cet état (${oneLine(error && error.message)})`) })
 
+// Thème de l'île selon le bureau derrière (Nuit ou Papier) : on mesure la luminance de part et d'autre de l'île sur une capture
+// réduite de l'écran, puis la teinte acrylique et la page suivent. Une mesure à l'apparition, puis toutes les 8 s tant qu'elle est visible.
+let islandTheme = 'dark'
+let isSampling = false
+const setIslandTheme = theme => {
+  if (win === null || win.isDestroyed()) return
+  if (theme !== islandTheme) {
+    islandTheme = theme
+    applyBlur(win, undefined, undefined, ISLAND_TINTS[theme])
+  }
+  win.webContents.send('island-theme', theme)
+}
+
+const backdropLuminance = async () => {
+  const display = screen.getDisplayMatching(win.getBounds())
+  const size = { width: Math.round(display.size.width / BACKDROP_SCALE), height: Math.round(display.size.height / BACKDROP_SCALE) }
+  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: size })
+  const source = sources.find(candidate => candidate.display_id === String(display.id)) || sources[0]
+  if (source === undefined || source.thumbnail.isEmpty()) return null
+  const shot = source.thumbnail.getSize()
+  const toThumb = value => Math.round(value / BACKDROP_SCALE)
+  const bounds = win.getBounds()
+  const island = { x: toThumb(bounds.x - display.bounds.x), y: toThumb(bounds.y - display.bounds.y), width: toThumb(bounds.width), height: toThumb(bounds.height) }
+  const rects = sampleRectsOf(island, { x: 0, y: 0, width: shot.width, height: shot.height })
+  return luminanceOf({ data: source.thumbnail.toBitmap(), width: shot.width, height: shot.height }, rects)
+}
+
+const sampleBackdrop = async () => {
+  if (isSampling || win === null || win.isDestroyed() || !win.isVisible()) return
+  isSampling = true
+  try {
+    setIslandTheme(themeOf(islandTheme, await backdropLuminance()))
+  } catch (error) {
+    logLine(`thème de l'île : mesure du bureau impossible (${oneLine(error && error.message)})`)
+  } finally {
+    isSampling = false
+  }
+}
+
 // Le contrôleur d'île tient l'automate et la géométrie : la fenêtre épouse l'île et s'anime avec elle.
 const createIsland = () => createIslandController({
   getArea: workArea,
@@ -128,7 +171,10 @@ const createIsland = () => createIslandController({
   focusWindow: () => { if (win !== null) win.focus() },
   isFullscreenActive: () => fullscreenProbe.isActive(),
   isScreenReaderActive: () => app.isAccessibilitySupportEnabled(),
-  send: (channel, payload, cause) => { if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload, cause) },
+  send: (channel, payload, cause) => {
+    if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload, cause)
+    if (channel === 'island-state' && payload !== 'hidden') sampleBackdrop()
+  },
 })
 
 const loadCockpit = () => {
@@ -273,9 +319,10 @@ const createWindow = () => {
     // Les sons servent justement quand on ne regarde pas : l'île cachée doit pouvoir les jouer sans geste préalable.
     webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: path.join(__dirname, 'preload.js') },
   })
-  hasIslandBlur = applyBlur(win, undefined, undefined, ISLAND_TINT)
+  hasIslandBlur = applyBlur(win, undefined, undefined, ISLAND_TINTS[islandTheme])
   win.setAlwaysOnTop(true, 'floating')
   island = createIsland()
+  setInterval(sampleBackdrop, BACKDROP_EVERY_MS)
   island.start()
   guardNavigation(win)
   win.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
@@ -291,6 +338,7 @@ const createWindow = () => {
   win.webContents.on('render-process-gone', releaseHold)
   win.webContents.on('did-finish-load', () => {
     if (!win.webContents.getURL().startsWith(cockpitBase())) return
+    win.webContents.send('island-theme', islandTheme)
     island.setOffline(false)
     win.webContents.send('island-state', island.phase())
   })

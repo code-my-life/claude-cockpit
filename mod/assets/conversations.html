@@ -2338,6 +2338,7 @@
     };
     islandUi = window.CockpitIslandUi.create({ doc: document, win: window, host: document.getElementById('zone'), model: window.CockpitIslandModel, entities: window.CharacterEntity, helpers, actions, desktop, announce });
     if (desktop) {
+      desktop.onIslandTheme(theme => islandUi.setTheme(theme));
       islandHost = window.CockpitIsland.init({ desktop, doc: document, win: window, isServer, announce, playSound, onReveal: announceSoundsOnce, onPhase: islandUi.setPhase, onPointer: islandUi.pointer });
     } else {
       islandUi.setPhase('compact', 'event');
