@@ -53,7 +53,7 @@
 
   .banner { display: none; padding: var(--space-3) var(--space-4); font-size: 14px; }
   .banner.show { display: block; }
-  .ds-banner { position: fixed; left: 16px; right: 16px; top: 16px; z-index: 90; display: none; padding: 14px 18px; font: 500 15px/1.5 system-ui, sans-serif; color: #ecece6; background: #3d1f1d; border: 1px solid #ff8a80; border-radius: 14px; }
+  .ds-banner { position: fixed; left: 16px; right: 16px; top: 16px; z-index: var(--z-tooltip, 80); display: none; padding: var(--space-4, 14px) var(--space-5, 18px); font: 500 15px/1.5 var(--font-sans, system-ui, sans-serif); color: var(--ink, #ecece6); background: var(--danger-tint, #3d1f1d); border: 1px solid var(--danger, #ff8a80); border-radius: var(--radius-glass-s, 14px); }
   .ds-banner.show { display: block; }
 
   .ident { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--ident-size, 48px); height: var(--ident-size, 48px); border-radius: 50%; color: var(--ink); }
@@ -134,7 +134,7 @@
   .mrow:hover { background: var(--glass-nested); }
   .mrow-main { all: unset; cursor: pointer; min-width: 0; display: flex; align-items: baseline; gap: var(--space-3); }
   .mrow-tools { display: flex; gap: var(--space-1); align-items: center; }
-  .lane-plate { padding: var(--space-2); --glass-bezel: 18px; }
+  .lane-plate:not([data-surface="paper"] *):not([data-surface="paper"]) { padding: var(--space-2); --glass-bezel: 18px; }
   .card.mission { margin: var(--space-2) 0; border-radius: var(--radius-glass-s); background: var(--glass-nested); border: 1px solid var(--glass-edge); }
   .card.mission.big { background: var(--plate); box-shadow: var(--shadow-glass-pop); }
   .card.mission .mrow { padding: var(--space-4) var(--space-5) var(--space-2); }
@@ -144,8 +144,6 @@
   .mrow-activity { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
   .mrow-activity.blocked-kind { color: var(--danger); }
   .mrow-age { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-  .mrow .mrow-tools .ep-btn--icon { opacity: 0; }
-  .mrow:hover .mrow-tools .ep-btn--icon, .mrow .mrow-tools .ep-btn--icon:focus-visible, .card.mission .mrow-tools .ep-btn--icon { opacity: 1; }
 
   .rest-toggle { align-self: flex-start; }
   .rest-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: 7px 0 7px var(--space-4); font-size: 14px; color: var(--ink-2); border-bottom: 1px solid var(--rule); }
@@ -157,7 +155,7 @@
   @keyframes changed { 0% { outline: 1px solid var(--ink); outline-offset: 2px; } 100% { outline: 1px solid transparent; outline-offset: 2px; } }
   .mission.changed { animation-name: changedRow; }
   @keyframes changedRow { 0% { background-color: var(--glass-strong); } 100% { background-color: transparent; } }
-  .repo-menu { position: fixed; z-index: var(--z-modal); min-width: 300px; max-width: 460px; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; --glass-bezel: 14px; border-radius: 22px; }
+  .repo-menu:not([data-surface="paper"] *):not([data-surface="paper"]) { position: fixed; z-index: var(--z-modal); min-width: 300px; max-width: 460px; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; --glass-bezel: 14px; border-radius: 22px; }
   .repo-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); padding: var(--space-2) var(--space-3) var(--space-1); display: flex; align-items: center; gap: 6px; }
   .repo-item { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 1px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-glass-s); }
   .repo-item:hover, .repo-item:focus-visible { background: var(--glass-nested); }
@@ -168,23 +166,22 @@
   .park-input { margin: 0 var(--space-3); width: calc(100% - 2 * var(--space-3)); }
   .park-actions { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3); }
   .moved { margin-right: var(--space-1); }
-  .backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--scrim) 60%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 25; }
-  .card.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: 30; overflow-y: auto; }
+  .backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--scrim) 60%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: var(--z-sticky); }
+  .card.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: var(--z-bar); display: flex; flex-direction: column; }
+  .card.big > * { flex: none; }
+  .card.big > .card-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   .card.big .thread { max-height: none; overflow: visible; }
 
   .pop { animation: pop 420ms cubic-bezier(0.3, 1.35, 0.45, 1); }
   @keyframes pop { 0% { transform: scale(0.85); } 100% { transform: scale(1); } }
   .bump { animation: bump 300ms ease-out; }
   @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
-  .reward { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-3); padding: 10px 20px 10px 10px; border-radius: var(--radius-pill); font-size: 15px; white-space: nowrap; z-index: var(--z-toast); animation: toastIn 260ms ease-out; --glass-bezel: 14px; }
-  .reward.out { opacity: 0; transition: opacity 300ms ease-in; }
-  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
   .trace { position: fixed; left: 50%; bottom: 72px; width: 240px; height: 90px; margin-left: -120px; pointer-events: none; z-index: var(--z-toast); color: var(--ink); }
   .trace svg { display: block; width: 100%; height: 100%; }
   .trace path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: traceDraw 900ms ease-out forwards, traceFade 500ms ease-in 1100ms forwards; }
   @keyframes traceDraw { to { stroke-dashoffset: 0; } }
   @keyframes traceFade { to { opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .pop, .bump, .reward, .changed, .trace path { animation: none !important; } .av { transition: none !important; } .trace { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .pop, .bump, .changed, .trace path { animation: none !important; } .av { transition: none !important; } .trace { display: none; } }
 
   .view-switch { margin-right: var(--space-1); }
   .wrap.team-mode { max-width: 1600px; }
@@ -213,7 +210,7 @@
   .t-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .t-bubble { position: relative; width: 100%; padding: 11px 14px; border-radius: var(--radius-glass-s); font-size: 14.5px; line-height: 1.4; background: var(--b-bg); color: var(--b-fg); border: 1px solid var(--b-line); font-weight: var(--b-weight, 400); }
   .t-face { position: relative; display: inline-flex; }
-  .t-face.face-glass { padding: 7px; border-radius: 50% !important; --glass-bezel: 12px; --glass-thickness: 28px; }
+  .t-face.face-glass:not([data-surface="paper"] *):not([data-surface="paper"]) { padding: 7px; border-radius: 50% !important; --glass-bezel: 12px; --glass-thickness: 28px; }
   .card.mission { background: color-mix(in srgb, var(--conv-tint, transparent) 20%, transparent); border-radius: var(--radius-glass-s); }
   .t-name { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .t-title { max-width: 200px; font-size: 14px; font-weight: 500; color: var(--ink); }
@@ -225,7 +222,7 @@
   .t-chip-state { color: var(--ink-2); white-space: nowrap; }
   .t-modal { position: fixed; left: 0; top: 0; width: calc(100vw / var(--zoom, 1)); height: calc(100vh / var(--zoom, 1)); z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
   .t-backdrop { position: absolute; inset: 0; background: color-mix(in srgb, var(--scrim) 55%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-  .t-sheet { position: relative; width: 100%; max-width: min(1500px, calc(96vw / var(--zoom, 1))); max-height: calc(96vh / var(--zoom, 1)); overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); --glass-bezel: 26px; --glass-thickness: 56px; --glass-blur: 18px; border-radius: 28px; }
+  .t-sheet:not([data-surface="paper"] *):not([data-surface="paper"]) { position: relative; width: 100%; max-width: min(1500px, calc(96vw / var(--zoom, 1))); margin: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); --glass-bezel: 26px; --glass-thickness: 56px; --glass-blur: 18px; border-radius: 28px; }
   .t-sheet > * { flex-shrink: 0; }
   .t-sheet .thread { max-height: calc(70vh / var(--zoom, 1)); }
   .t-sheet .plain { max-width: none; }
@@ -250,7 +247,7 @@
   html.os-glass, html.os-glass body { background: transparent !important; background-image: none !important; }
   html.os-glass .ep-scene__bg { display: none; }
   .drag-strip { display: none; }
-  html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: 1000; }
+  html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
   body.mini-mode .wrap { display: none; }
   body.mini-mode #mini { display: block; }
   .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 6px 6px 0; pointer-events: none; }
@@ -275,7 +272,7 @@
   .dock .mini-head.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: 50%; --glass-bezel: 12px; --glass-thickness: 28px; transition: transform 150ms ease-out; }
   .dock .mini-head.ep-glass:hover { transform: translateY(-2px); }
   .dock[data-layout="column"] .mini-head.ep-glass:hover { transform: translateX(-2px); }
-  .mini-head.working, .mini-head.later { opacity: 0.6; }
+  .mini-head.working > *, .mini-head.later > * { opacity: 0.6; }
   .mini-head.working:hover { opacity: 1; }
   .mini-head.fresh { animation: miniHop 900ms ease-in-out 2; }
   @keyframes miniHop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
@@ -283,8 +280,7 @@
   .dock:hover .dock-quit { opacity: 1; }
   .dock-calm { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); padding: 0 var(--space-2); white-space: nowrap; }
   body.mini-mode .t-modal { padding: 0 6px 0 0; align-items: flex-end; justify-content: flex-end; height: calc(100vh - var(--dock-room)); }
-  body.mini-mode .reward { left: auto; right: 8px; bottom: 96px; transform: none; white-space: normal; max-width: calc(100vw - 16px); animation: miniToastIn 240ms ease-out; }
-  @keyframes miniToastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  body.mini-mode .ep-toasts { right: 8px; bottom: 96px; width: calc(100vw - 16px); }
   body.mini-mode .trace { left: auto; right: 120px; bottom: 60px; margin-left: 0; }
   body.mini-mode .t-backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
   body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
@@ -294,7 +290,6 @@
   html.os-glass .dock { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
   html.os-glass body.mini-mode .t-modal { padding: 0; border-bottom: 1px solid var(--rule); }
   html.os-glass body.mini-mode .t-sheet { width: 100%; max-width: none !important; border-radius: 0; background: color-mix(in srgb, var(--conv-tint, transparent) 20%, transparent) !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-  html.os-glass body.mini-mode .reward { inset: auto 0 0 0; height: var(--dock-room); max-width: none; border-radius: 0; justify-content: center; background: color-mix(in srgb, var(--paper-deep) 92%, transparent) !important; }
   @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } }
   body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
   .search-bar { margin-top: var(--space-4); min-height: 46px; }
@@ -323,7 +318,6 @@
   .nc-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); padding: var(--space-1); background: var(--glass-nested); }
   .nc-item { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: var(--space-2); padding: 7px 10px; border-radius: 10px; cursor: pointer; }
   .nc-item:hover { background: var(--glass); }
-  .nc-item input { margin: 0; accent-color: var(--ink); }
   .nc-item-text { min-width: 0; display: flex; align-items: baseline; gap: var(--space-3); }
   .nc-name { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .nc-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -343,11 +337,10 @@
   .dock-menu { max-width: 380px !important; }
   .dock-menu-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .mrow-main { min-height: 32px; }
-  @media (hover: none) { .mrow .mrow-tools .ep-btn--icon { opacity: 1; } }
+  .t-modal { overflow-y: auto; align-items: safe center; }
   .rest-toggle.has-error { color: var(--danger); }
   .conn-banner { margin: 0; }
   .conn-banner[hidden] { display: none; }
-  .reward .ep-btn { margin-left: var(--space-2); }
   @media (max-width: 600px) {
     .wrap { padding: var(--space-6) var(--space-4) var(--space-16); gap: var(--space-8); }
     .card-head { grid-template-columns: auto minmax(0, 1fr); }
@@ -357,7 +350,6 @@
     .mrow .mrow-tools { grid-column: 1 / -1; justify-content: flex-end; }
     .t-grid .t-agent { width: min(320px, 100%); }
     .repo-menu { min-width: 0; max-width: calc(100vw - 32px); }
-    .reward { max-width: calc(100vw - 32px); white-space: normal; }
   }
 </style>
 </head>
@@ -906,7 +898,7 @@
         <div class="card-actions">
           <div class="group">
             ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
-            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
+            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
             <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
             ${feedbackHtml}
           </div>
@@ -1040,7 +1032,7 @@
     const chips = info.chips.map(chip => `<button type="button" class="ep-btn ep-btn--sm park-chip" data-reason="${escapeHtml(chip)}">${escapeHtml(chip)}</button>`).join('');
     menu.innerHTML = `<div class="repo-title">${iconOf(info.icon)} ${escapeHtml(info.title)}</div>
       <div class="park-chips">${chips}</div>
-      <input type="text" class="ep-input park-input" maxlength="200" placeholder="Raison (facultative), Entrée pour valider">
+      <input type="text" class="ep-input park-input" maxlength="200" aria-label="Raison de la mise de côté, facultative" placeholder="Raison (facultative), Entrée pour valider">
       <div class="park-actions"><button type="button" class="ep-btn ep-btn--ghost ep-btn--sm park-cancel">Annuler</button><button type="button" class="ep-btn ep-btn--primary ep-btn--sm park-ok">${kind === 'blocked' ? 'Marquer bloquée' : 'Mettre de côté'}</button></div>`;
     document.body.appendChild(menu);
     const box = anchor.getBoundingClientRect();
@@ -1221,10 +1213,10 @@
       ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
       : renderComposer(row);
     const isParked = row.status === 'blocked' || row.status === 'later';
-    const restButton = isServer && zone === 'waiting' ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="seen">${ICONS.eye} Au repos</button>` : '';
+    const restButton = isServer && zone === 'waiting' ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="seen">${ICONS.eye} Mettre au repos</button>` : '';
     const parkActions = isParked && isServer
       ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="unpark">${iconOf('arrow')} Reprendre</button>`
-      : (isServer && !row.isCurrent ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="blocked">${iconOf('block')} Bloquée</button><button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="later">${iconOf('later')} Plus tard</button>` : '');
+      : (isServer && !row.isCurrent ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="blocked">${iconOf('block')} Marquer bloquée</button><button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="park" data-kind="later">${iconOf('later')} Remettre à plus tard</button>` : '');
     const sendLabel = WAITING_STATUSES.includes(row.status) ? 'Relancer l\'agent' : 'Envoyer à l\'agent';
     const enter = state.teamPopFresh ? 'enter' : '';
     return `<div class="t-modal" data-engine="${escapeHtml(row.engineId)}">
@@ -1248,7 +1240,7 @@
         <div class="card-actions">
           <div class="group">
             ${openUrl ? `<a href="${escapeHtml(openUrl)}" class="ep-btn ep-btn--ghost ep-btn--sm">${ICONS.open} Ouvrir</a>` : ''}
-            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Terminal</button>` : ''}
+            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
             ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
             ${restButton}
             ${parkActions}
@@ -1309,9 +1301,9 @@
     const { DOCK_SIZES, DOCK_LAYOUTS } = window.CockpitDock;
     const prefs = state.dockPrefs;
     const sizeEntries = Object.entries(DOCK_SIZES);
-    const sizes = sizeEntries.map(([key, size]) => `<button type="button" class="ep-btn ep-btn--sm ${prefs.size === key ? 'ep-btn--primary' : ''}" data-dock-size="${key}" aria-pressed="${prefs.size === key}">${size.label}</button>`).join('');
+    const sizes = sizeEntries.map(([key, size]) => `<button type="button" data-dock-size="${key}" aria-pressed="${prefs.size === key}">${size.label}</button>`).join('');
     const layoutEntries = Object.entries(DOCK_LAYOUTS);
-    const layouts = layoutEntries.map(([key, label]) => `<button type="button" class="ep-btn ep-btn--sm ${prefs.layout === key ? 'ep-btn--primary' : ''}" data-dock-layout="${key}" aria-pressed="${prefs.layout === key}">${label}</button>`).join('');
+    const layouts = layoutEntries.map(([key, label]) => `<button type="button" data-dock-layout="${key}" aria-pressed="${prefs.layout === key}">${label}</button>`).join('');
     return `<div class="t-modal">
       <div class="t-backdrop" data-dock-menu="close"></div>
       <div class="t-sheet ep-glass dock-menu" role="dialog" aria-modal="true" aria-labelledby="dock-menu-title">
@@ -1320,9 +1312,9 @@
           <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon" data-dock-menu="close" aria-label="Fermer">${iconOf('x')}</button>
         </div>
         <span class="nc-label">Taille</span>
-        <div class="dock-menu-row">${sizes}</div>
+        <div class="dock-menu-row ep-toggle" role="group" aria-label="Taille">${sizes}</div>
         <span class="nc-label">Forme</span>
-        <div class="dock-menu-row">${layouts}</div>
+        <div class="dock-menu-row ep-toggle" role="group" aria-label="Forme">${layouts}</div>
       </div>
     </div>`;
   };
@@ -1399,7 +1391,7 @@
     focusPendingDraft();
   };
 
-  const newConvItem = folder => `<label class="nc-item" data-search="${escapeHtml(folder.toLowerCase())}">
+  const newConvItem = folder => `<label class="nc-item ep-check" data-search="${escapeHtml(folder.toLowerCase())}">
       <input type="checkbox" value="${escapeHtml(folder)}">
       <span class="nc-item-text"><span class="nc-name">${escapeHtml(folderOf(folder))}</span><span class="nc-path">${escapeHtml(folder)}</span></span>
     </label>`;
@@ -1431,7 +1423,7 @@
         <textarea id="nc-text" class="ep-textarea nc-text" rows="4" placeholder="Ce que tu veux lui demander… (Ctrl+Entrée pour ouvrir)"></textarea>
         <div class="nc-note">Claude s'ouvre sur la conversation avec ton message déjà écrit : appuie sur Entrée pour l'envoyer. La première fois, l'app te demande de faire confiance au dossier. Le modèle et le mode se règlent dans l'app.</div>
         <div class="card-actions">
-          <div class="group"><span class="feedback error" id="nc-error"></span></div>
+          <div class="group"><span class="feedback error" id="nc-error" role="alert"></span></div>
           <div class="group"><button type="button" class="ep-btn ep-btn--primary" data-nc="open">Ouvrir dans Claude</button></div>
         </div>
       </div>
@@ -1726,22 +1718,11 @@
     setTimeout(() => { live.textContent = message; }, 50);
   };
 
+  const TOAST_TONES = { failure: 'danger', error: 'warning', info: 'info' };
+
   const showReward = (badge, text, variant = '') => {
-    for (const old of document.querySelectorAll('.reward')) old.remove();
-    const reward = document.createElement('div');
-    const isFailure = variant === 'failure';
-    const tone = variant === 'error' || isFailure ? 'ep-tag--danger' : (variant === 'info' ? 'ep-tag--info' : 'ep-tag--success');
-    reward.className = `reward ep-glass ${variant}`;
-    reward.setAttribute('role', isFailure ? 'alert' : 'status');
-    const closeButton = isFailure ? '<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-reward-close>Fermer</button>' : '';
-    reward.innerHTML = `<span class="ep-tag ${tone}">${escapeHtml(badge)}</span><span>${escapeHtml(text)}</span>${closeButton}`;
-    document.body.appendChild(reward);
-    if (isFailure) {
-      reward.querySelector('[data-reward-close]').addEventListener('click', () => reward.remove());
-      return;
-    }
-    setTimeout(() => reward.classList.add('out'), REWARD_MS);
-    setTimeout(() => reward.remove(), REWARD_MS + 350);
+    const tone = TOAST_TONES[variant] || 'success';
+    window.EncrePapier.toast({ tone, title: badge, message: text, duration: variant === 'failure' ? 0 : REWARD_MS });
   };
 
   const showTrace = () => {

@@ -15,7 +15,7 @@ Trois morceaux :
 - **Statut en direct** de chaque conversation : t'attend (permission, question, mission livrée), en mission, en attente d'une PR ou d'une CI, bloquée, plus tard, au repos.
 - **Résumé en clair** : Haiku reformule la dernière réponse de Claude en langage simple, avec la réponse exacte à côté.
 - **Répondre depuis le cockpit** : OK / GO / Non en un clic, ou un message libre (images collées acceptées).
-- **Mettre de côté** une conversation : 🚫 bloquée ou ⏸️ plus tard, avec une raison.
+- **Mettre de côté** une conversation : « bloquée » ou « plus tard », avec une raison.
 - **Terminal** ouvert directement dans le dépôt de la conversation.
 - **Nouvelle conversation** : choix du ou des dépôts et premier message. Claude s'ouvre avec le message prérempli, il reste à appuyer sur Entrée.
 - **Chiffres** par conversation (messages, temps de travail actif, outils lancés, fichiers modifiés) et du jour (messages envoyés, temps de réponse médian).
@@ -53,9 +53,9 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 
 ## Utilisation
 
-- **Conversations Claude** ouvre le cockpit. ➕ en haut pour une nouvelle conversation, « Liste / Équipe » pour changer de vue, A− / A+ pour la taille du texte, 🔔 pour les notifications Windows.
+- **Conversations Claude** ouvre le cockpit. le bouton « + » en haut pour une nouvelle conversation, « Liste / Équipe » pour changer de vue, A− / A+ pour la taille du texte, la cloche pour les notifications du système.
 - **Recherche globale** : le champ en haut du cockpit (Ctrl+K, ou la loupe du dock) cherche dans tes messages et les réponses de Claude de toutes les sessions, sans tenir compte des accents ; un clic ouvre la conversation dans l'app. L'index vit en mémoire dans le serveur du cockpit, repris de `search-cache.json` au démarrage.
-- **Mini équipe** pose la bande des têtes en bas à droite. Survol : ce que la conversation attend. Clic : le résumé et la réponse. Le compteur ouvre le cockpit, ＋ ouvre une nouvelle conversation, ✕ ferme la bande. La bande se déplace à la souris et retient sa place.
+- **Mini équipe** pose la bande des têtes en bas à droite. Survol : ce que la conversation attend. Clic : le résumé et la réponse. Le compteur ouvre le cockpit, « + » ouvre une nouvelle conversation, « Fermer » ferme la bande. La bande se déplace à la souris et retient sa place.
 - Dans une conversation, `/sessions` rouvre le panneau du mod dans l'app.
 
 ## Bon à savoir
