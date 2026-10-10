@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { createIslandController } = require('./controller')
-const { ISLAND_CLOSE_MS, SETTLE_SLACK_MS, SHAPE_PAD, STAGE_WIDTH, STAGE_HEIGHT } = require('../bounds')
+const { ISLAND_CLOSE_MS, SETTLE_SLACK_MS, SHAPE_PAD } = require('../bounds')
 const { HIDE_DELAY_MS, POINTER_HIDE_DELAY_MS, FOLD_DELAY_MS, INTENT_DELAY_MS, PIN_DONE_MS } = require('./fsm')
 const { POLL_INTERVAL_MS } = require('./edge')
 
@@ -58,7 +58,7 @@ test('demarrage : l ile se revele en reduit, par evenement', () => {
   island.start()
   assert.equal(island.phase(), 'compact')
   assert.deepEqual(last(log.sent), ['island-state', 'compact', 'event'])
-  assert.equal(last(log.bounds).width, STAGE_WIDTH)
+  assert.equal(last(log.bounds).width, 320 + 2 * SHAPE_PAD)
   assert.equal(last(log.shapes)[0].width, 320 + 2 * SHAPE_PAD)
   assert.equal(last(log.visible), true)
 })
@@ -131,13 +131,27 @@ test('la forme suit la phase appliquee : l ile reste dessinee a sa taille ouvert
   assert.equal(last(log.shapes)[0].width, 320 + 2 * SHAPE_PAD)
 })
 
-test('la fenetre garde sa taille pendant toute la morphose : seule la forme change', () => {
+test('la fenetre change de taille par paliers, jamais image par image : un cycle ouvrir puis replier = 2 changements', () => {
   const { island, log, clock } = setup()
   island.start()
+  const before = log.bounds.length
   island.setExpanded(true, 760, 280)
+  assert.equal(last(log.bounds).width, 760 + 2 * SHAPE_PAD)
   island.escape()
-  clock.advance(SETTLE_MS)
-  for (const bounds of log.bounds) assert.deepEqual(bounds, { x: (1920 - STAGE_WIDTH) / 2, y: 0, width: STAGE_WIDTH, height: STAGE_HEIGHT })
+  clock.advance(SETTLE_MS - 1)
+  assert.equal(last(log.bounds).width, 760 + 2 * SHAPE_PAD)
+  clock.advance(1)
+  assert.equal(last(log.bounds).width, 320 + 2 * SHAPE_PAD)
+  assert.equal(log.bounds.length - before, 2)
+})
+
+test('les toasts agrandissent la fenetre sous l ile et la rendent au dernier', () => {
+  const { island, log } = setup()
+  island.start()
+  island.setToasts(380, 120)
+  assert.equal(last(log.bounds).width, 380 + 16)
+  island.setToasts(0, 0)
+  assert.equal(last(log.bounds).width, 320 + 2 * SHAPE_PAD)
 })
 
 test('ouverte par le survol : l automate la replie 0,6 s apres le depart du pointeur', () => {

@@ -7,7 +7,12 @@
   const W_COMPACT = 320;
   const W_OPEN = 760;
   const HERO_PX = 96;
-  const HERO_COMPACT_PX = HERO_PX;
+  const HERO_COMPACT_PX = 32;
+  // Cadences : la grande entité ouverte à 30 images/s ; réduite, elle est petite et peu regardée (le chrome, rendu WebGL, coûte au GPU) ;
+  // les petites entités des autres conversations ne s'animent que le temps d'une réaction (état, survol, clic).
+  const HERO_FPS_OPEN = 30;
+  const HERO_FPS_COMPACT = 15;
+  const SMALL_FPS = 20;
   const SPRING_OPEN = { zeta: 0.72, ms: 300 };
   const SPRING_CLOSE = { zeta: 0.9, ms: 260 };
   const FADE_IN_MS = 150;
@@ -40,7 +45,7 @@
     const feed = model.createFeed({ max: 3 });
     const mounts = new Map();
     let hero = null;
-    let heroKey = '';
+    let heroPx = HERO_COMPACT_PX;
     let cur = null;
     let tweens = {};
     let raf = 0;
@@ -81,7 +86,7 @@
         const row = rowOf(canvas.dataset.ent);
         if (!row || mounts.has(canvas)) continue;
         const target = canvas.closest('.mini-head, button, a') || canvas;
-        mounts.set(canvas, entities.mount(canvas, { seed: row.engineId, size: Number(canvas.dataset.size), state: model.entityStateOf(row), hoverTarget: target }));
+        mounts.set(canvas, entities.mount(canvas, { seed: row.engineId, size: Number(canvas.dataset.size), state: model.entityStateOf(row), hoverTarget: target, still: true, fps: SMALL_FPS }));
       }
     };
     const unmountIn = scope => {
@@ -93,19 +98,32 @@
     };
 
     const heroOf = row => {
-      if (!hero) hero = entities.mount($('#heroCanvas'), { seed: row.engineId, size: HERO_COMPACT_PX, state: model.entityStateOf(row) });
+      if (!hero) hero = entities.mount($('#heroCanvas'), { seed: row.engineId, size: heroPx, state: model.entityStateOf(row), fps: HERO_FPS_COMPACT });
+      sizeHeroBox();
       return hero;
     };
     const syncHero = () => {
       const row = S.phase === 'open' ? heroRowFor(S.view) : urgent();
       if (!row) return;
       const mount = heroOf(row);
-      const key = `${row.engineId}|${S.phase === 'open' ? 'big' : 'small'}`;
       mount.setSeed(row.engineId);
       mount.setState(model.entityStateOf(row));
-      if (key !== heroKey) { heroKey = key; mount.setSize(S.phase === 'open' ? HERO_PX : HERO_COMPACT_PX); }
       islandEl.style.setProperty('--conv-tint', tintOf(row.engineId) || 'var(--paper)');
       islandEl.dataset.conv = row.engineId;
+    };
+    const sizeHeroBox = () => { heroEl.style.width = `${heroPx}px`; heroEl.style.height = `${heroPx}px`; };
+    // La grande entité change de taille de dessin (32 réduite, 96 ouverte) sans que son aspect bouge : l'échelle suit.
+    const rebaseHero = px => {
+      if (px === heroPx) return;
+      if (!hero) { heroPx = px; return; }
+      const factor = heroPx / px;
+      if (cur) cur.hs *= factor;
+      if (tweens.hs) { tweens.hs.from *= factor; tweens.hs.to *= factor; }
+      heroPx = px;
+      hero.setSize(px);
+      hero.setFps(px === HERO_PX ? HERO_FPS_OPEN : HERO_FPS_COMPACT);
+      sizeHeroBox();
+      if (cur) apply();
     };
     const heroRowFor = view => {
       if (view === 'wait') return waiting()[0] || focus();
@@ -340,7 +358,7 @@
       for (const name of LAYERS) target[`o:${name}`] = 0;
       const layer = phase === 'open' ? view : 'compact';
       const place = slotOf(layer);
-      if (place) { target.hx = place.x; target.hy = place.y; target.hs = place.size / HERO_PX; } else if (cur) { target.hx = cur.hx; target.hy = cur.hy; target.hs = cur.hs; }
+      if (place) { target.hx = place.x; target.hy = place.y; target.hs = place.size / heroPx; } else if (cur) { target.hx = cur.hx; target.hy = cur.hy; target.hs = cur.hs; }
       if (phase === 'hidden') { target.h = 0; return target; }
       if (phase === 'compact') { target['o:compact'] = 1; return target; }
       target.w = W_OPEN;
@@ -415,7 +433,8 @@
       if (room !== lastRoom) { lastRoom = room; doc.body.style.setProperty('--dock-room', `${room}px`); }
     };
 
-    const refreshGlass = () => { if (win.EncrePapier && win.EncrePapier.Glass) win.EncrePapier.Glass.refresh(islandEl); };
+    // Le verre de l'île n'a rien à réfracter (fenêtre transparente) : pas de recalcul des cartes de réfraction.
+    const refreshGlass = () => {};
     const frame = () => {
       raf = 0;
       const now = win.performance.now();
@@ -433,7 +452,7 @@
       settleTimer = win.setTimeout(() => {
         refreshGlass();
         for (const name of LAYERS) if (!visibleLayers().includes(name)) unmountIn(layerEl(name));
-        if (S.phase !== 'open' && hero) { heroKey = `${(urgent() || {}).engineId}|small`; hero.setSize(HERO_COMPACT_PX); }
+        if (S.phase !== 'open' && !raf) rebaseHero(HERO_COMPACT_PX);
       }, 80);
     };
 
@@ -469,6 +488,7 @@
       S.view = view;
       if (phase !== 'open') { S.details = false; S.exact = false; stopAges(); }
       if (phase !== 'open') S.focusId = (urgent() || {}).engineId || null;
+      if (phase === 'open') rebaseHero(HERO_PX);
       renderAll();
       const target = targetFor(phase, view);
       const currentH = cur ? cur.h : target.h;

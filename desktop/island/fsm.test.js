@@ -393,3 +393,23 @@ test('ouverte au clic : le comportement reste celui de 15 s apres le depart', ()
   clock.advance(HOVER_GRACE_MS + 1000)
   assert.equal(fsm.state(), 'open')
 })
+
+test('ouverte au survol alors que quelqu un t attend : elle se replie quand meme 0,6 s apres le depart, la pastille garde le signal', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.hover(true)
+  fsm.open(true)
+  fsm.hover(false)
+  clock.advance(HOVER_GRACE_MS)
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(HIDE_DELAY_MS * 2)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('ouverte par une arrivee alors que quelqu un t attend : elle reste ouverte, meme sans le pointeur', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.open()
+  clock.advance(FOLD_DELAY_MS * 4)
+  assert.equal(fsm.state(), 'open')
+})

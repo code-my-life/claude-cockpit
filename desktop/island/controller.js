@@ -19,6 +19,8 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
   let isOffline = false
   let pageKind = 'none'
   let settleTimer = null
+  // Dernière géométrie appliquée : une même géométrie n'est jamais ré-appliquée (pas de redimensionnement pour rien).
+  let appliedKey = null
 
   const cancelSettle = () => {
     if (settleTimer === null) return
@@ -30,12 +32,18 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
     appliedPhase = phase
     if (phase === HIDDEN) {
       // Caché : plus aucune fenêtre, donc plus aucun pixel qui capte la souris.
+      appliedKey = null
       setVisible(false)
       return
     }
-    const bounds = islandBoundsOf(getArea())
-    applyBounds(bounds)
-    applyShape(shapeRectsOf(bounds, { ...sizes, phase }))
+    const bounds = islandBoundsOf(getArea(), { ...sizes, phase })
+    const shape = shapeRectsOf(bounds, { ...sizes, phase })
+    const key = JSON.stringify([bounds, shape])
+    if (key !== appliedKey) {
+      appliedKey = key
+      applyBounds(bounds)
+      applyShape(shape)
+    }
     setVisible(true)
   }
 

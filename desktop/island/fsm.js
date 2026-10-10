@@ -75,8 +75,9 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
   // Le compte à rebours ne tourne que si l'île est visible, libre et non survolée.
   function rearm(graceMs) {
     clearTimer()
-    if (current === HIDDEN || isHovered || isHeld || isPinned()) return
-    timer = clock.setTimer(onTimer, current === OPEN && isOpenedByHover ? HOVER_GRACE_MS : delayOf() + graceMs)
+    const isHoverOpen = current === OPEN && isOpenedByHover
+    if (current === HIDDEN || isHovered || isHeld || (isPinned() && !isHoverOpen)) return
+    timer = clock.setTimer(onTimer, isHoverOpen ? HOVER_GRACE_MS : delayOf() + graceMs)
   }
 
   const showCompact = () => { if (current === HIDDEN) go(COMPACT) }
