@@ -34,7 +34,7 @@ const fakeClock = () => {
 
 const setup = (overrides = {}) => {
   const clock = fakeClock()
-  const log = { bounds: [], shapes: [], sent: [], visible: [], cursorReads: 0, focus: 0 }
+  const log = { bounds: [], shapes: [], sent: [], visible: [], order: [], cursorReads: 0, focus: 0 }
   const cursor = { value: AWAY }
   const island = createIslandController({
     clock,
@@ -42,8 +42,8 @@ const setup = (overrides = {}) => {
     getCursor: () => { log.cursorReads++; return cursor.value },
     applyBounds: bounds => log.bounds.push(bounds),
     applyShape: rects => log.shapes.push(rects),
-    setVisible: isVisible => log.visible.push(isVisible),
-    focusWindow: () => { log.focus++ },
+    setVisible: isVisible => { log.visible.push(isVisible); log.order.push(`visible:${isVisible}`) },
+    focusWindow: () => { log.focus++; log.order.push('focus') },
     send: (channel, payload, cause) => log.sent.push([channel, payload, cause]),
     ...overrides,
   })
@@ -315,4 +315,21 @@ test('sans lecteur d ecran : pas de focus vole a une revelation par evenement', 
   const before = ctx.log.focus
   ctx.island.event()
   assert.equal(ctx.log.focus, before)
+})
+
+test('lecteur d ecran : le focus n arrive qu apres l affichage de la fenetre', () => {
+  const ctx = setup({ isScreenReaderActive: () => true })
+  hide(ctx)
+  ctx.log.order.length = 0
+  ctx.island.event()
+  assert.deepEqual(ctx.log.order, ['visible:true', 'focus'])
+})
+
+test('Afficher l ile : meme ordre, affichage puis focus', () => {
+  const ctx = setup()
+  hide(ctx)
+  ctx.log.order.length = 0
+  ctx.island.showAndFocus()
+  assert.equal(ctx.log.order[ctx.log.order.length - 1], 'focus')
+  assert.ok(ctx.log.order.indexOf('visible:true') < ctx.log.order.indexOf('focus'))
 })

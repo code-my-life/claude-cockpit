@@ -267,8 +267,8 @@
   .dock[data-layout="grid"] .dock-heads { display: grid; grid-template-columns: repeat(var(--grid-columns, 1), auto); }
   .dock button { -webkit-app-region: no-drag; }
   .dock .dock-count.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: calc(var(--head) / 2.4); --glass-bezel: 14px; --glass-thickness: 34px; }
-  /* Sur papier le fond gris du modèle ramenait le contraste du libellé à 2,2:1 : fond plus sombre, jeton --paper-deep. */
-  .dock .dock-count.ep-glass, .dock .mini-head.ep-glass { background: var(--paper-deep); }
+  /* Sur papier le fond gris du modèle ramenait le contraste du libellé à 2,2:1 : fond --plate-hover (6,3:1 pour --ink-2, 12,7:1 pour --ink). */
+  .dock .dock-count.ep-glass, .dock .mini-head.ep-glass { background: var(--plate-hover); }
   .dock-count-value { font-family: var(--font-display); font-size: calc(var(--head) * 0.5); line-height: 1; color: var(--ink); display: flex; align-items: center; justify-content: center; }
   .dock-count.calm .dock-count-value { color: var(--success); }
   .dock-count-value .ep-icon { width: calc(var(--head) * 0.36); height: calc(var(--head) * 0.36); }
