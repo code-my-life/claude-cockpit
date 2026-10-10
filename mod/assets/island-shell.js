@@ -36,7 +36,7 @@
         <div class="layer l-order" id="v-order" role="tabpanel" aria-labelledby="tab-order" aria-label="Envoyer un ordre">
           <div class="is-body"><div class="simple">${slot('')}
             <div class="simple-main">
-              <div class="meta"><h2 class="h4" id="oName"></h2><span class="ep-tag" id="oSig"></span></div>
+              <div class="is-meta"><h2 class="h4" id="oName"></h2><span class="ep-tag" id="oSig"></span></div>
               <form class="reply" id="orderForm" autocomplete="off">
                 <div class="ep-field"><label class="ep-label" for="orderInput">Ordre pour cette conversation</label><textarea class="ep-textarea" id="orderInput" rows="2" aria-describedby="orderHint"></textarea>
                   <span class="ep-hint" id="orderHint">Entrée pour envoyer, Maj+Entrée pour un retour à la ligne. Colle une image si besoin.</span></div>
@@ -61,7 +61,7 @@
         <div class="layer l-park" id="v-park" role="group" aria-label="Mettre de côté">
           <div class="is-body"><div class="simple">${slot('')}
             <div class="simple-main">
-              <div class="meta"><h2 class="h4" id="pName"></h2><span class="ep-tag" id="pTitle"></span></div>
+              <div class="is-meta"><h2 class="h4" id="pName"></h2><span class="ep-tag" id="pTitle"></span></div>
               <div class="ep-cluster" id="parkChips" role="group" aria-label="Raisons courantes"></div>
               <form class="reply" id="parkForm" autocomplete="off">
                 <div class="ep-field"><label class="ep-label" for="parkInput">Raison <small>facultative</small></label><input class="ep-input" id="parkInput" type="text" maxlength="200"></div>

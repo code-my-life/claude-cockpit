@@ -38,7 +38,7 @@
   .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.02em; }
   .trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  :is(.av, .t-agent, .mini-head, .card-main, .mrow-main, .repo-item, .search-row, .rest-row a, .thumb button):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  :is(.av, .t-agent, .is-head, .card-main, .mrow-main, .repo-item, .search-row, .rest-row a, .thumb button):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
   header { display: flex; flex-direction: column; gap: var(--space-6); }
   .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
@@ -241,29 +241,28 @@
   .t-stat-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
   @media (prefers-reduced-motion: reduce) { .t-sheet.enter { animation: none !important; } .t-agent { transition: none !important; } }
 
-  #mini { display: none; }
-  body.mini-mode { --dock-room: 56px; }
-  html.mini-mode, html.mini-mode body { background: transparent !important; background-image: none !important; overflow: hidden; }
-  html.mini-mode .ep-scene__bg { display: none; }
+  .zone { display: none; }
+  body.island-mode { --dock-room: 56px; }
+  html.island-mode, html.island-mode body { background: transparent !important; background-image: none !important; overflow: hidden; }
+  html.island-mode .ep-scene__bg { display: none; }
   html.os-glass, html.os-glass body { background: transparent !important; background-image: none !important; }
   html.os-glass .ep-scene__bg { display: none; }
   .drag-strip { display: none; }
-  html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
-  body.mini-mode .wrap { display: none; }
-  body.mini-mode #mini { display: block; }
+  html.os-glass:not(.island-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
+  body.island-mode .wrap { display: none; }
+  body.island-mode .zone { display: block; }
   /* L'île a sa feuille (island.css). --motion-ui est la durée standard du modèle ; le ressort de la forme (300 / 260 ms) est dans island-ui.js. */
   :root { --motion-ui: 150ms; }
   /* Les toasts se posent sous l'île, à la hauteur que la morphose lui donne (--dock-room, posé par island-ui.js). */
-  body.mini-mode .ep-toasts { right: var(--space-2); top: var(--dock-room); bottom: auto; width: calc(100vw - var(--space-4)); }
-  body.mini-mode .trace { left: auto; right: var(--space-24); top: var(--dock-room); bottom: auto; margin-left: 0; }
+  body.island-mode .ep-toasts { right: var(--space-2); top: var(--dock-room); bottom: auto; width: calc(100vw - var(--space-4)); }
+  body.island-mode .trace { left: auto; right: var(--space-24); top: var(--dock-room); bottom: auto; margin-left: 0; }
   .t-sheet { --panel-width: 1100; }
   .sound-intro { --panel-width: 380; }
-  @media (prefers-reduced-motion: reduce) { .mini-head.fresh { animation: none; } }
-  body:not(.mini-mode) #newconv { zoom: var(--zoom, 1); }
+  body:not(.island-mode) #newconv { zoom: var(--zoom, 1); }
   .search-bar { margin-top: var(--space-4); min-height: 46px; }
   .search-bar[hidden] { display: none !important; }
   body.launcher-mode .wrap { zoom: 1; max-width: none; padding: 10px; gap: 8px; }
-  body.launcher-mode #wrap > header > :not(.search-bar), body.launcher-mode #wrap > section, body.launcher-mode #team, body.launcher-mode #mini, body.launcher-mode #newconv, body.launcher-mode .banner, body.launcher-mode .ds-banner, body.launcher-mode .drag-strip { display: none !important; }
+  body.launcher-mode #wrap > header > :not(.search-bar), body.launcher-mode #wrap > section, body.launcher-mode #team, body.launcher-mode .zone, body.launcher-mode #newconv, body.launcher-mode .banner, body.launcher-mode .ds-banner, body.launcher-mode .drag-strip { display: none !important; }
   body.launcher-mode .search-bar { margin: 0; -webkit-app-region: drag; }
   body.launcher-mode .search-bar input { -webkit-app-region: no-drag; }
   body.launcher-mode .search-results { display: flex; margin: 0; gap: 6px; }
@@ -373,9 +372,7 @@
 
   <div id="team"></div>
 </div>
-<div id="mini">
-  <div class="zone" id="zone"></div>
-</div>
+<div class="zone" id="zone"></div>
 <div id="newconv" data-surface="paper"></div>
 
 <script src="mod/assets/liquid-paper/bundle.js"></script>
@@ -392,6 +389,10 @@
 <script src="mod/assets/island-model.js"></script>
 <script src="mod/assets/island.js"></script>
 <script src="mod/assets/island-shell.js"></script>
+<script src="mod/assets/island-views.js"></script>
+<script src="mod/assets/island-living.js"></script>
+<script src="mod/assets/island-motion.js"></script>
+<script src="mod/assets/island-actions.js"></script>
 <script src="mod/assets/island-ui.js"></script>
 <script>
   const DATA_FILE = 'conversations-data.js';
@@ -437,7 +438,7 @@
   };
 
   const pageParams = new URLSearchParams(location.search);
-  const isMini = pageParams.has('mini');
+  const isIsland = pageParams.has('island');
   const isOsGlass = pageParams.has('glass');
   const isLauncher = pageParams.has('launcher');
   const isLocalFile = location.protocol === 'file:';
@@ -472,7 +473,6 @@
     knownWaiting: null,
     lastStatus: new Map(),
     newConv: null,
-    miniWaiting: null,
     hasRendered: false,
     focusDraft: null,
     view: 'list',
@@ -813,7 +813,7 @@
   };
 
   // Survol (la tête se tourne vers toi) et pression (coup de phase) : uniquement la tête visée, pas de pointeur tactile.
-  const headOf = target => (target && target.closest ? target.closest('.mini-head') || target.closest('.t-face') : null);
+  const headOf = target => (target && target.closest ? target.closest('.is-head') || target.closest('.t-face') : null);
 
   // Lecteur de sons de l'île : réglage global venu de l'app (menu de la barre d'état), contexte audio relancé au premier geste.
   const setUpSounds = () => {
@@ -823,7 +823,7 @@
     const apply = value => {
       areSoundsOn = !window.CockpitIdentitySound.isMutedBySetting(value);
       soundPlayer.setMuted(!areSoundsOn);
-      if (isMini) render({ force: true });
+      if (isIsland) render({ force: true });
     };
     desktop.soundSetting().then(apply).catch(() => apply(undefined));
     desktop.onSoundSetting(apply);
@@ -1331,11 +1331,11 @@
 
   const toggleSounds = isOn => { if (desktop) desktop.setSounds(isOn); };
 
-  const renderMini = () => {
+  const renderIsland = () => {
     if (islandHost) islandHost.observe(state.data.rows);
     islandUi.update(state.data.rows, { folders: state.data.folders, sounds: areSoundsOn });
     const count = window.CockpitIslandModel.waitingOf(state.data.rows).length;
-    document.title = count > 0 ? `(${count}) Mini équipe` : 'Mini équipe';
+    document.title = count > 0 ? `(${count}) Île du cockpit` : 'Île du cockpit';
   };
 
   // Les toasts s'ajoutent à la forme cliquable sous l'île et la retiennent (ni repli ni masquage tant qu'un toast est là).
@@ -1354,8 +1354,8 @@
     desktop.setToasts(size.width, size.height);
   };
 
-  const renderMiniFrame = () => {
-    renderMini();
+  const renderIslandFrame = () => {
+    renderIsland();
     hydrateIdentities();
   };
 
@@ -1451,7 +1451,7 @@
   };
 
   document.addEventListener('click', event => {
-    if (event.target.closest('#new-conv') || event.target.closest('[data-mini="new"]')) { openNewConv(); return; }
+    if (event.target.closest('#new-conv')) { openNewConv(); return; }
     const control = event.target.closest('[data-nc]');
     if (!control) return;
     if (control.dataset.nc === 'close') closeNewConv();
@@ -1587,7 +1587,7 @@
     if (!force && key === state.lastRenderedKey) return;
     if (!force && isTyping()) return;
     state.lastRenderedKey = key;
-    if (isMini) {
+    if (isIsland) {
       renderMiniFrame();
       return;
     }
@@ -1735,7 +1735,7 @@
   };
 
   const notifyNewWaiting = rows => {
-    if (isMini || isLauncher) return;
+    if (isIsland || isLauncher) return;
     const waiting = new Map(rows.filter(row => WAITING_STATUSES.includes(row.status)).map(row => [row.engineId, row]));
     const snapshot = new Map([...waiting].map(([id, row]) => [id, row.updatedAt]));
     if (state.knownWaiting === null) { state.knownWaiting = snapshot; return; }
@@ -2338,16 +2338,16 @@
     };
     islandUi = window.CockpitIslandUi.create({ doc: document, win: window, host: document.getElementById('zone'), model: window.CockpitIslandModel, entities: window.CharacterEntity, helpers, actions, desktop, announce });
     if (desktop) {
-      islandHost = window.CockpitIsland.init({ desktop, doc: document, win: window, announce, playSound, onReveal: announceSoundsOnce, onPhase: islandUi.setPhase, onPointer: islandUi.pointer });
+      islandHost = window.CockpitIsland.init({ desktop, doc: document, win: window, isServer, announce, playSound, onReveal: announceSoundsOnce, onPhase: islandUi.setPhase, onPointer: islandUi.pointer });
     } else {
       islandUi.setPhase('compact', 'event');
     }
     window.CockpitIsland.watchToasts(document, window, syncToasts);
   };
 
-  if (isMini) {
-    document.documentElement.classList.add('mini-mode');
-    document.body.classList.add('mini-mode');
+  if (isIsland) {
+    document.documentElement.classList.add('island-mode');
+    document.body.classList.add('island-mode');
     if (desktop) setUpSounds();
     startIsland();
     document.addEventListener('click', event => {
@@ -2358,7 +2358,7 @@
     });
   }
   else applyView(readView());
-  if (!isMini && isServer) {
+  if (!isIsland && isServer) {
     const searchInput = document.getElementById('search-input');
     searchInput.addEventListener('input', () => scheduleSearch(searchInput.value));
     searchInput.addEventListener('keydown', event => {

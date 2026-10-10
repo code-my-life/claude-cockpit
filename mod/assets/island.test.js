@@ -61,14 +61,20 @@ test('waitingCountOf compte les conversations qui t attendent, pas les missions 
   assert.equal(waitingCountOf([]), 0);
 });
 
-test('pinKindOf : permission et question epinglent fort, une mission livree epingle moins longtemps', () => {
-  assert.equal(pinKindOf([{ status: 'permission' }, { status: 'done' }]), 'attention');
-  assert.equal(pinKindOf([{ status: 'external' }]), 'attention');
-  assert.equal(pinKindOf([{ status: 'done', summary: { kind: 'question' } }]), 'attention');
-  assert.equal(pinKindOf([{ status: 'done' }, { status: 'thinking' }]), 'done');
-  assert.equal(pinKindOf([{ status: 'thinking' }]), 'none');
-  assert.equal(pinKindOf([]), 'none');
-});
+test('pinKindOf : une question a laquelle on peut repondre epingle fort, une mission livree epingle moins longtemps', () => {
+  assert.equal(pinKindOf([{ status: 'external' }]), 'attention')
+  assert.equal(pinKindOf([{ status: 'done', summary: { kind: 'question' } }]), 'attention')
+  assert.equal(pinKindOf([{ status: 'done' }, { status: 'thinking' }]), 'done')
+  assert.equal(pinKindOf([{ status: 'thinking' }]), 'none')
+  assert.equal(pinKindOf([]), 'none')
+})
+
+test('pinKindOf : ce qu on ne peut pas traiter depuis l ile n epingle pas', () => {
+  assert.equal(pinKindOf([{ status: 'permission' }]), 'none')
+  assert.equal(pinKindOf([{ status: 'external', isCurrent: true }]), 'none')
+  assert.equal(pinKindOf([{ status: 'external' }], { isServer: false }), 'none')
+  assert.equal(pinKindOf([{ status: 'permission' }, { status: 'external' }]), 'attention')
+})
 
 test('annonce : singulier, pluriel, rien quand personne n attend', () => {
   assert.equal(announcementOf(1), '1 conversation t\'attend');

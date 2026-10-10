@@ -11,9 +11,9 @@ const CLOSE_SPRING = { ms: 260, zeta: 0.9 }
 
 const positive = (value, fallback) => (Number.isFinite(value) && value > 0 ? Math.round(value) : fallback)
 
-const targetOf = ({ phase, dockWidth, dockHeight, sheetWidth, sheetHeight }) => (phase === 'compact'
-  ? { width: positive(dockWidth, FALLBACK_COMPACT.width), height: positive(dockHeight, FALLBACK_COMPACT.height) }
-  : { width: positive(sheetWidth, FALLBACK_OPEN.width), height: positive(sheetHeight, FALLBACK_OPEN.height) })
+const targetOf = ({ phase, compactWidth, compactHeight, openWidth, openHeight }) => (phase === 'compact'
+  ? { width: positive(compactWidth, FALLBACK_COMPACT.width), height: positive(compactHeight, FALLBACK_COMPACT.height) }
+  : { width: positive(openWidth, FALLBACK_OPEN.width), height: positive(openHeight, FALLBACK_OPEN.height) })
 
 const toastsOf = ({ toastWidth = 0, toastHeight = 0 }) => (toastHeight > 0 ? { width: positive(toastWidth, 0), height: Math.round(toastHeight) } : null)
 

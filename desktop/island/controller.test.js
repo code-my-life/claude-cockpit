@@ -9,7 +9,7 @@ const AREA = { x: 0, y: 0, width: 1920, height: 1040 }
 const SETTLE_MS = CLOSE_SPRING.ms + 50
 const GROW_MS = OPEN_SPRING.ms + 50
 const AT_EDGE = { x: 960, y: 1 }
-const AWAY = { x: 960, y: 500 }
+const AWAY = { x: 100, y: 900 }
 
 const fakeClock = () => {
   let now = 0
@@ -48,7 +48,7 @@ const setup = (overrides = {}) => {
     send: (channel, payload, cause) => log.sent.push([channel, payload, cause]),
     ...overrides,
   })
-  island.setDockSize(320, 44)
+  island.setCompactSize(320, 44)
   return { clock, log, island, cursor }
 }
 
@@ -160,6 +160,7 @@ test('cache : le sondage du curseur tourne, et seulement alors', () => {
   const ctx = setup()
   const { island, log, clock } = ctx
   island.start()
+  clock.advance(GROW_MS)
   const reads = log.cursorReads
   clock.advance(POLL_INTERVAL_MS * 10)
   assert.equal(log.cursorReads, reads)
@@ -168,6 +169,7 @@ test('cache : le sondage du curseur tourne, et seulement alors', () => {
   clock.advance(POLL_INTERVAL_MS * 10)
   assert.ok(log.cursorReads >= afterHide + 9)
   island.event()
+  clock.advance(GROW_MS)
   const afterReveal = log.cursorReads
   clock.advance(POLL_INTERVAL_MS * 10)
   assert.equal(log.cursorReads, afterReveal)
@@ -213,7 +215,7 @@ test('la taille du dock ne rouvre pas une fenetre cachee', () => {
   const ctx = setup()
   hide(ctx)
   const count = ctx.log.bounds.length
-  ctx.island.setDockSize(500, 96)
+  ctx.island.setCompactSize(500, 96)
   assert.equal(ctx.log.bounds.length, count)
   ctx.island.event()
   ctx.clock.advance(GROW_MS)
@@ -368,4 +370,43 @@ test('un toast retient l ile ; apres un rechargement de la page, relacher le mai
   island.setExpanded(false, 0, 0)
   clock.advance(FOLD_DELAY_MS * 4)
   assert.notEqual(island.phase(), 'open')
+})
+
+test('Echap sous un curseur immobile : une fois la forme refermee, le curseur reel dit qu il n est plus dessus et l ile se cache', () => {
+  const { island, clock, cursor } = setup()
+  island.start()
+  island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
+  cursor.value = { x: 960, y: 200 }
+  island.pointer(true)
+  island.escape()
+  clock.advance(SETTLE_MS)
+  clock.advance(HIDE_DELAY_MS + 1000)
+  assert.equal(island.phase(), 'hidden')
+})
+
+test('curseur reste sur la pastille refermee : l ile reste survolee et ne se cache pas', () => {
+  const { island, clock, cursor } = setup()
+  island.start()
+  island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
+  cursor.value = { x: 960, y: 20 }
+  island.pointer(true)
+  island.escape()
+  clock.advance(SETTLE_MS)
+  clock.advance(HIDE_DELAY_MS * 2)
+  assert.equal(island.phase(), 'compact')
+})
+
+test('au changement d etat aussi, le curseur reel corrige un survol rapporte par erreur', () => {
+  const { island, clock, cursor } = setup()
+  island.start()
+  clock.advance(GROW_MS)
+  cursor.value = { x: 100, y: 700 }
+  island.pointer(true)
+  island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
+  island.escape()
+  clock.advance(SETTLE_MS + HIDE_DELAY_MS)
+  assert.equal(island.phase(), 'hidden')
 })

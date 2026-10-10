@@ -45,7 +45,7 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .is-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--space-4); align-items: start; }
 .island .is-card-text { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 184px; }
 .island .is-card-text .h4 { margin: 0; }
-.island .meta { display: flex; align-items: center; gap: var(--space-2); }
+.island .is-meta { display: flex; align-items: center; gap: var(--space-2); }
 .island .is-acts { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .island .clamp { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .island .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }

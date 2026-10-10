@@ -3,7 +3,7 @@ const assert = require('node:assert/strict')
 const { islandBoundsOf, collapsedBoundsOf, OPEN_SPRING, CLOSE_SPRING, TOAST_GAP } = require('./bounds')
 
 const AREA = { x: 0, y: 0, width: 1920, height: 1040 }
-const SIZES = { dockWidth: 320, dockHeight: 44, sheetWidth: 760, sheetHeight: 280 }
+const SIZES = { compactWidth: 320, compactHeight: 44, openWidth: 760, openHeight: 280 }
 const centered = (area, width) => area.x + Math.round((area.width - width) / 2)
 
 test('reduite : la fenetre est exactement la pastille, collee au bord haut, centree', () => {
@@ -38,7 +38,7 @@ test('petit ecran : la fenetre reste dans la zone utile', () => {
 })
 
 test('dimensions absurdes : repli sur des valeurs sures', () => {
-  const bounds = islandBoundsOf(AREA, { dockWidth: NaN, dockHeight: -5, sheetWidth: undefined, sheetHeight: NaN, phase: 'open' })
+  const bounds = islandBoundsOf(AREA, { compactWidth: NaN, compactHeight: -5, openWidth: undefined, openHeight: NaN, phase: 'open' })
   assert.ok(bounds.width > 0 && bounds.height > 0)
 })
 

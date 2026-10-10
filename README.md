@@ -6,12 +6,12 @@ Trois morceaux :
 
 - **Le mod** (`mod/`) : un mod Claude Code chargé par chaque conversation. Il publie son statut, demande à Haiku une reformulation simple de la dernière réponse, compte les messages, et fait tourner un petit serveur local (`http://127.0.0.1:48123/`).
 - **Le cockpit** : la page servie par ce serveur. Deux vues, « Liste » et « Équipe ».
-- **La mini-équipe** (`desktop/`) : une petite application Electron qui pose les têtes de tes conversations dans un coin de l'écran, toujours au-dessus des autres fenêtres.
+- **L'île** (`desktop/`) : une petite application Electron qui pose une forme de verre au bord haut de l'écran, avec les entités vivantes de tes conversations, toujours au-dessus des autres fenêtres.
 
 ## Ce que ça fait
 
 - **Identité générative animée** pour chaque conversation : un volume tiré de son identifiant (chrome, ruban torsadé, sections de coque, bande de Möbius) dessiné à l'encre noire du Systems Kit (lavis et hachures), sur un fond de verre teinté d'une couleur unique parmi 24, toujours le même pour une conversation, qui bouge plus vite quand elle t'attend et presque plus quand elle est au repos.
-- **Style Liquid Paper, thème Nuit** : verre sur un fond génératif dans le navigateur, vrai flou de Windows 11 dans les fenêtres de bureau (mini équipe et cockpit), Instrument Serif pour les titres, DM Mono pour les étiquettes. Les fichiers du design system sont copiés dans `mod/assets/liquid-paper/`.
+- **Style Liquid Paper, thème Nuit** : verre sur un fond génératif dans le navigateur, vrai flou de Windows 11 dans les fenêtres de bureau (l'île et cockpit), Instrument Serif pour les titres, DM Mono pour les étiquettes. Les fichiers du design system sont copiés dans `mod/assets/liquid-paper/`.
 - **Statut en direct** de chaque conversation : t'attend (permission, question, mission livrée), en mission, en attente d'une PR ou d'une CI, bloquée, plus tard, au repos.
 - **Résumé en clair** : Haiku reformule la dernière réponse de Claude en langage simple, avec la réponse exacte à côté.
 - **Répondre depuis le cockpit** : OK / GO / Non en un clic, ou un message libre (images collées acceptées).
@@ -23,7 +23,7 @@ Trois morceaux :
 
 ## Prérequis
 
-- Windows, Claude Desktop avec l'onglet Code. macOS et Linux : le cockpit et la mini-équipe ne plantent plus (flou natif remplacé par le verre CSS, terminal et dossier des sessions adaptés au système), mais l'installation, les dossiers de dépôts et les résumés ne sont pas encore portés
+- Windows, Claude Desktop avec l'onglet Code. macOS et Linux : le cockpit et l'île ne plantent plus (flou natif remplacé par le verre CSS, terminal et dossier des sessions adaptés au système), mais l'installation, les dossiers de dépôts et les résumés ne sont pas encore portés
 - Node.js 20 ou plus (`node -v`)
 - Chrome ou Edge
 
@@ -46,7 +46,7 @@ cd $HOME\source\repos\claude-cockpit
 Le script :
 
 1. déclare le mod dans `~/.claude/settings.json` (variable `CLAUDE_CODE_PLUGIN_DIRS`, bloc `env`) après avoir copié l'ancien fichier en `settings.json.avant-cockpit` ;
-2. installe Electron pour la mini-équipe (environ 110 Mo téléchargés) ;
+2. installe Electron pour l'île (environ 110 Mo téléchargés) ;
 3. pose deux raccourcis sur le bureau : « Conversations Claude » (le cockpit) et « Mini équipe ».
 
 Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son démarrage.
@@ -60,7 +60,7 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 
 ## Bon à savoir
 
-- Le cockpit a besoin d'au moins une conversation Claude ouverte : c'est elle qui fait tourner le serveur. Sans elle, la mini-équipe affiche « Cockpit éteint » et réessaie seule.
+- Le cockpit a besoin d'au moins une conversation Claude ouverte : c'est elle qui fait tourner le serveur. Sans elle, l'île affiche « Cockpit éteint » et réessaie seule.
 - Une conversation n'apparaît avec son statut en direct qu'après avoir chargé le mod (nouvelle conversation, ou redémarrage de l'app).
 - Les résumés passent par Haiku et consomment un peu de quota.
 - Les polices viennent de Google Fonts. Hors connexion, la page se rabat sur Georgia et Consolas.
@@ -74,7 +74,7 @@ cd $HOME\source\repos\claude-cockpit
 git pull
 ```
 
-Puis redémarre Claude Desktop, et relance la mini-équipe si `desktop/` a changé.
+Puis redémarre Claude Desktop, et relance l'île si `desktop/` a changé.
 
 ## Désinstallation
 
@@ -82,7 +82,7 @@ Retire la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.j
 
 ## Écarts au modèle Liquid Paper
 
-Écarts assumés de l'île (mini-équipe) au modèle du dépôt liquid-paper, qui n'est pas modifié :
+Écarts assumés de l'île au modèle du dépôt liquid-paper, qui n'est pas modifié :
 
 - **Mouvement de la forme** : ressort de 300 ms à l'ouverture et 260 ms au repli (règle Mouvement du modèle : ressort de 260 à 300 ms pour le verre), contenu en 150 ms (apparition retardée de 110 ms, sortie 100 ms). Pas d'`opacity` sur le bloc de verre, seulement sur les couches de contenu. Le ressort vit dans `island-ui.js` (`springEase`, testé), le seul jeton local est `--motion-ui`.
 - **Verre acrylique du système, la fenêtre EST la forme** : le flou du bureau est celui de Windows (accent acrylique, teinte légère 22 %, repli `backgroundMaterial: acrylic`), pas du CSS. L'acrylique ignore `setShape` (vérifié) : la fenêtre épouse donc exactement la pastille ou l'île ouverte (plus les toasts dessous) et c'est elle qui s'anime (`desktop/island/morph.js`, ressort 300 ms / 260 ms, une image toutes les 8 ms, environ 100 tailles distinctes par seconde mesurées). La page ne pose que la teinte de la conversation (`--conv-tint` à 16 %), les reflets de la recette du `.t-sheet` et aucun `backdrop-filter`. Coins : ceux de Windows 11 (8 px), y compris en haut, la pastille collée au bord laisse donc deux petits angles de bureau. Texte en `--ink` (secondaire à 92 %), thème Nuit gardé : 7,5:1 et plus mesuré sur bureau clair. Sans flou du système, plaque `--plate` à 94 %.

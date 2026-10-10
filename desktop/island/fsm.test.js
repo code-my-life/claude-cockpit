@@ -1,6 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { createIslandFsm, HIDE_DELAY_MS, POINTER_HIDE_DELAY_MS, FOLD_DELAY_MS, HOVER_GRACE_MS, INTENT_DELAY_MS, PIN_DONE_MS } = require('./fsm')
+const { createIslandFsm, HIDE_DELAY_MS, POINTER_HIDE_DELAY_MS, FOLD_DELAY_MS, HOVER_GRACE_MS, INTENT_DELAY_MS, PIN_DONE_MS, PIN_ATTENTION_MS } = require('./fsm')
 
 const fakeClock = () => {
   let now = 0
@@ -198,15 +198,17 @@ test('activity repousse le repli de l ile ouverte', () => {
   assert.equal(fsm.state(), 'compact')
 })
 
-test('epinglee (attention) : ni repli ni disparition tant qu une conversation attend', () => {
+test('epinglee (attention) : ni repli ni disparition pendant le plafond de 110 s, la pastille ne se cache jamais ensuite', () => {
   const { fsm, clock } = setup()
   fsm.setPinned(true)
   assert.equal(fsm.state(), 'compact')
   clock.advance(HIDE_DELAY_MS * 5)
   assert.equal(fsm.state(), 'compact')
-  fsm.open()
-  clock.advance(FOLD_DELAY_MS * 5)
-  assert.equal(fsm.state(), 'open')
+  const other = setup()
+  other.fsm.setPinned(true)
+  other.fsm.open()
+  other.clock.advance(PIN_ATTENTION_MS - 1)
+  assert.equal(other.fsm.state(), 'open')
 })
 
 test('la fin de l epinglage relance le compte a rebours', () => {
@@ -412,4 +414,57 @@ test('ouverte par une arrivee alors que quelqu un t attend : elle reste ouverte,
   fsm.open()
   clock.advance(FOLD_DELAY_MS * 4)
   assert.equal(fsm.state(), 'open')
+})
+
+test('l epinglage d attente est plafonne a 110 s, comme coucou', () => {
+  assert.equal(PIN_ATTENTION_MS, 110000)
+})
+
+test('une attente epinglee laisse l ile ouverte 110 s, puis elle se replie en reduit', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.open()
+  clock.advance(PIN_ATTENTION_MS - 1)
+  assert.equal(fsm.state(), 'open')
+  clock.advance(1 + FOLD_DELAY_MS)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('apres le plafond, la pastille garde le signal : elle ne se cache jamais tant que quelqu un attend', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.reveal()
+  clock.advance(PIN_ATTENTION_MS + HIDE_DELAY_MS * 5)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('Echap en reduit ne cache pas une pastille qui garde le signal, meme apres le plafond', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.reveal()
+  clock.advance(PIN_ATTENTION_MS + 1)
+  fsm.escape()
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('une nouvelle attente apres le plafond epingle de nouveau pour 110 s', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.open()
+  clock.advance(PIN_ATTENTION_MS + FOLD_DELAY_MS)
+  assert.equal(fsm.state(), 'compact')
+  fsm.setPinned('attention')
+  fsm.open()
+  clock.advance(PIN_ATTENTION_MS - 1)
+  assert.equal(fsm.state(), 'open')
+})
+
+test('quand plus personne n attend, la pastille se cache de nouveau apres 60 s', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.reveal()
+  clock.advance(PIN_ATTENTION_MS + 1000)
+  fsm.setPinned('none')
+  clock.advance(HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'hidden')
 })

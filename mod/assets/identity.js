@@ -680,7 +680,7 @@
   };
 
   const releaseHover = (instance, placeholder, now) => {
-    const face = placeholder.closest('.mini-head') || placeholder.closest('.t-face');
+    const face = placeholder.closest('.t-face');
     if (!face || !Motion.hasHover(instance.motion) || face.matches(':hover')) return;
     withReaction(instance, 'unhover', now);
   };

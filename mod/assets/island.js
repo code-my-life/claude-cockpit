@@ -33,9 +33,11 @@
   // Qui t'attend : une permission, une question, une attente d'autre chose (jamais une mission livrée).
   const waitingCountOf = rows => model.waitingOf(rows).length;
 
-  // Permission et question épinglent l'île ; une mission livrée l'épingle moins longtemps.
-  const pinKindOf = rows => {
-    if (model.waitingOf(rows).length > 0) return PIN_ATTENTION;
+  // Une question à laquelle on peut répondre depuis l'île épingle l'île (110 s au plus, plafond de l'automate) ; une mission livrée
+  // l'épingle moins longtemps. Ce qu'on ne peut pas traiter ici (permission, conversation qui fait tourner le cockpit, cockpit sans
+  // serveur) ne retient pas l'île : la pastille garde le signal sans la bloquer ouverte.
+  const pinKindOf = (rows, { isServer = true } = {}) => {
+    if (model.waitingOf(rows).some(row => model.canReply(row, { isServer }))) return PIN_ATTENTION;
     if (rows.some(row => model.kindOf(row) === model.KIND_DONE)) return PIN_DONE;
     return PIN_NONE;
   };
@@ -86,7 +88,7 @@
 
   const shouldAnnounce = (previousPhase, phase, cause) => previousPhase === 'hidden' && phase !== 'hidden' && cause === CAUSE_EVENT;
 
-  const init = ({ desktop, doc, win, announce, playSound = () => {}, onReveal = () => {}, onPhase = () => {}, onPointer = () => {} }) => {
+  const init = ({ desktop, doc, win, isServer = true, announce, playSound = () => {}, onReveal = () => {}, onPhase = () => {}, onPointer = () => {} }) => {
     const html = doc.documentElement;
     const motion = typeof win.matchMedia === 'function' ? win.matchMedia(REDUCED_MOTION_QUERY) : { matches: false };
     const reportPointer = createPointerReporter(isInside => { desktop.islandPointer(isInside); onPointer(isInside); });
@@ -135,7 +137,7 @@
       const { hasChanged, next } = statusChanges(previousStatuses, rows);
       previousStatuses = next;
       if (hasChanged) desktop.islandEvent();
-      const pin = pinKindOf(rows);
+      const pin = pinKindOf(rows, { isServer });
       const isNewWaiting = hasNewWaiting(waitingIds, rows);
       waitingIds = model.waitingIdsOf(rows);
       // Après un masquage forcé, l'épinglage se réarme à la prochaine attente nouvelle.

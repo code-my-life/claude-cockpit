@@ -7,7 +7,7 @@ const { islandBoundsOf, OPEN_SPRING, CLOSE_SPRING, collapsedBoundsOf } = require
 const { createEdgePoller } = require('./edge')
 const { createMorph } = require('./morph')
 
-const DEFAULT_DOCK = { width: 320, height: 44 }
+const DEFAULT_COMPACT = { width: 320, height: 44 }
 const FRAME_MS = 8
 
 const realClock = {
@@ -19,17 +19,33 @@ const realClock = {
 const areaOf = bounds => bounds.width * bounds.height
 
 const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, focusWindow = () => {}, isFullscreenActive = () => false, isScreenReaderActive = () => false, send, clock = realClock, schedule = null, motionScale = 1 }) => {
-  let sizes = { dockWidth: DEFAULT_DOCK.width, dockHeight: DEFAULT_DOCK.height, sheetWidth: 0, sheetHeight: 0, toastWidth: 0, toastHeight: 0 }
+  let sizes = { compactWidth: DEFAULT_COMPACT.width, compactHeight: DEFAULT_COMPACT.height, openWidth: 0, openHeight: 0, toastWidth: 0, toastHeight: 0 }
   let appliedPhase = HIDDEN
   let hasReducedMotion = false
   let isOffline = false
   let pageKind = 'none'
+  // Dernier état de survol donné à l'automate (par la page ou par le curseur réel) : on ne le redonne que s'il change.
+  let isPointerInside = false
+  const setPointer = isInside => {
+    isPointerInside = isInside
+    fsm.hover(isInside)
+  }
   const frame = schedule || (run => clock.setTimer(run, FRAME_MS))
   const morph = createMorph({ now: () => (clock.now ? clock.now() : Date.now()), schedule: frame, cancel: () => {}, apply: applyBounds })
 
   const spring = isGrowing => {
     const base = isGrowing ? OPEN_SPRING : CLOSE_SPRING
     return { ms: hasReducedMotion ? 0 : base.ms * motionScale, zeta: base.zeta }
+  }
+
+  // Le survol rapporté par la page ne vient que de mousemove et mouseleave : une fenêtre qui rétrécit sous un curseur immobile
+  // ne reçoit plus rien. On confronte donc le curseur réel aux bornes de la fenêtre en fin de morphose et à chaque changement d'état.
+  const syncHover = () => {
+    const bounds = morph.boundsOf()
+    if (appliedPhase === HIDDEN || bounds === null) return
+    const cursor = getCursor()
+    const isInside = cursor.x >= bounds.x && cursor.x < bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y < bounds.y + bounds.height
+    if (isInside !== isPointerInside) setPointer(isInside)
   }
 
   // Caché : la forme se rétracte dans le bord puis la fenêtre disparaît (plus aucun pixel ne capte la souris).
@@ -55,7 +71,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
       morph.jump(collapsedBoundsOf(target))
     }
     setVisible(true)
-    morph.to(target, spring(areaOf(target) >= areaOf(morph.boundsOf())))
+    morph.to(target, { ...spring(areaOf(target) >= areaOf(morph.boundsOf())), onDone: syncHover })
   }
 
   // Le curseur n'est sondé que tant que l'île est cachée.
@@ -65,6 +81,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
     if (to === HIDDEN) edgePoller.start()
     else edgePoller.stop()
     place(to)
+    syncHover()
     send('island-state', to, cause)
     // Lecteur d'écran : l'annonce n'est lue que si la fenêtre a le focus.
     if (from === HIDDEN && cause === 'event' && isScreenReaderActive()) focusWindow()
@@ -100,13 +117,13 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
     },
     setHeld(isHeld) { fsm.hold(isHeld === true) },
     setMotion(isReduced) { hasReducedMotion = isReduced === true },
-    pointer(isInside) { fsm.hover(isInside === true) },
-    setDockSize(width, height) {
-      sizes = { ...sizes, dockWidth: width, dockHeight: height }
+    pointer(isInside) { setPointer(isInside === true) },
+    setCompactSize(width, height) {
+      sizes = { ...sizes, compactWidth: width, compactHeight: height }
       resize()
     },
     setExpanded(isOpen, width, height, byHover = false) {
-      if (isOpen) sizes = { ...sizes, sheetWidth: width, sheetHeight: height }
+      if (isOpen) sizes = { ...sizes, openWidth: width, openHeight: height }
       if (isOpen) fsm.open(byHover === true)
       else fsm.fold()
       if (isOpen) resize()
@@ -118,7 +135,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
     },
     setOffline(isDown, width, height) {
       isOffline = isDown === true
-      if (isOffline) sizes = { ...sizes, dockWidth: width, dockHeight: height, sheetWidth: 0, sheetHeight: 0 }
+      if (isOffline) sizes = { ...sizes, compactWidth: width, compactHeight: height, openWidth: 0, openHeight: 0 }
       fsm.setPinned(isOffline ? 'attention' : pageKind)
       resize()
     },
