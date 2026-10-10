@@ -9,14 +9,18 @@ const {
   createPointerReporter,
   statusChanges,
   waitingCountOf,
+  pinKindOf,
+  announcementOf,
   shouldPauseLoops,
+  shouldAnnounce,
   createThrottle,
+  createLeaveTimer,
 } = require('./island');
 
 const targetMatching = selector => ({ closest: query => (query === selector ? {} : null) });
 
-test('la forme de l ile est le dock, la fiche et la bande d eveil', () => {
-  assert.deepEqual(SHAPE_SELECTOR.split(',').map(part => part.trim()), ['.dock', '.t-sheet', '.wake']);
+test('la forme de l ile est le dock et la fiche, plus de bande d eveil', () => {
+  assert.deepEqual(SHAPE_SELECTOR.split(',').map(part => part.trim()), ['.dock', '.t-sheet']);
 });
 
 test('isInsideShape : vrai dans la forme, faux ailleurs ou sans cible', () => {
@@ -55,6 +59,27 @@ test('waitingCountOf compte les conversations qui attendent', () => {
   assert.equal(waitingCountOf([], ['done']), 0);
 });
 
+test('pinKindOf : permission et question epinglent fort, done epingle moins longtemps', () => {
+  assert.equal(pinKindOf([{ status: 'permission' }, { status: 'done' }]), 'attention');
+  assert.equal(pinKindOf([{ status: 'external' }]), 'attention');
+  assert.equal(pinKindOf([{ status: 'done' }, { status: 'thinking' }]), 'done');
+  assert.equal(pinKindOf([{ status: 'thinking' }]), 'none');
+  assert.equal(pinKindOf([]), 'none');
+});
+
+test('annonce : singulier, pluriel, rien quand personne n attend', () => {
+  assert.equal(announcementOf(1), '1 conversation t\'attend');
+  assert.equal(announcementOf(3), '3 conversations t\'attendent');
+  assert.equal(announcementOf(0), null);
+});
+
+test('l annonce ne vient que d une apparition par evenement', () => {
+  assert.equal(shouldAnnounce('hidden', 'compact', 'event'), true);
+  assert.equal(shouldAnnounce('hidden', 'compact', 'pointer'), false);
+  assert.equal(shouldAnnounce('compact', 'open', 'event'), false);
+  assert.equal(shouldAnnounce('open', 'hidden', 'event'), false);
+});
+
 test('les boucles d animation se coupent quand l ile est cachee', () => {
   assert.equal(shouldPauseLoops('hidden'), true);
   assert.equal(shouldPauseLoops('compact'), false);
@@ -75,4 +100,45 @@ test('createThrottle laisse passer un appel par fenetre de temps', () => {
 
 test('la fermeture dure 180 ms, comme le CSS', () => {
   assert.equal(LEAVE_MS, 180);
+});
+
+const fakeTimers = () => {
+  const pending = new Map();
+  let nextId = 1;
+  return {
+    setTimer: (run, delay) => { const id = nextId++; pending.set(id, { run, delay }); return id; },
+    clearTimer: id => { pending.delete(id); },
+    fire: () => { for (const [id, timer] of [...pending]) { pending.delete(id); timer.run(); } },
+    count: () => pending.size,
+  };
+};
+
+test('fermeture differee : s execute une fois, apres le delai', () => {
+  const timers = fakeTimers();
+  let runs = 0;
+  const leave = createLeaveTimer({ ...timers, run: () => { runs++; } });
+  leave.schedule();
+  assert.equal(leave.isPending(), true);
+  timers.fire();
+  assert.equal(runs, 1);
+  assert.equal(leave.isPending(), false);
+});
+
+test('fermeture differee : une fiche qui se rouvre l annule', () => {
+  const timers = fakeTimers();
+  let runs = 0;
+  const leave = createLeaveTimer({ ...timers, run: () => { runs++; } });
+  leave.schedule();
+  leave.cancel();
+  timers.fire();
+  assert.equal(runs, 0);
+  assert.equal(timers.count(), 0);
+});
+
+test('fermeture differee : replanifier ne laisse qu une minuterie', () => {
+  const timers = fakeTimers();
+  const leave = createLeaveTimer({ ...timers, run: () => {} });
+  leave.schedule();
+  leave.schedule();
+  assert.equal(timers.count(), 1);
 });

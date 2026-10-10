@@ -250,15 +250,14 @@
   html.os-glass:not(.mini-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
   body.mini-mode .wrap { display: none; }
   body.mini-mode #mini { display: block; }
-  :root { --island-open: 280ms; --island-close: 180ms; --island-ease: cubic-bezier(0.2, 0, 0, 1); --island-pad: var(--space-4); }
+  /* Jetons locaux de l'île (écart assumé au modèle, voir README, section Écarts au modèle Liquid Paper) : 280 ms à l'ouverture, 180 ms à la fermeture, sans dépassement. --motion-ui est la durée standard du modèle. */
+  :root { --motion-ui: 150ms; --island-open: 280ms; --island-close: 180ms; --island-ease: cubic-bezier(0.2, 0, 0, 1); --island-pad: var(--space-4); }
   .dock-zone { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: var(--island-pad); pointer-events: none; }
-  .dock { --head: 56px; --pad: 8px; pointer-events: auto; position: relative; flex: none; display: flex; border-radius: 30px; overflow: hidden; background: var(--paper-deep); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-glass); transition: transform var(--island-open) var(--island-ease), visibility 0s; }
+  .dock { --head: 56px; --pad: 8px; pointer-events: auto; position: relative; flex: none; display: flex; border-radius: var(--radius-glass); overflow: hidden; background: var(--plate); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-pop); transition: transform var(--island-open) var(--island-ease), visibility 0s; }
   html[data-island="hidden"] .dock { transform: translateY(calc(-100% - var(--island-pad))); visibility: hidden; transition: transform var(--island-close) ease-in, visibility 0s linear var(--island-close); }
   html[data-island="hidden"] * { animation-play-state: paused !important; }
-  .wake { display: none; }
-  html[data-island="hidden"] .wake { display: block; position: fixed; inset: 0 0 auto 0; height: var(--space-2); }
-  .dock[data-size="small"] { --head: 40px; --pad: 6px; border-radius: 24px; }
-  .dock[data-size="large"] { --head: 72px; --pad: 10px; border-radius: 36px; }
+  .dock[data-size="small"] { --head: 40px; --pad: 6px; border-radius: var(--radius-glass-s); }
+  .dock[data-size="large"] { --head: 72px; --pad: 10px; border-radius: var(--radius-glass); }
   .dock-items { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--pad); padding: var(--pad) calc(var(--pad) + 6px); }
   .dock-tools { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: var(--space-1); }
   .dock-heads { display: flex; align-items: center; gap: var(--pad); }
@@ -279,20 +278,24 @@
   .dock[data-layout="column"] .mini-head.ep-glass:hover { transform: translateX(-2px); }
   .mini-head.working > *, .mini-head.later > * { opacity: 0.6; }
   .mini-head.working:hover { opacity: 1; }
-  .mini-head.fresh { animation: miniHop 900ms ease-in-out 2; }
-  @keyframes miniHop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
-  .dock-quit { opacity: 0; transition: opacity 140ms ease-out; }
-  .dock:hover .dock-quit { opacity: 1; }
+  /* Sur papier les visages perdent leur teinte de verre : la teinte d'identité passe sur le visage. */
+  body.mini-mode .t-face { background: var(--epf, var(--plate)); border-radius: var(--radius-round); }
+  /* Nouvelle attente : léger déplacement de 150 ms, sans rebond. */
+  .mini-head.fresh { animation: miniFresh var(--motion-ui) ease-out both; }
+  @keyframes miniFresh { from { transform: none; } to { transform: translateY(calc(-1 * var(--space-1))); } }
+  /* Fermer : visible au survol et au clavier (focus dans le dock), sans opacity. */
+  .dock-quit { visibility: hidden; }
+  .dock:hover .dock-quit, .dock:focus-within .dock-quit, .dock-quit:focus-visible { visibility: visible; }
   .dock-calm { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); padding: 0 var(--space-2); white-space: nowrap; }
   body.mini-mode .t-modal { top: var(--dock-room); height: calc(100vh - var(--dock-room)); align-items: flex-start; justify-content: center; padding: 0 var(--island-pad) var(--island-pad); }
-  /* L'île flotte sur le bureau, sans scène derrière : la fiche prend la surface papier, opaque, comme le dock. */
-  body.mini-mode .t-sheet.ep-glass { background: var(--paper-deep) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  /* L'île flotte sur le bureau, sans scène derrière : surface papier (data-surface sur #mini et #newconv). La mise en page de la fiche, réservée au verre par le modèle, est reprise ici. */
+  body.mini-mode .t-sheet { position: relative; width: 100%; max-width: min(1500px, 96vw); margin: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); border-radius: var(--radius-glass); background: var(--plate); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-pop); }
   body.mini-mode .t-sheet.enter { animation: islandSheetIn var(--island-open) var(--island-ease); }
   body.mini-mode .t-sheet.leave { animation: islandSheetOut var(--island-close) ease-in both; }
   @keyframes islandSheetIn { from { clip-path: inset(0 0 100% 0 round var(--radius-glass)); transform: translateY(calc(-1 * var(--space-4))); } to { clip-path: inset(0 round var(--radius-glass)); transform: none; } }
   @keyframes islandSheetOut { to { clip-path: inset(0 0 100% 0 round var(--radius-glass)); transform: translateY(calc(-1 * var(--space-4))); } }
   body.mini-mode .ep-toasts { right: var(--space-2); top: var(--dock-room); bottom: auto; width: calc(100vw - var(--space-4)); }
-  body.mini-mode .trace { left: auto; right: 120px; top: var(--dock-room); bottom: auto; margin-left: 0; }
+  body.mini-mode .trace { left: auto; right: var(--space-24); top: var(--dock-room); bottom: auto; margin-left: 0; }
   body.mini-mode .t-backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
   body.mini-mode .t-sheet { max-width: 100%; max-height: 100%; }
   .t-sheet { --panel-width: 1100; }
@@ -414,12 +417,11 @@
 
   <div id="team"></div>
 </div>
-<div id="mini">
-  <div class="wake" aria-hidden="true"></div>
+<div id="mini" data-surface="paper">
   <div class="dock-zone"><div class="dock" id="dock"><div class="dock-items" id="dock-items"></div></div></div>
   <div id="mini-pop"></div>
 </div>
-<div id="newconv"></div>
+<div id="newconv" data-surface="paper"></div>
 
 <script src="mod/assets/liquid-paper/bundle.js"></script>
 <script src="mod/assets/identity.js"></script>
@@ -2361,7 +2363,7 @@
     state.dockPrefs = readStoredDockPrefs();
     document.documentElement.classList.add('mini-mode');
     document.body.classList.add('mini-mode');
-    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets });
+    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce });
     window.addEventListener('resize', syncDesktopWindow);
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');

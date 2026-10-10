@@ -43,6 +43,7 @@ const trayMenuOf = ({ isDockVisible, isAutostart, canOpenInBrowser = false, canI
   { id: 'open-cockpit', label: 'Ouvrir le cockpit' },
   ...(canOpenInBrowser ? [{ id: 'open-browser', label: 'Ouvrir dans le navigateur' }] : []),
   ...(canInstallMod ? [{ id: 'install-mod', label: 'Installer le mod dans Claude' }] : []),
+  { id: 'show-island', label: "Afficher l'île" },
   { id: 'toggle-dock', label: isDockVisible ? 'Masquer la mini-équipe' : 'Afficher la mini-équipe' },
   { id: 'autostart', label: 'Lancer au démarrage', type: 'checkbox', checked: isAutostart },
   { type: 'separator' },

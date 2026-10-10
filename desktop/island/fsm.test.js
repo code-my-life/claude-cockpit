@@ -1,6 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { createIslandFsm, HIDE_DELAY_MS, FOLD_DELAY_MS, HOVER_GRACE_MS } = require('./fsm')
+const { createIslandFsm, HIDE_DELAY_MS, POINTER_HIDE_DELAY_MS, FOLD_DELAY_MS, HOVER_GRACE_MS, INTENT_DELAY_MS, PIN_DONE_MS } = require('./fsm')
 
 const fakeClock = () => {
   let now = 0
@@ -31,14 +31,23 @@ const fakeClock = () => {
 const setup = () => {
   const clock = fakeClock()
   const changes = []
-  const fsm = createIslandFsm({ clock, onChange: (to, from) => changes.push(`${from}>${to}`) })
-  return { clock, changes, fsm }
+  const causes = []
+  const fsm = createIslandFsm({ clock, onChange: (to, from, cause) => { changes.push(`${from}>${to}`); causes.push(cause) } })
+  return { clock, changes, causes, fsm }
+}
+
+const revealByPointer = (fsm, clock) => {
+  fsm.edge(true)
+  clock.advance(INTENT_DELAY_MS)
 }
 
 test('les delais sont ceux du cahier des charges', () => {
   assert.equal(HIDE_DELAY_MS, 60000)
   assert.equal(FOLD_DELAY_MS, 15000)
   assert.equal(HOVER_GRACE_MS, 600)
+  assert.equal(POINTER_HIDE_DELAY_MS, 4000)
+  assert.equal(INTENT_DELAY_MS, 200)
+  assert.equal(PIN_DONE_MS, 180000)
 })
 
 test('au depart l ile est cachee et aucune minuterie ne tourne', () => {
@@ -47,15 +56,66 @@ test('au depart l ile est cachee et aucune minuterie ne tourne', () => {
   assert.equal(clock.pending(), 0)
 })
 
-test('le survol de la bande d eveil revele l ile reduite', () => {
-  const { fsm, changes } = setup()
-  fsm.hover(true)
+test('presence continue au bord : revele apres le delai d intention, cause pointeur', () => {
+  const { fsm, clock, causes } = setup()
+  fsm.edge(true)
+  clock.advance(INTENT_DELAY_MS - 1)
+  assert.equal(fsm.state(), 'hidden')
+  clock.advance(1)
   assert.equal(fsm.state(), 'compact')
+  assert.deepEqual(causes, ['pointer'])
+})
+
+test('un passage rapide au bord ne revele rien', () => {
+  const { fsm, clock } = setup()
+  fsm.edge(true)
+  clock.advance(INTENT_DELAY_MS - 50)
+  fsm.edge(false)
+  clock.advance(INTENT_DELAY_MS * 5)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('reveille par le seul pointeur : cache apres 4 s sans survol', () => {
+  const { fsm, clock } = setup()
+  revealByPointer(fsm, clock)
+  clock.advance(POINTER_HIDE_DELAY_MS - 1)
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(1)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('reveille par le pointeur puis survole : reste tant que le pointeur est dessus', () => {
+  const { fsm, clock } = setup()
+  revealByPointer(fsm, clock)
+  fsm.hover(true)
+  clock.advance(HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'compact')
+  fsm.hover(false)
+  clock.advance(HOVER_GRACE_MS + POINTER_HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('un evenement pendant une revelation par pointeur releve le delai a 60 s', () => {
+  const { fsm, clock } = setup()
+  revealByPointer(fsm, clock)
+  fsm.reveal()
+  clock.advance(POINTER_HIDE_DELAY_MS * 2)
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('la presence au bord est ignoree quand l ile est visible', () => {
+  const { fsm, clock, changes } = setup()
+  fsm.reveal()
+  fsm.edge(true)
+  clock.advance(INTENT_DELAY_MS * 3)
   assert.deepEqual(changes, ['hidden>compact'])
 })
 
-test('reduit : cache apres 60 s sans activite, grace comprise apres le depart du pointeur', () => {
+test('reduit par evenement : cache apres 60 s, grace comprise apres le depart du pointeur', () => {
   const { fsm, clock } = setup()
+  fsm.reveal()
   fsm.hover(true)
   fsm.hover(false)
   clock.advance(HIDE_DELAY_MS + HOVER_GRACE_MS - 1)
@@ -66,6 +126,7 @@ test('reduit : cache apres 60 s sans activite, grace comprise apres le depart du
 
 test('reduit : le retour du pointeur annule le compte a rebours', () => {
   const { fsm, clock } = setup()
+  fsm.reveal()
   fsm.hover(true)
   fsm.hover(false)
   clock.advance(HIDE_DELAY_MS)
@@ -76,9 +137,10 @@ test('reduit : le retour du pointeur annule le compte a rebours', () => {
 })
 
 test('un evenement revele l ile depuis cache puis la recache apres 60 s', () => {
-  const { fsm, clock } = setup()
+  const { fsm, clock, causes } = setup()
   fsm.reveal()
   assert.equal(fsm.state(), 'compact')
+  assert.deepEqual(causes, ['event'])
   clock.advance(HIDE_DELAY_MS)
   assert.equal(fsm.state(), 'hidden')
 })
@@ -136,7 +198,7 @@ test('activity repousse le repli de l ile ouverte', () => {
   assert.equal(fsm.state(), 'compact')
 })
 
-test('epinglee : ni repli ni disparition tant qu une conversation attend', () => {
+test('epinglee (attention) : ni repli ni disparition tant qu une conversation attend', () => {
   const { fsm, clock } = setup()
   fsm.setPinned(true)
   assert.equal(fsm.state(), 'compact')
@@ -149,12 +211,40 @@ test('epinglee : ni repli ni disparition tant qu une conversation attend', () =>
 
 test('la fin de l epinglage relance le compte a rebours', () => {
   const { fsm, clock } = setup()
-  fsm.setPinned(true)
+  fsm.setPinned('attention')
   clock.advance(HIDE_DELAY_MS * 2)
-  fsm.setPinned(false)
+  fsm.setPinned('none')
   clock.advance(HIDE_DELAY_MS - 1)
   assert.equal(fsm.state(), 'compact')
   clock.advance(1)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('epinglage done : limite a 3 minutes, ensuite comportement normal', () => {
+  const { fsm, clock } = setup()
+  fsm.setPinned('done')
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(PIN_DONE_MS - 1)
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(1)
+  clock.advance(HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('epinglage attention : sans limite de temps', () => {
+  const { fsm, clock } = setup()
+  fsm.setPinned('attention')
+  clock.advance(PIN_DONE_MS * 4)
+  assert.equal(fsm.state(), 'compact')
+})
+
+test('Echap cache une ile dont l epinglage done a expire', () => {
+  const { fsm, clock } = setup()
+  fsm.setPinned('done')
+  fsm.escape()
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(PIN_DONE_MS)
+  fsm.escape()
   assert.equal(fsm.state(), 'hidden')
 })
 
@@ -195,13 +285,14 @@ test('aucune transition en double pour un meme etat', () => {
   const { fsm, changes } = setup()
   fsm.reveal()
   fsm.reveal()
-  fsm.hover(true)
   assert.deepEqual(changes, ['hidden>compact'])
 })
 
 test('dispose annule les minuteries', () => {
   const { fsm, clock } = setup()
   fsm.reveal()
+  fsm.setPinned('done')
+  fsm.edge(false)
   fsm.dispose()
   assert.equal(clock.pending(), 0)
 })

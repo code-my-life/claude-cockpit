@@ -55,7 +55,7 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 
 - **Conversations Claude** ouvre le cockpit. le bouton « + » en haut pour une nouvelle conversation, « Liste / Équipe » pour changer de vue, A− / A+ pour la taille du texte, la cloche pour les notifications du système.
 - **Recherche globale** : le champ en haut du cockpit (Ctrl+K, ou la loupe du dock) cherche dans tes messages et les réponses de Claude de toutes les sessions, sans tenir compte des accents ; un clic ouvre la conversation dans l'app. L'index vit en mémoire dans le serveur du cockpit, repris de `search-cache.json` au démarrage.
-- **Mini équipe** est une île en haut au centre de l'écran. Elle se cache après 60 s sans activité ; survole le haut de l'écran, ou attends qu'une conversation bouge, pour la faire revenir. Tant qu'une conversation t'attend, elle reste là. Clic sur une tête : le résumé et la réponse (elle se replie seule après 15 s sans survol, ou avec Échap). Le compteur ouvre le cockpit, « + » ouvre une nouvelle conversation, « Fermer » ferme l'île. Les clics hors de l'île passent à la fenêtre dessous.
+- **Mini équipe** est une île en haut au centre de l'écran. Elle se cache après 60 s sans activité ; pose le curseur 0,2 s au bord haut de l'écran (zone de 320 x 4 px au centre, île alors visible 4 s si tu ne la survoles pas), ou attends qu'une conversation bouge, pour la faire revenir. Tant qu'une conversation attend une permission ou une réponse, elle reste là ; pour une mission livrée, 3 minutes au plus. Au clavier : entrée « Afficher l'île » du menu de la barre d'état. Clic sur une tête : le résumé et la réponse (elle se replie seule après 15 s sans survol, ou avec Échap). Le compteur ouvre le cockpit, « + » ouvre une nouvelle conversation, « Fermer » ferme l'île. Les clics hors de l'île passent à la fenêtre dessous.
 - Dans une conversation, `/sessions` rouvre le panneau du mod dans l'app.
 
 ## Bon à savoir
@@ -79,3 +79,13 @@ Puis redémarre Claude Desktop, et relance la mini-équipe si `desktop/` a chang
 ## Désinstallation
 
 Retire la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.json`, supprime les deux raccourcis et le dossier cloné.
+
+## Écarts au modèle Liquid Paper
+
+Écarts assumés de l'île (mini-équipe) au modèle du dépôt liquid-paper, qui n'est pas modifié :
+
+- **Durées d'ouverture et de fermeture** : 280 ms à l'ouverture et 180 ms à la fermeture (glissement depuis le bord, jetons locaux `--island-open` et `--island-close`), au lieu des 150 ms du modèle. L'île est une pièce qui apparaît et disparaît de l'écran, pas un changement d'état d'interface. Pas de rebond, pas d'`opacity`, pas de filtre ; `prefers-reduced-motion` donne les états finaux directs.
+- **Surface papier, pas verre** : l'île flotte sur le bureau, sans scène derrière, donc le verre n'aurait rien à réfracter. Le dock et la fiche utilisent `data-surface="paper"` (fond `--plate`, ombre `--shadow-pop`). La mise en page de la fiche, que le modèle réserve au verre, est reprise dans un sélecteur `body.mini-mode .t-sheet`.
+- **Clip-path** : la fiche s'ouvre et se ferme par `clip-path` et `transform`, sans toucher à l'opacité.
+- **Page de secours hors ligne** : une URL `data:` n'a pas accès aux jetons ; ses valeurs recopient le thème Nuit (commentaire dans `desktop/main.js`).
+- **Hérité, non traité** : `.mini-head.working > *` garde une opacité de 0,6 sur le contenu des pastilles ; les tailles `--head` et `--pad` du dock restent en pixels.

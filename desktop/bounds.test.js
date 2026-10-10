@@ -1,15 +1,10 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { islandBoundsOf, shapeRectsOf, settleDelayOf, ISLAND_PAD, WAKE_WIDTH, WAKE_HEIGHT, SHEET_MAX_WIDTH, SHEET_MAX_HEIGHT, ISLAND_CLOSE_MS, SETTLE_SLACK_MS } = require('./bounds')
+const { islandBoundsOf, shapeRectsOf, settleDelayOf, ISLAND_PAD, SHEET_MAX_WIDTH, SHEET_MAX_HEIGHT, ISLAND_CLOSE_MS, SETTLE_SLACK_MS } = require('./bounds')
 
 const AREA = { x: 0, y: 0, width: 1920, height: 1040 }
 const SIZES = { dockWidth: 420, dockHeight: 96, sheetWidth: 900, sheetHeight: 600 }
 const centered = (area, width) => area.x + Math.round((area.width - width) / 2)
-
-test('cache : la fenetre se reduit a la bande d eveil, en haut au centre', () => {
-  const bounds = islandBoundsOf(AREA, { ...SIZES, phase: 'hidden' })
-  assert.deepEqual(bounds, { x: centered(AREA, WAKE_WIDTH), y: 0, width: WAKE_WIDTH, height: WAKE_HEIGHT })
-})
 
 test('reduit : taille du dock plus la marge d ombre, centree en haut', () => {
   const bounds = islandBoundsOf(AREA, { ...SIZES, phase: 'compact' })
@@ -68,9 +63,9 @@ test('repli : attendre la fin de l animation de fermeture', () => {
   assert.equal(settleDelayOf({ from: 'compact', to: 'hidden', hasReducedMotion: false }), expected)
 })
 
-test('forme cachee : seule la bande d eveil capte la souris', () => {
-  const bounds = islandBoundsOf(AREA, { ...SIZES, phase: 'hidden' })
-  assert.deepEqual(shapeRectsOf(bounds, { ...SIZES, phase: 'hidden' }), [{ x: 0, y: 0, width: WAKE_WIDTH, height: WAKE_HEIGHT }])
+test('forme cachee : aucune zone, plus aucun pixel ne capte la souris', () => {
+  const bounds = islandBoundsOf(AREA, { ...SIZES, phase: 'compact' })
+  assert.deepEqual(shapeRectsOf(bounds, { ...SIZES, phase: 'hidden' }), [])
 })
 
 test('forme reduite : le dock centre, a la marge du haut', () => {

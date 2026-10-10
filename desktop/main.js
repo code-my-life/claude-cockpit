@@ -36,7 +36,10 @@ const CLEAR = '#00000000'
 const TITLE_SYMBOLS = '#ecece6'
 const TITLE_BAR_HEIGHT = 36
 const SECURE_WEB_PREFERENCES = { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }
-const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:16px;background:#161312;border-radius:22px;height:calc(100vh - 32px);display:flex;align-items:center;justify-content:center;font:500 11px/1 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae">Cockpit éteint : ouvre une conversation Claude</body>')}`
+// Page de secours (URL data:, sans accès aux jetons CSS). Ces valeurs sont le miroir du thème Nuit :
+// margin 16px = --space-4, fond #1b1c20 = --plate, rayon 24px = --radius-glass, texte #a5a8ae = --ink-2,
+// Consolas en repli de --font-mono. À mettre à jour avec le thème.
+const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:16px;background:#1b1c20;border-radius:24px;height:calc(100vh - 32px);display:flex;align-items:center;justify-content:center;font:500 11px/1 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae">Cockpit éteint : ouvre une conversation Claude</body>')}`
 
 let win = null
 let cockpitWin = null
@@ -102,9 +105,17 @@ const workArea = () => screen.getPrimaryDisplay().workArea
 const createIsland = () => createIslandController({
   getArea: workArea,
   applyBounds: bounds => { if (win !== null) win.setBounds(bounds) },
-  // La forme (dock, fiche, bande d'éveil) capte la souris ; le reste de la fenêtre laisse passer les clics.
+  // La forme (dock, fiche) capte la souris ; le reste de la fenêtre laisse passer les clics.
   applyShape: rects => { if (win !== null) win.setShape(rects) },
-  send: (channel, payload) => { if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload) },
+  getCursor: () => screen.getCursorScreenPoint(),
+  // Caché, l'île n'a plus de fenêtre : le bord haut est surveillé par sondage du curseur.
+  setVisible: isVisible => {
+    if (win === null) return
+    if (isVisible && !win.isVisible()) win.showInactive()
+    if (!isVisible && win.isVisible()) win.hide()
+  },
+  focusWindow: () => { if (win !== null) win.focus() },
+  send: (channel, payload, cause) => { if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload, cause) },
 })
 
 const loadCockpit = () => {
@@ -242,8 +253,10 @@ const createWindow = () => {
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    show: false,
     backgroundColor: CLEAR,
-    webPreferences: { ...SECURE_WEB_PREFERENCES, preload: path.join(__dirname, 'preload.js') },
+    // Caché, la page doit continuer à tourner pour voir arriver les événements.
+    webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, preload: path.join(__dirname, 'preload.js') },
   })
   win.setAlwaysOnTop(true, 'floating')
   island = createIsland()
@@ -270,15 +283,21 @@ const TRAY_SCALE = 2
 
 const toggleDock = () => {
   if (win === null) return createWindow()
-  if (win.isVisible()) win.hide()
-  else win.showInactive()
+  if (win.isVisible()) island.escape()
+  else island.event()
+}
+
+// Accès clavier : l'île apparaît et le focus va au premier bouton du dock.
+const showIsland = () => {
+  if (win === null) createWindow()
+  island.showAndFocus()
 }
 
 const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLoginItemSettings().openAtLogin })
 
 const refreshTrayMenu = () => {
   if (tray === null) return
-  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
+  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
   const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
@@ -303,7 +322,9 @@ onTrusted('island-pointer', (event, isInside) => island?.pointer(isInside === tr
 
 onTrusted('island-event', () => island?.event())
 
-onTrusted('island-pinned', (event, isPinned) => island?.setPinned(isPinned === true))
+const PIN_KINDS = ['none', 'attention', 'done']
+
+onTrusted('island-pinned', (event, kind) => island?.setPinned(PIN_KINDS.includes(kind) ? kind : 'none'))
 
 onTrusted('island-activity', () => island?.activity())
 
@@ -331,7 +352,6 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', () => {
     island?.event()
-    if (win !== null) win.showInactive()
   })
   app.whenReady().then(async () => {
     if (process.platform === 'darwin') app.dock?.hide()
