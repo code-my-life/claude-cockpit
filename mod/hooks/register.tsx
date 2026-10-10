@@ -122,6 +122,26 @@ const SEED_MARKER = '<!--SEED-->'
 const INDEX_FILE = 'session-index.json'
 const transcriptCache = new Map<string, string>()
 
+// Bridge to the cockpit app: when the app runs, this conversation talks to it
+// over HTTP instead of starting its own server.
+type AppLink = { port: number; secret: string; dataDir: string }
+type BridgeOrder = BridgeMessage & { orderId: string }
+type BridgeReply = { status: number; body: { role?: string; bridgeId?: string; orders?: BridgeOrder[] } | null }
+const APP_LINK_PROTOCOL = 1
+const ORDERS_WAIT_MS = 20000
+const RECONNECT_MS = 1000
+const MAX_HANDLED_ORDERS = 500
+const LINK_SECRET_PATTERN = /^[0-9a-f]{64}$/
+const MOD_VERSION = '0.2.0'
+let mode: 'none' | 'local' | 'app' = 'none'
+let appLink: AppLink | null = null
+let localServer: BridgeStream | null = null
+let isConnecting = false
+const handledOrders = new Set<string>()
+
+// The page, its data and the session index live with the app when it runs.
+const dataDirOf = ($: EngineInterface) => appLink?.dataDir ?? pageDir($)
+
 const styleOf = (row: Pick<ConversationRow, 'status' | 'tool'>): StatusStyle => {
   const base = STATUS_STYLE[row.status]
   if (row.status !== 'tool' || row.tool === undefined) return base
@@ -235,7 +255,7 @@ const parseSessionIndex = (text: string, mtimeMs: number): SessionIndex => {
 }
 
 const readSessionIndex = async ($: EngineInterface): Promise<SessionIndex> => {
-  const file = `${pageDir($)}/${INDEX_FILE}`
+  const file = `${dataDirOf($)}/${INDEX_FILE}`
   try {
     const stat = await $.fs.stat(file)
     if (stat.mtimeMs === sessionIndex.mtimeMs) return sessionIndex
@@ -571,12 +591,15 @@ const consumeBridge = async ($: EngineInterface, stream: BridgeStream) => {
   return stream.result
 }
 
+// Without the app, the conversation that gets the port runs the server itself.
 const startServer = async ($: EngineInterface) => {
-  if (isServing || isStartingServer) return
+  if (mode !== 'none' || isStartingServer) return
   isStartingServer = true
+  mode = 'local'
   const script = `${$.plugin.root}/${SERVER_SCRIPT}`
   try {
     const stream = $.process.spawn({ argv: ['node', script, pageDir($), String(SERVER_PORT)] })
+    localServer = stream
     const ended = await consumeBridge($, stream)
     if (ended.code !== 0 && ended.code !== 3) {
       $.ui.log(`sessions: serveur cockpit arrêté (code ${ended.code})`, { to: 'debug' })
@@ -585,8 +608,124 @@ const startServer = async ($: EngineInterface) => {
     const reason = error instanceof Error ? error.message : String(error)
     $.ui.log(`sessions: serveur cockpit non démarré (${reason})`, { to: 'debug' })
   }
-  isServing = false
+  localServer = null
+  if (mode === 'local') {
+    mode = 'none'
+    isServing = false
+  }
   isStartingServer = false
+}
+
+const stopLocalServer = async () => {
+  const running = localServer as AsyncIterator<unknown> | null
+  if (running !== null) await running.return?.(undefined)
+}
+
+const appLinkFile = async ($: EngineInterface) => {
+  const localAppData = await $.env.get('LOCALAPPDATA')
+  return localAppData === undefined ? null : `${localAppData}/claude-cockpit/link.json`
+}
+
+// The running app's link, or null: no file (the app is not running) is the
+// normal case, and so is a file this mod cannot use.
+const readAppLink = async ($: EngineInterface): Promise<AppLink | null> => {
+  const file = await appLinkFile($)
+  if (file === null || !(await $.fs.exists(file))) return null
+  try {
+    const link = JSON.parse(await $.fs.read(file)) as Partial<AppLink> & { protocol?: number }
+    const isUsable = link.protocol === APP_LINK_PROTOCOL && Number.isInteger(link.port) && typeof link.secret === 'string' && LINK_SECRET_PATTERN.test(link.secret) && typeof link.dataDir === 'string' && link.dataDir.length > 0
+    return isUsable ? { port: link.port as number, secret: link.secret as string, dataDir: link.dataDir as string } : null
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    $.ui.log(`sessions: lien vers l'app illisible (${reason})`, { to: 'debug' })
+    return null
+  }
+}
+
+const bridgeRequest = async ($: EngineInterface, link: AppLink, method: 'GET' | 'POST', route: string, body?: object): Promise<BridgeReply | null> => {
+  const headers: Record<string, string> = { authorization: `Bearer ${link.secret}` }
+  if (body !== undefined) headers['content-type'] = 'application/json'
+  try {
+    const response = await $.http.fetch(`http://127.0.0.1:${link.port}/bridge/v1${route}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    return { status: response.status, body: response.text ? JSON.parse(response.text) : null }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    $.ui.log(`sessions: app du cockpit injoignable (${reason})`, { to: 'debug' })
+    return null
+  }
+}
+
+// The hub writes the page; a conversation that becomes hub writes it afresh.
+const applyRole = (role: unknown) => {
+  const isHub = role === 'hub'
+  if (isHub && !isServing) lastDataJson = ''
+  isServing = isHub
+}
+
+const handleOrder = async ($: EngineInterface, order: BridgeOrder) => {
+  if (handledOrders.has(order.orderId)) return
+  handledOrders.add(order.orderId)
+  if (handledOrders.size > MAX_HANDLED_ORDERS) handledOrders.delete(handledOrders.values().next().value as string)
+  try {
+    await handleBridgeMessage($, order)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    $.ui.log(`sessions: ordre de l'app non exécuté (${reason})`, { to: 'debug' })
+  }
+}
+
+const followOrders = async ($: EngineInterface, link: AppLink, bridgeId: string) => {
+  const route = `/orders?bridgeId=${encodeURIComponent(bridgeId)}&wait=${ORDERS_WAIT_MS}`
+  for (;;) {
+    const polled = await bridgeRequest($, link, 'GET', route)
+    if (polled === null || polled.status !== 200 || polled.body === null) return
+    applyRole(polled.body.role)
+    const orders = Array.isArray(polled.body.orders) ? polled.body.orders : []
+    for (const order of orders) await handleOrder($, order)
+    if (orders.length > 0) await bridgeRequest($, link, 'POST', '/ack', { bridgeId, orderIds: orders.map(order => order.orderId) })
+  }
+}
+
+const joinApp = async ($: EngineInterface, link: AppLink) => {
+  const hello = await bridgeRequest($, link, 'POST', '/hello', { protocol: APP_LINK_PROTOCOL, engineId: ownEngineId, modVersion: MOD_VERSION })
+  const bridgeId = hello?.body?.bridgeId
+  if (hello === null || hello.status !== 200 || typeof bridgeId !== 'string') {
+    if (hello?.status === 426) $.ui.toast('Cockpit : le mod et l’app ne sont pas à la même version, redémarre Claude Desktop')
+    return false
+  }
+  mode = 'app'
+  appLink = link
+  applyRole(hello.body?.role)
+  void followOrders($, link, bridgeId).finally(() => {
+    mode = 'none'
+    appLink = null
+    isServing = false
+    $.clock.after(RECONNECT_MS, () => connect($))
+  })
+  return true
+}
+
+// Joins the app when it runs, else runs the server locally. A local server is
+// only stopped once the app has answered, so an app that does not answer
+// never leaves the cockpit without a server.
+const connect = async ($: EngineInterface) => {
+  if (isConnecting || mode === 'app') return
+  isConnecting = true
+  try {
+    const link = await readAppLink($)
+    if (link === null) {
+      void startServer($)
+      return
+    }
+    const wasLocal = mode === 'local'
+    if (!(await joinApp($, link))) {
+      void startServer($)
+      return
+    }
+    if (wasLocal) await stopLocalServer()
+  } finally {
+    isConnecting = false
+  }
 }
 
 const findTranscript = async ($: EngineInterface, engineId: string) => {
@@ -999,7 +1138,7 @@ const inlineScriptSafe = (json: string) => json.replace(/</g, '\\u003c').replace
 const writePage = async ($: EngineInterface, payload: string, template: string, version: string) => {
   const seed = `<script>window.__PAGE_VERSION__ = ${inlineScriptSafe(JSON.stringify(version))}; window.__CONVERSATIONS__ = ${inlineScriptSafe(payload)};</script>`
   const page = template.replace(SEED_MARKER, () => seed)
-  await $.fs.write(`${pageDir($)}/${PAGE_FILE}`, page)
+  await $.fs.write(`${dataDirOf($)}/${PAGE_FILE}`, page)
 }
 
 const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared: Record<string, RowSummary>, stats: Record<string, StoredStats>) => {
@@ -1028,7 +1167,7 @@ const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared
   if (json === lastDataJson) return
   lastDataJson = json
   const payload = JSON.stringify({ generatedAt: Date.now(), pageVersion, rows: exported, folders })
-  await $.fs.write(`${pageDir($)}/${DATA_FILE}`, `window.__CONVERSATIONS__ = ${payload};`)
+  await $.fs.write(`${dataDirOf($)}/${DATA_FILE}`, `window.__CONVERSATIONS__ = ${payload};`)
   await writePage($, payload, template, pageVersion)
 }
 
@@ -1045,8 +1184,8 @@ export const register: Register = on => {
     void $.ui.open({ id: PANE, title: 'Conversations' })
     $.clock.every(REFRESH_MS, () => refresh($))
     $.clock.every(MAILBOX_POLL_MS, () => collectOwnMail($))
-    void startServer($)
-    $.clock.every(SERVER_RETRY_MS, () => startServer($))
+    void connect($)
+    $.clock.every(SERVER_RETRY_MS, () => connect($))
     void refreshStats($)
 
     return next(e)
