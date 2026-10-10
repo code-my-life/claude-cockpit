@@ -6,10 +6,11 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 
 import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, saveIndex, saveSessionList, scanHostFiles, sessionsOf } from './session-index.mjs'
-import { findMatches, hostsByEngineOf, isLocalHost, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
+import { findMatches, hostsByEngineOf, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
 import { hostSessionsDirOf, terminalCandidatesOf } from './terminal.mjs'
+import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, secretMatches, send, sendNotFound } from './cockpit-server-http.mjs'
+import { handleBridge, isBridgeRoute } from './bridge-routes.mjs'
 
-const MAX_BODY_BYTES = 40 * 1024 * 1024
 const SEARCH_SAVE_MS = 60000
 const INDEX_REFRESH_MS = 3000
 const STATIC_FILES = {
@@ -24,84 +25,9 @@ const TOKEN_META_ANCHOR = '<head>'
 const MAX_IMAGES = 10
 const MAX_REASON_LENGTH = 500
 const IMAGE_EXTENSIONS = new Map([['image/png', 'png'], ['image/jpeg', 'jpg'], ['image/gif', 'gif'], ['image/webp', 'webp']])
-const ENGINE_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/
 const PARK_KINDS = new Set(['blocked', 'later'])
 const UNSAFE_FOLDER_PATTERN = /[\x00-\x1f";]/
 const FOREIGN_SITES = new Set(['cross-site', 'same-site'])
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  'font-src https://fonts.gstatic.com',
-  "img-src 'self' data: blob:",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'none'",
-  "object-src 'none'",
-  "form-action 'none'",
-].join('; ')
-const SECURITY_HEADERS = {
-  'content-security-policy': CONTENT_SECURITY_POLICY,
-  'x-content-type-options': 'nosniff',
-  'x-frame-options': 'DENY',
-  'referrer-policy': 'no-referrer',
-}
-
-export class HttpError extends Error {
-  constructor(status, message) {
-    super(message)
-    this.status = status
-  }
-}
-
-const readBody = (request, maxBytes = MAX_BODY_BYTES) =>
-  new Promise((resolve, reject) => {
-    const chunks = []
-    let size = 0
-    request.on('data', chunk => {
-      size += chunk.length
-      if (size > maxBytes) {
-        chunks.length = 0
-        request.removeAllListeners('data')
-        request.resume()
-        reject(new HttpError(413, 'corps trop volumineux'))
-        return
-      }
-      chunks.push(chunk)
-    })
-    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
-    request.on('error', reject)
-  })
-
-export const send = (response, status, body, type = 'application/json; charset=utf-8') => {
-  response.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', ...SECURITY_HEADERS })
-  response.end(body)
-}
-
-const sendNotFound = response => send(response, 404, 'introuvable', 'text/plain; charset=utf-8')
-
-export const readJsonBody = async (request, maxBytes = MAX_BODY_BYTES) => {
-  const raw = await readBody(request, maxBytes)
-  let body
-  try {
-    body = JSON.parse(raw)
-  } catch {
-    throw new HttpError(400, 'requête invalide')
-  }
-  if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'requête invalide')
-  return body
-}
-
-export const engineIdOf = body => {
-  if (typeof body.engineId !== 'string' || !ENGINE_ID_PATTERN.test(body.engineId)) throw new HttpError(400, 'identifiant de conversation invalide')
-  return body.engineId
-}
-
-export const secretMatches = (given, expected) => {
-  if (typeof given !== 'string' || given.length !== expected.length) return false
-  return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected))
-}
-
 const comparable = folder => (process.platform === 'win32' ? folder.toLowerCase() : folder)
 
 const isInside = (parent, child) => {
@@ -117,10 +43,11 @@ const isBroadFolder = (folder, homeDir) => {
 
 // Everything one cockpit server needs: where it reads and writes, its port,
 // its session token, and where the orders for the mod go (`sink`).
-const contextOf = ({ rootDir, port, sink, homeDir = os.homedir(), env = process.env }) => ({
+const contextOf = ({ rootDir, port, sink, bridge = null, homeDir = os.homedir(), env = process.env }) => ({
   rootDir,
   port,
   sink,
+  bridge,
   homeDir,
   token: crypto.randomBytes(24).toString('hex'),
   inbox: path.join(rootDir, 'inbox'),
@@ -170,20 +97,11 @@ const servePage = (ctx, response) => {
   }
 }
 
-export const guardHost = (request, port) => {
-  if (!isLocalHost(request.headers.host, port)) throw new HttpError(403, 'hôte refusé')
-}
-
 const guardRead = (ctx, request, isPage) => {
   guardHost(request, ctx.port)
   const isForeign = FOREIGN_SITES.has(request.headers['sec-fetch-site'])
   const isNavigation = request.headers['sec-fetch-mode'] === 'navigate'
   if (isForeign && !(isPage && isNavigation)) throw new HttpError(403, 'origine refusée')
-}
-
-export const guardJson = request => {
-  const contentType = String(request.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
-  if (contentType !== 'application/json') throw new HttpError(415, 'JSON attendu')
 }
 
 const guardWrite = (ctx, request) => {
@@ -233,21 +151,28 @@ const openTerminal = (ctx, cwd) => {
   launchFirstWorking(ctx, terminalCandidatesOf(process.platform, cwd))
 }
 
+const NO_BRIDGE_MESSAGE = 'Aucune conversation avec le mod n’est ouverte : ouvre une conversation Claude pour envoyer cet ordre.'
+
+// The sink answers false when nobody can carry the order (app mode, no bridge).
+const deliver = (ctx, order) => {
+  if (ctx.sink(order) === false) throw new HttpError(503, NO_BRIDGE_MESSAGE)
+}
+
 const postRoutesOf = ctx => ({
   '/reply': body => {
     const engineId = engineIdOf(body)
     const images = saveImages(ctx, Array.isArray(body.images) ? body.images : [])
-    ctx.sink({ type: 'reply', engineId, text: String(body.text || ''), images })
+    deliver(ctx, { type: 'reply', engineId, text: String(body.text || ''), images })
   },
   '/terminal': body => openTerminal(ctx, typeof body.cwd === 'string' ? body.cwd : ''),
   '/park': body => {
     const engineId = engineIdOf(body)
     if (!PARK_KINDS.has(body.kind)) throw new HttpError(400, 'type de mise de côté invalide')
-    ctx.sink({ type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
+    deliver(ctx, { type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
   },
-  '/unpark': body => ctx.sink({ type: 'unpark', engineId: engineIdOf(body) }),
-  '/ack': body => ctx.sink({ type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
-  '/summarize': body => ctx.sink({ type: 'summarize', engineId: engineIdOf(body) }),
+  '/unpark': body => deliver(ctx, { type: 'unpark', engineId: engineIdOf(body) }),
+  '/ack': body => deliver(ctx, { type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
+  '/summarize': body => deliver(ctx, { type: 'summarize', engineId: engineIdOf(body) }),
 })
 
 const readText = file => fs.promises.readFile(file, 'utf8')
@@ -340,6 +265,10 @@ const handlerOf = ctx => {
   const routes = postRoutesOf(ctx)
   return async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1')
+    if (isBridgeRoute(url.pathname)) {
+      if (ctx.bridge === null) return sendNotFound(response)
+      return handleBridge({ ...ctx.bridge, port: ctx.port }, url, request, response)
+    }
     if (request.method === 'GET') return handleGet(ctx, url, request, response)
     if (request.method === 'POST') return handlePost(ctx, routes, url, request, response)
     send(response, 405, 'méthode non permise', 'text/plain; charset=utf-8')

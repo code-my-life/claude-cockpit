@@ -6,7 +6,9 @@ const DEFAULT_PORT = 48123
 const EXIT_PORT_TAKEN = 3
 
 const [, , rootDir, portArg] = process.argv
-const say = payload => process.stdout.write(`${JSON.stringify(payload)}\n`)
+const say = payload => {
+  process.stdout.write(`${JSON.stringify(payload)}\n`)
+}
 
 const cockpit = createCockpitServer({ rootDir, port: Number(portArg || DEFAULT_PORT), sink: say })
 
