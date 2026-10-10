@@ -22,11 +22,17 @@ export const linkFileOf = (platform, env, homeDir) => {
   return path.join(stateDir, APP_FOLDER, LINK_NAME)
 }
 
-export const createLink = ({ port, appVersion, pid }) => ({
+// Where the app keeps the page, index and pasted images the hub writes.
+export const dataDirOf = linkFile => path.join(path.dirname(linkFile), 'data')
+
+export const createSecret = () => crypto.randomBytes(SECRET_BYTES).toString('hex')
+
+export const createLink = ({ port, appVersion, pid, dataDir, secret = createSecret() }) => ({
   protocol: LINK_PROTOCOL,
   port,
-  secret: crypto.randomBytes(SECRET_BYTES).toString('hex'),
+  secret,
   pid,
+  dataDir,
   appVersion,
   startedAt: Date.now(),
 })
@@ -37,7 +43,8 @@ const isValidLink = link =>
   link.protocol === LINK_PROTOCOL &&
   Number.isInteger(link.port) && link.port > 0 && link.port <= MAX_PORT &&
   typeof link.secret === 'string' && SECRET_PATTERN.test(link.secret) &&
-  Number.isInteger(link.pid) && link.pid > 0
+  Number.isInteger(link.pid) && link.pid > 0 &&
+  typeof link.dataDir === 'string' && path.isAbsolute(link.dataDir)
 
 // True while a process with that id runs; EPERM means it runs as someone else.
 export const isProcessAlive = pid => {

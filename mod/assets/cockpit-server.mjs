@@ -41,24 +41,26 @@ const isBroadFolder = (folder, homeDir) => {
   return isDriveRoot || isInside(folder, homeDir)
 }
 
-// Everything one cockpit server needs: where it reads and writes, its port,
+// Everything one cockpit server needs: the fixed assets (`rootDir`), where it
+// reads and writes the page, index and pasted images (`dataDir`), its port,
 // its session token, and where the orders for the mod go (`sink`).
-const contextOf = ({ rootDir, port, sink, bridge = null, homeDir = os.homedir(), env = process.env }) => ({
+const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, homeDir = os.homedir(), env = process.env }) => ({
   rootDir,
+  dataDir,
   port,
   sink,
   bridge,
   homeDir,
   token: crypto.randomBytes(24).toString('hex'),
-  inbox: path.join(rootDir, 'inbox'),
-  indexFile: path.join(rootDir, 'session-index.json'),
-  cacheFile: path.join(rootDir, 'session-cache.json'),
-  searchCacheFile: path.join(rootDir, 'search-cache.json'),
+  inbox: path.join(dataDir, 'inbox'),
+  indexFile: path.join(dataDir, 'session-index.json'),
+  cacheFile: path.join(dataDir, 'session-cache.json'),
+  searchCacheFile: path.join(dataDir, 'search-cache.json'),
   transcriptsDir: path.join(homeDir, '.claude', 'projects'),
   hostSessionsDir: hostSessionsDirOf(process.platform, homeDir, env),
   liveSessionsDir: path.join(homeDir, '.claude', 'sessions'),
   state: {
-    sessionIndex: loadIndex(path.join(rootDir, 'session-cache.json')),
+    sessionIndex: loadIndex(path.join(dataDir, 'session-cache.json')),
     savedLiveKey: null,
     isIndexing: false,
     remoteRepos: new Map(),
@@ -78,9 +80,9 @@ const reportError = (ctx, label, error) => {
   ctx.sink({ type: 'error', message })
 }
 
-const serveFile = (ctx, response, name, type) => {
+const serveFile = (folder, response, name, type) => {
   try {
-    const content = fs.readFileSync(path.join(ctx.rootDir, name))
+    const content = fs.readFileSync(path.join(folder, name))
     send(response, 200, content, type)
   } catch {
     sendNotFound(response)
@@ -89,7 +91,7 @@ const serveFile = (ctx, response, name, type) => {
 
 const servePage = (ctx, response) => {
   try {
-    const html = fs.readFileSync(path.join(ctx.rootDir, 'conversations.html'), 'utf8')
+    const html = fs.readFileSync(path.join(ctx.dataDir, 'conversations.html'), 'utf8')
     const meta = `${TOKEN_META_ANCHOR}<meta name="cockpit-token" content="${ctx.token}">`
     send(response, 200, html.replace(TOKEN_META_ANCHOR, () => meta), 'text/html; charset=utf-8')
   } catch {
@@ -245,11 +247,11 @@ const handleGet = async (ctx, url, request, response) => {
   const isPage = url.pathname === '/' || url.pathname === '/conversations.html'
   guardRead(ctx, request, isPage)
   if (isPage) return servePage(ctx, response)
-  if (url.pathname === '/conversations-data.js') return serveFile(ctx, response, 'conversations-data.js', 'text/javascript; charset=utf-8')
+  if (url.pathname === '/conversations-data.js') return serveFile(ctx.dataDir, response, 'conversations-data.js', 'text/javascript; charset=utf-8')
   if (url.pathname === '/ping') return send(response, 200, '{"ok":true}')
   if (url.pathname === '/search') return handleSearch(ctx, url, response)
   const staticType = Object.hasOwn(STATIC_FILES, url.pathname) ? STATIC_FILES[url.pathname] : undefined
-  if (staticType) return serveFile(ctx, response, url.pathname.slice(1), staticType)
+  if (staticType) return serveFile(ctx.rootDir, response, url.pathname.slice(1), staticType)
   sendNotFound(response)
 }
 

@@ -52,6 +52,33 @@ test('an order posted to the factory server reaches the sink, not standard outpu
   })
 })
 
+test('with a data folder, the page and pasted images live there while the fixed assets stay in the root', async () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-root-'))
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-data-'))
+  fs.mkdirSync(path.join(rootDir, 'mod', 'assets'), { recursive: true })
+  fs.writeFileSync(path.join(rootDir, 'mod', 'assets', 'identity.js'), '// identity')
+  fs.writeFileSync(path.join(dataDir, 'conversations.html'), '<html><head></head><body>page du hub</body></html>')
+  const orders = []
+  const cockpit = createCockpitServer({ rootDir, dataDir, port: 0, sink: order => orders.push(order), homeDir: dataDir, env: {} })
+  try {
+    const port = await cockpit.listen()
+    const page = await call(port, 'GET', '/')
+    assert.match(page.text, /page du hub/)
+    const asset = await call(port, 'GET', '/mod/assets/identity.js')
+    assert.equal(asset.text, '// identity')
+    await call(port, 'POST', '/reply', {
+      headers: { 'content-type': 'application/json', 'x-cockpit-token': cockpit.token },
+      body: JSON.stringify({ engineId: 'abc', text: 'x', images: [{ type: 'image/png', base64: 'iVBORw0KGgo=' }] }),
+    })
+    const [reply] = orders.filter(order => order.type === 'reply')
+    assert.equal(path.dirname(reply.images[0]), path.join(dataDir, 'inbox'))
+  } finally {
+    await cockpit.close()
+    fs.rmSync(rootDir, { recursive: true, force: true })
+    fs.rmSync(dataDir, { recursive: true, force: true })
+  }
+})
+
 test('two factory servers keep their own token', async () => {
   await withServer(async first => {
     await withServer(async second => {
