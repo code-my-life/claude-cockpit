@@ -50,14 +50,38 @@ let selfMovedAt = 0
 
 const anchorFile = () => path.join(app.getPath('userData'), 'anchor.json')
 
+const MAX_SERVER_RESTARTS = 3
+const RESTART_WINDOW_MS = 10 * 60 * 1000
+let serverRestarts = []
+
 const logLine = message => {
-  try { fs.appendFileSync(path.join(app.getPath('userData'), 'cockpit.log'), `${new Date().toISOString()} ${message}
-`) } catch { }
+  try { fs.appendFileSync(path.join(app.getPath('userData'), 'cockpit.log'), `${new Date().toISOString()} ${message}\n`) } catch { }
+}
+
+const reloadWindows = () => {
+  loadCockpit()
+  if (cockpitWin !== null) cockpitWin.loadURL(cockpitUrlOf(null)).catch(() => {})
+  if (launcherWin !== null) launcherWin.loadURL(launcherUrl()).catch(() => {})
+}
+
+// A server that dies while the app runs is started again, a few times at most,
+// with a fresh secret and link; past that the windows fall back on the mod's.
+const restartServer = async code => {
+  logLine(`serveur intégré arrêté (code ${code})`)
+  embeddedServer = null
+  serverPort = MOD_SERVER_PORT
+  const now = Date.now()
+  serverRestarts = serverRestarts.filter(at => now - at < RESTART_WINDOW_MS)
+  if (serverRestarts.length < MAX_SERVER_RESTARTS) {
+    serverRestarts = [...serverRestarts, now]
+    await startServer()
+  }
+  reloadWindows()
 }
 
 const startServer = async () => {
   try {
-    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), onError: message => logLine(`serveur : ${message}`) })
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), onError: message => logLine(`serveur : ${message}`), onExit: restartServer })
     serverPort = embeddedServer.port
   } catch (error) {
     logLine(`serveur intégré indisponible, repli sur celui du mod : ${error.message}`)

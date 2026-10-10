@@ -26,7 +26,9 @@ const waitForPort = (child, settings, onError) =>
     child.once('spawn', () => child.postMessage(settings))
   })
 
-const startEmbeddedServer = async ({ appVersion, onError }) => {
+// `onExit` runs when the server dies while the app still runs; the link is
+// removed first so no conversation keeps sending its secret to a dead port.
+const startEmbeddedServer = async ({ appVersion, onError, onExit = () => {} }) => {
   const { createLink, createSecret, dataDirOf, linkFileOf, removeLink, writeLink } = await loadDiscovery()
   const linkFile = linkFileOf(process.platform, process.env, os.homedir())
   const dataDir = dataDirOf(linkFile)
@@ -36,7 +38,13 @@ const startEmbeddedServer = async ({ appVersion, onError }) => {
   try {
     const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret, proof }, onError)
     writeLink(linkFile, createLink({ port, appVersion, pid: process.pid, dataDir, secret, proof }))
+    let isStopping = false
+    child.once('exit', code => {
+      removeLink(linkFile, process.pid)
+      if (!isStopping) onExit(code)
+    })
     const stop = () => {
+      isStopping = true
       removeLink(linkFile, process.pid)
       child.kill()
     }
