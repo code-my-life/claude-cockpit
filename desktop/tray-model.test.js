@@ -23,7 +23,7 @@ test('the tray icon is an ink ring: drawn on the ring, clear in the corners and 
 test('the tray menu offers to open, show the team, start with the session and quit', () => {
   const menu = trayMenuOf({ isDockVisible: true, isAutostart: false })
   const labels = menu.filter(item => item.label).map(item => item.label)
-  assert.deepEqual(labels, ['Ouvrir le cockpit', "Afficher l'île", 'Masquer la mini-équipe', 'Lancer au démarrage', 'Quitter'])
+  assert.deepEqual(labels, ['Ouvrir le cockpit', "Afficher l'île", 'Masquer la mini-équipe', 'Lancer au démarrage', 'Couper les sons', 'Quitter'])
 })
 
 test('the tray menu follows the state of the team and of the start with the session', () => {
@@ -60,4 +60,19 @@ test('the tray menu offers to show the island, for keyboard access', () => {
   const entry = menu.find(item => item.id === 'show-island')
   assert.equal(entry.label, "Afficher l'île")
   assert.ok(menu.indexOf(entry) < menu.findIndex(item => item.id === 'quit'))
+})
+
+test('the tray menu offers to mute the sounds, or to turn them back on', () => {
+  const on = trayMenuOf({ isDockVisible: true, isAutostart: false, areSoundsOn: true })
+  assert.equal(on.find(item => item.id === 'toggle-sounds').label, 'Couper les sons')
+  const off = trayMenuOf({ isDockVisible: true, isAutostart: false, areSoundsOn: false })
+  assert.equal(off.find(item => item.id === 'toggle-sounds').label, 'Activer les sons')
+})
+
+test('the sound entry comes before the separator and quit, and sounds count as on by default', () => {
+  const menu = trayMenuOf({ isDockVisible: true, isAutostart: false })
+  const ids = menu.map(item => item.id)
+  assert.ok(ids.indexOf('toggle-sounds') > ids.indexOf('autostart'))
+  assert.ok(ids.indexOf('toggle-sounds') < ids.indexOf('quit'))
+  assert.equal(menu.find(item => item.id === 'toggle-sounds').label, 'Couper les sons')
 })

@@ -99,7 +99,7 @@
 
   const shouldAnnounce = (previousPhase, phase, cause) => previousPhase === 'hidden' && phase !== 'hidden' && cause === CAUSE_EVENT;
 
-  const init = ({ desktop, doc, win, identity, closeSheets, announce }) => {
+  const init = ({ desktop, doc, win, identity, closeSheets, announce, playSound = () => {} }) => {
     const html = doc.documentElement;
     const motion = typeof win.matchMedia === 'function' ? win.matchMedia(REDUCED_MOTION_QUERY) : { matches: false };
     const reportPointer = createPointerReporter(isInside => desktop.islandPointer(isInside));
@@ -137,7 +137,10 @@
       phase = next;
       setPhase(next);
       // Apparition de l'île : les volumes se tracent à mesure qu'elle se révèle.
-      if (previous === 'hidden' && next !== 'hidden') identity?.appear?.(doc.getElementById('dock'));
+      if (previous === 'hidden' && next !== 'hidden') {
+        identity?.appear?.(doc.getElementById('dock'));
+        playSound('appear');
+      }
       if (next === 'open') keepSheets();
       else foldSheets();
       if (shouldAnnounce(previous, next, cause)) {

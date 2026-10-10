@@ -56,7 +56,7 @@ test('the identity scripts (motion, volumes, chrome, badge) are served from the 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-root-'))
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-data-'))
   fs.mkdirSync(path.join(rootDir, 'mod', 'assets'), { recursive: true })
-  const names = ['identity-motion.js', 'identity.js', 'identity-chrome.js', 'identity-badge.js']
+  const names = ['identity-motion.js', 'identity.js', 'identity-chrome.js', 'identity-badge.js', 'identity-sound.js']
   for (const name of names) fs.writeFileSync(path.join(rootDir, 'mod', 'assets', name), `// ${name}`)
   const cockpit = createCockpitServer({ rootDir, dataDir, port: 0, sink: () => {}, homeDir: dataDir, env: {} })
   try {

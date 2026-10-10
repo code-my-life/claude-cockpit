@@ -434,6 +434,7 @@
 <script src="mod/assets/identity.js"></script>
 <script src="mod/assets/identity-chrome.js"></script>
 <script src="mod/assets/identity-badge.js"></script>
+<script src="mod/assets/identity-sound.js"></script>
 <script src="mod/assets/dock.js"></script>
 <script src="mod/assets/island.js"></script>
 <script>
@@ -813,10 +814,18 @@
 
   // Réactions des identités : passage à « terminé » ou en erreur (après l'hydratation, qui pose l'état de fond).
   let identStatuses = null;
+  // Sons : uniquement dans l'île de l'app (le lecteur n'existe que là), même île cachée ; pas de son au survol ni à la pression.
+  let soundPlayer = null;
+
+  const playSound = (kind, engineId) => {
+    if (soundPlayer === null || !window.CockpitIdentity) return;
+    soundPlayer.play(kind, engineId ? window.CockpitIdentity.identityOf(engineId).seed : 0);
+  };
 
   const reactToStatusChanges = () => {
-    const { CockpitIdentity: identity, CockpitIdentityMotion: motion } = window;
+    const { CockpitIdentity: identity, CockpitIdentityMotion: motion, CockpitIdentitySound: sound } = window;
     if (!identity || !motion || !state.data) return;
+    if (sound) for (const event of sound.soundEventsOf(identStatuses, state.data.rows)) playSound(event.kind, event.engineId);
     for (const event of motion.eventsOf(identStatuses, state.data.rows)) identity.react(event.engineId, event.kind);
     identStatuses = motion.statusMapOf(state.data.rows);
   };
@@ -829,6 +838,15 @@
 
   // Survol (la tête se tourne vers toi) et pression (coup de phase) : uniquement la tête visée, pas de pointeur tactile.
   const headOf = target => (target && target.closest ? target.closest('.mini-head') || target.closest('.t-face') : null);
+
+  // Lecteur de sons de l'île : réglage global venu de l'app (menu de la barre d'état), contexte audio relancé au premier geste.
+  const setUpSounds = () => {
+    if (!window.CockpitIdentitySound) return;
+    soundPlayer = window.CockpitIdentitySound.createPlayer();
+    desktop.soundSetting().then(isEnabled => soundPlayer.setMuted(!isEnabled)).catch(() => {});
+    desktop.onSoundSetting(isEnabled => soundPlayer.setMuted(!isEnabled));
+    for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, () => soundPlayer.unlock(), { capture: true });
+  };
 
   const wireIdentityPointer = () => {
     const move = isOn => event => {
@@ -2150,6 +2168,7 @@
       const images = draft.images.map(image => ({ type: image.type, base64: image.base64 }));
       await post('/reply', { engineId, text, images });
       state.sentAt.set(engineId, Date.now());
+      playSound('sent', engineId);
       state.drafts.delete(engineId);
       state.expanded.delete(engineId);
       if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
@@ -2406,7 +2425,8 @@
     state.dockPrefs = readStoredDockPrefs();
     document.documentElement.classList.add('mini-mode');
     document.body.classList.add('mini-mode');
-    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce });
+    if (desktop) setUpSounds();
+    if (desktop) islandUi = window.CockpitIsland.init({ desktop, doc: document, win: window, identity: window.CockpitIdentity, closeSheets: foldIslandSheets, announce, playSound });
     window.addEventListener('resize', syncDesktopWindow);
     document.addEventListener('click', event => {
       const appLink = desktop && event.target.closest('a[href^="claude:"]');

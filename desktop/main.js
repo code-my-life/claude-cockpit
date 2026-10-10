@@ -9,6 +9,7 @@ const { createFullscreenProbe } = require('./island/fullscreen')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
+const { SOUND_FILE_NAME, readSoundSetting, serializeSoundSetting } = require('./sound-setting')
 
 // The app serves the cockpit itself; when its server cannot start, the windows
 // fall back on the server a conversation with the mod runs on this port.
@@ -262,7 +263,8 @@ const createWindow = () => {
     show: false,
     backgroundColor: CLEAR,
     // Caché, la page doit continuer à tourner pour voir arriver les événements.
-    webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, preload: path.join(__dirname, 'preload.js') },
+    // Les sons servent justement quand on ne regarde pas : l'île cachée doit pouvoir les jouer sans geste préalable.
+    webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: path.join(__dirname, 'preload.js') },
   })
   win.setAlwaysOnTop(true, 'floating')
   island = createIsland()
@@ -299,12 +301,28 @@ const showIsland = () => {
   island.showAndFocus()
 }
 
+// Réglage global des sons, gardé dans userData et transmis à la page de l'île.
+const soundFile = () => path.join(app.getPath('userData'), SOUND_FILE_NAME)
+let areSoundsOn = true
+
+const loadSoundSetting = () => {
+  let raw = null
+  try { raw = fs.readFileSync(soundFile(), 'utf8') } catch { raw = null }
+  areSoundsOn = readSoundSetting(raw)
+}
+
+const toggleSounds = () => {
+  areSoundsOn = !areSoundsOn
+  try { fs.writeFileSync(soundFile(), serializeSoundSetting(areSoundsOn)) } catch (error) { logLine(`sons : réglage non enregistré (${error.message})`) }
+  win?.webContents.send('sound-setting', areSoundsOn)
+}
+
 const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLoginItemSettings().openAtLogin })
 
 const refreshTrayMenu = () => {
   if (tray === null) return
-  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
-  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
+  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-dock': toggleDock, autostart: toggleAutostart, 'toggle-sounds': toggleSounds, quit: () => app.quit() }
+  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, areSoundsOn, canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
 }
@@ -350,6 +368,7 @@ onTrusted('launcher-height', (event, height) => {
 onTrusted('launcher-hide', hideLauncher)
 
 handleTrusted('launcher-shortcut', () => activeShortcut)
+handleTrusted('sound-setting', () => areSoundsOn)
 
 onTrusted('quit', () => app.quit())
 
@@ -362,6 +381,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     if (process.platform === 'darwin') app.dock?.hide()
     nativeTheme.themeSource = 'dark'
+    loadSoundSetting()
     await startServer()
     createWindow()
     createLauncherWindow()

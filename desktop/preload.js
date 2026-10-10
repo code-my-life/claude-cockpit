@@ -18,4 +18,6 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   hideLauncher: () => ipcRenderer.send('launcher-hide'),
   onLauncherShown: callback => ipcRenderer.on('launcher-shown', () => callback()),
   launcherShortcut: () => ipcRenderer.invoke('launcher-shortcut'),
+  soundSetting: () => ipcRenderer.invoke('sound-setting'),
+  onSoundSetting: callback => ipcRenderer.on('sound-setting', (event, isEnabled) => callback(isEnabled)),
 })
