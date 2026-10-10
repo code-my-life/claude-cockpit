@@ -1,10 +1,11 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, nativeTheme, screen, shell } = require('electron')
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, shell } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const { boundsOf, MARGIN, SHEET_MAX_HEIGHT } = require('./bounds')
 const { applyBlur } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 const { startEmbeddedServer } = require('./embedded-server')
+const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 
 // The app serves the cockpit itself; when its server cannot start, the windows
 // fall back on the server a conversation with the mod runs on this port.
@@ -282,6 +283,33 @@ const createWindow = () => {
   loadCockpit()
 }
 
+let tray = null
+const TRAY_SCALE = 2
+
+const toggleDock = () => {
+  if (win === null) return createWindow()
+  if (win.isVisible()) win.hide()
+  else win.showInactive()
+}
+
+const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLoginItemSettings().openAtLogin })
+
+const refreshTrayMenu = () => {
+  if (tray === null) return
+  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'toggle-dock': toggleDock, autostart: toggleAutostart, quit: () => app.quit() }
+  const state = { isDockVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin }
+  const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
+  tray.setContextMenu(Menu.buildFromTemplate(template))
+}
+
+const createTray = () => {
+  const icon = nativeImage.createFromBitmap(trayIconBitmap(TRAY_ICON_SIZE), { width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE, scaleFactor: TRAY_SCALE })
+  tray = new Tray(icon)
+  tray.setToolTip('Claude Cockpit')
+  tray.on('click', () => openCockpitWindow(null))
+  refreshTrayMenu()
+}
+
 onTrusted('dock-size', (event, width, height) => {
   dockWidth = Math.round(Number(width) || DOCK_MIN_WIDTH)
   dockHeight = Math.round(Number(height) || DOCK_HEIGHT)
@@ -326,6 +354,7 @@ if (!app.requestSingleInstanceLock()) {
     createWindow()
     createLauncherWindow()
     registerLauncherShortcut()
+    createTray()
   })
   app.on('will-quit', () => {
     globalShortcut.unregisterAll()
