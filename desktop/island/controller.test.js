@@ -410,3 +410,28 @@ test('au changement d etat aussi, le curseur reel corrige un survol rapporte par
   clock.advance(SETTLE_MS + HIDE_DELAY_MS)
   assert.equal(island.phase(), 'hidden')
 })
+
+test('le repli est un ressort, pas un saut : la fenetre passe par des tailles intermediaires', () => {
+  const { island, log, clock } = setup()
+  island.start()
+  island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
+  const before = log.bounds.length
+  island.escape()
+  island.setCompactSize(320, 44)
+  clock.advance(SETTLE_MS)
+  assert.ok(log.bounds.length - before > 15, `images : ${log.bounds.length - before}`)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [320, 44])
+})
+
+test('la fenetre dit si elle est en train de s animer : une mesure lourde attend la fin de la morphose', () => {
+  const { island, clock } = setup()
+  island.start()
+  assert.equal(island.isAnimating(), true)
+  clock.advance(GROW_MS)
+  assert.equal(island.isAnimating(), false)
+  island.setExpanded(true, 760, 280)
+  assert.equal(island.isAnimating(), true)
+  clock.advance(GROW_MS)
+  assert.equal(island.isAnimating(), false)
+})

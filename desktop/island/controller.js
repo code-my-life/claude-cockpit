@@ -95,6 +95,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
 
   return {
     phase: () => fsm.state(),
+    isAnimating: () => morph.isRunning(),
     start() { fsm.reveal() },
     event() { fsm.reveal() },
     forceHide() {

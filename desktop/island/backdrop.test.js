@@ -1,40 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { luminanceOf, themeOf, sampleRectsOf, LIGHT_ABOVE, DARK_BELOW } = require('./backdrop')
-
-// Image BGRA factice : tout d'une couleur, sauf une zone.
-const imageOf = (width, height, rgb, paint = () => null) => {
-  const data = Buffer.alloc(width * height * 4)
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const [r, g, b] = paint(x, y) || rgb
-      const at = (y * width + x) * 4
-      data[at] = b; data[at + 1] = g; data[at + 2] = r; data[at + 3] = 255
-    }
-  }
-  return { data, width, height }
-}
-
-test('un fond blanc a une luminance de 1, un fond noir de 0', () => {
-  assert.ok(Math.abs(luminanceOf(imageOf(10, 10, [255, 255, 255]), { x: 0, y: 0, width: 10, height: 10 }) - 1) < 0.001)
-  assert.equal(luminanceOf(imageOf(10, 10, [0, 0, 0]), { x: 0, y: 0, width: 10, height: 10 }), 0)
-})
-
-test('seule la zone demandee compte', () => {
-  const image = imageOf(20, 10, [0, 0, 0], x => (x >= 10 ? [255, 255, 255] : null))
-  assert.equal(luminanceOf(image, { x: 0, y: 0, width: 10, height: 10 }), 0)
-  assert.ok(luminanceOf(image, { x: 10, y: 0, width: 10, height: 10 }) > 0.99)
-})
-
-test('plusieurs zones : moyenne pondérée par leur surface, zones hors image ignorees', () => {
-  const image = imageOf(20, 10, [0, 0, 0], x => (x >= 10 ? [255, 255, 255] : null))
-  const mean = luminanceOf(image, [{ x: 0, y: 0, width: 10, height: 10 }, { x: 10, y: 0, width: 10, height: 10 }, { x: 500, y: 0, width: 10, height: 10 }])
-  assert.ok(Math.abs(mean - 0.5) < 0.01)
-})
-
-test('aucune zone exploitable : pas de mesure', () => {
-  assert.equal(luminanceOf(imageOf(4, 4, [255, 255, 255]), [{ x: 100, y: 100, width: 5, height: 5 }]), null)
-})
+const { themeOf, sampleRectsOf, LIGHT_ABOVE, DARK_BELOW } = require('./backdrop')
 
 test('le theme suit le bureau avec une hysteresis : pas de va-et-vient autour du seuil', () => {
   assert.equal(themeOf('dark', LIGHT_ABOVE + 0.01), 'light')
@@ -59,4 +25,27 @@ test('les zones de mesure bordent l ile a gauche et a droite, dans la bande du h
 test('au bord de l ecran une seule zone suffit', () => {
   const rects = sampleRectsOf({ x: 0, y: 0, width: 400, height: 50 }, { x: 0, y: 0, width: 3000, height: 1000 })
   assert.equal(rects.length, 1)
+})
+
+const { gridPointsOf, meanLuminanceOf } = require('./backdrop')
+
+test('une grille de points au milieu de chaque zone, sans toucher les bords', () => {
+  const points = gridPointsOf([{ x: 100, y: 10, width: 80, height: 16 }], 4, 2)
+  assert.equal(points.length, 8)
+  for (const point of points) assert.ok(point.x > 100 && point.x < 180 && point.y > 10 && point.y < 26)
+  assert.equal(new Set(points.map(point => `${point.x},${point.y}`)).size, 8)
+})
+
+test('luminance moyenne de couleurs lues sur l ecran : blanc 1, noir 0, trous ignores', () => {
+  assert.ok(Math.abs(meanLuminanceOf([[255, 255, 255], [255, 255, 255]]) - 1) < 0.001)
+  assert.equal(meanLuminanceOf([[0, 0, 0]]), 0)
+  assert.ok(Math.abs(meanLuminanceOf([[255, 255, 255], null, [0, 0, 0]]) - 0.5) < 0.01)
+  assert.equal(meanLuminanceOf([null, null]), null)
+  assert.equal(meanLuminanceOf([]), null)
+})
+
+test('les zones se mesurent aussi en pixels reels de l ecran (unite de 4)', () => {
+  const rects = sampleRectsOf({ x: 1000, y: 0, width: 400, height: 50 }, { x: 0, y: 0, width: 3000, height: 1000 }, 4)
+  assert.equal(rects.length, 2)
+  assert.equal(rects[0].width, 320)
 })

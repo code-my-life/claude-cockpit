@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, desktopCapturer, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } = require('electron')
 const crypto = require('node:crypto')
 const path = require('node:path')
 const fs = require('node:fs')
@@ -6,7 +6,8 @@ const { createIslandController } = require('./island/controller')
 const { applyBlur, NIGHT_TINT } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
 const { createFullscreenProbe } = require('./island/fullscreen')
-const { luminanceOf, themeOf, sampleRectsOf } = require('./island/backdrop')
+const { themeOf, sampleRectsOf, gridPointsOf, meanLuminanceOf } = require('./island/backdrop')
+const { readPixels } = require('./island/pixels')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
@@ -35,7 +36,11 @@ const LAUNCHER_SHORTCUTS = process.platform === 'darwin' ? ['Command+Alt+Space',
 // Teinte du verre de l'île, légère : le bureau doit se voir nettement. Le verre acrylique du système est sombre à sa base ; sur un
 // bureau clair la teinte est claire et la page passe en Papier (voir island/backdrop.js). Format 0xAABBGGRR.
 const ISLAND_TINTS = { dark: 0x28121316, light: 0x40ecf0f0 }
-const BACKDROP_SCALE = 4
+const BACKDROP_UNIT = 4
+// 12 lectures : GetPixel coûte environ 4 ms le pixel sur le bureau composé, donc peu de points, et jamais pendant une morphose.
+const BACKDROP_COLUMNS = 3
+const BACKDROP_ROWS = 2
+const BACKDROP_DEBOUNCE_MS = 500
 const BACKDROP_EVERY_MS = 8000
 // Réglage de mise au point : ralentit la morphose (variable d'environnement du lanceur, jamais exposée à la page).
 const MOTION_SCALE = Number(process.env.COCKPIT_ISLAND_SLOW) || 1
@@ -117,10 +122,8 @@ const workArea = () => screen.getPrimaryDisplay().workArea
 
 const fullscreenProbe = createFullscreenProbe({ onError: error => logLine(`sonde de l'état Windows en échec, les sons ne se taisent plus selon cet état (${oneLine(error && error.message)})`) })
 
-// Thème de l'île selon le bureau derrière (Nuit ou Papier) : on mesure la luminance de part et d'autre de l'île sur une capture
-// réduite de l'écran, puis la teinte acrylique et la page suivent. Une mesure à l'apparition, puis toutes les 8 s tant qu'elle est visible.
+// Thème de l'île selon le bureau derrière (Nuit ou Papier) : on mesure la luminance de part et d'autre de l'île, puis la teinte acrylique et la page suivent. Une mesure à l'apparition, puis toutes les 8 s tant qu'elle est visible.
 let islandTheme = 'dark'
-let isSampling = false
 const setIslandTheme = theme => {
   if (win === null || win.isDestroyed()) return
   if (theme !== islandTheme) {
@@ -130,36 +133,36 @@ const setIslandTheme = theme => {
   win.webContents.send('island-theme', theme)
 }
 
-const backdropLuminance = async () => {
-  const display = screen.getDisplayMatching(win.getBounds())
-  const size = { width: Math.round(display.size.width / BACKDROP_SCALE), height: Math.round(display.size.height / BACKDROP_SCALE) }
-  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: size })
-  const source = sources.find(candidate => candidate.display_id === String(display.id)) || sources[0]
-  if (source === undefined || source.thumbnail.isEmpty()) return null
-  const shot = source.thumbnail.getSize()
-  const toThumb = value => Math.round(value / BACKDROP_SCALE)
+// Quelques pixels de l'écran de part et d'autre de l'île (GetPixel) : environ 50 ms, contre 350 ms pour une capture, et seulement hors morphose.
+const backdropLuminance = () => {
   const bounds = win.getBounds()
-  const island = { x: toThumb(bounds.x - display.bounds.x), y: toThumb(bounds.y - display.bounds.y), width: toThumb(bounds.width), height: toThumb(bounds.height) }
-  const rects = sampleRectsOf(island, { x: 0, y: 0, width: shot.width, height: shot.height })
-  return luminanceOf({ data: source.thumbnail.toBitmap(), width: shot.width, height: shot.height }, rects)
+  const display = screen.getDisplayMatching(bounds)
+  const island = screen.dipToScreenRect(win, bounds)
+  const area = screen.dipToScreenRect(win, display.bounds)
+  const points = gridPointsOf(sampleRectsOf(island, area, BACKDROP_UNIT), BACKDROP_COLUMNS, BACKDROP_ROWS)
+  return meanLuminanceOf(readPixels(points))
 }
 
-const sampleBackdrop = async () => {
-  if (isSampling || win === null || win.isDestroyed() || !win.isVisible()) return
-  isSampling = true
+let sampleTimer = null
+const requestBackdropSample = () => {
+  clearTimeout(sampleTimer)
+  sampleTimer = setTimeout(sampleBackdrop, BACKDROP_DEBOUNCE_MS)
+}
+
+const sampleBackdrop = () => {
+  if (win === null || win.isDestroyed() || !win.isVisible()) return
+  if (island !== null && island.isAnimating()) { requestBackdropSample(); return }
   try {
-    setIslandTheme(themeOf(islandTheme, await backdropLuminance()))
+    setIslandTheme(themeOf(islandTheme, backdropLuminance()))
   } catch (error) {
     logLine(`thème de l'île : mesure du bureau impossible (${oneLine(error && error.message)})`)
-  } finally {
-    isSampling = false
   }
 }
 
 // Le contrôleur d'île tient l'automate et la géométrie : la fenêtre épouse l'île et s'anime avec elle.
 const createIsland = () => createIslandController({
   getArea: workArea,
-  applyBounds: bounds => { if (win !== null) win.setBounds(bounds) },
+  applyBounds: bounds => { if (win !== null) win.setBounds(bounds); if (process.env.DBG_BOUNDS) fs.appendFileSync(process.env.DBG_BOUNDS, Date.now() + ' ' + JSON.stringify(bounds) + ' ' + new Error().stack.split(String.fromCharCode(10)).slice(2, 5).map(x => x.slice(-70)).join(' < ') + String.fromCharCode(10)) },
   motionScale: MOTION_SCALE,
   getCursor: () => screen.getCursorScreenPoint(),
   // Caché, l'île n'a plus de fenêtre : le bord haut est surveillé par sondage du curseur.
@@ -173,7 +176,7 @@ const createIsland = () => createIslandController({
   isScreenReaderActive: () => app.isAccessibilitySupportEnabled(),
   send: (channel, payload, cause) => {
     if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload, cause)
-    if (channel === 'island-state' && payload !== 'hidden') sampleBackdrop()
+    if (channel === 'island-state' && payload !== 'hidden') requestBackdropSample()
   },
 })
 
