@@ -32,7 +32,7 @@ const fakeClock = () => {
   }
 }
 
-const setup = () => {
+const setup = (overrides = {}) => {
   const clock = fakeClock()
   const log = { bounds: [], shapes: [], sent: [], visible: [], cursorReads: 0, focus: 0 }
   const cursor = { value: AWAY }
@@ -45,6 +45,7 @@ const setup = () => {
     setVisible: isVisible => log.visible.push(isVisible),
     focusWindow: () => { log.focus++ },
     send: (channel, payload, cause) => log.sent.push([channel, payload, cause]),
+    ...overrides,
   })
   island.setDockSize(420, 96)
   return { clock, log, island, cursor }
@@ -252,4 +253,66 @@ test('dispose arrete le sondage et les minuteries', () => {
   hide(ctx)
   ctx.island.dispose()
   assert.equal(ctx.clock.pending(), 0)
+})
+
+test('forceHide masque meme une ile epinglee, et le sondage reprend', () => {
+  const { island, log, clock } = setup()
+  island.setPinned('attention')
+  island.forceHide()
+  assert.equal(island.phase(), 'hidden')
+  clock.advance(SETTLE_MS)
+  assert.equal(last(log.visible), false)
+  const reads = log.cursorReads
+  clock.advance(POLL_INTERVAL_MS * 3)
+  assert.ok(log.cursorReads > reads)
+})
+
+test('apres forceHide, une nouvelle attente epingle de nouveau', () => {
+  const { island } = setup()
+  island.setPinned('attention')
+  island.forceHide()
+  island.setPinned('none')
+  island.setPinned('attention')
+  assert.equal(island.phase(), 'compact')
+})
+
+test('plein ecran : le bord ne revele rien, meme avec le curseur dessus', () => {
+  const ctx = setup({ isFullscreenActive: () => true })
+  hide(ctx)
+  ctx.cursor.value = AT_EDGE
+  ctx.clock.advance(POLL_INTERVAL_MS + INTENT_DELAY_MS * 3)
+  assert.equal(ctx.island.phase(), 'hidden')
+})
+
+test('hors plein ecran le meme curseur revele l ile', () => {
+  const ctx = setup({ isFullscreenActive: () => false })
+  hide(ctx)
+  ctx.cursor.value = AT_EDGE
+  ctx.clock.advance(POLL_INTERVAL_MS + INTENT_DELAY_MS)
+  assert.equal(ctx.island.phase(), 'compact')
+})
+
+test('lecteur d ecran actif : une revelation par evenement donne le focus a la fenetre', () => {
+  const ctx = setup({ isScreenReaderActive: () => true })
+  hide(ctx)
+  const before = ctx.log.focus
+  ctx.island.event()
+  assert.equal(ctx.log.focus, before + 1)
+})
+
+test('lecteur d ecran actif : une revelation au seul pointeur ne prend pas le focus', () => {
+  const ctx = setup({ isScreenReaderActive: () => true })
+  hide(ctx)
+  const before = ctx.log.focus
+  ctx.cursor.value = AT_EDGE
+  ctx.clock.advance(POLL_INTERVAL_MS + INTENT_DELAY_MS)
+  assert.equal(ctx.log.focus, before)
+})
+
+test('sans lecteur d ecran : pas de focus vole a une revelation par evenement', () => {
+  const ctx = setup()
+  hide(ctx)
+  const before = ctx.log.focus
+  ctx.island.event()
+  assert.equal(ctx.log.focus, before)
 })

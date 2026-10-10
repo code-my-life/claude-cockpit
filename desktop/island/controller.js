@@ -12,7 +12,7 @@ const realClock = {
   clearTimer: handle => clearTimeout(handle),
 }
 
-const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, setVisible, focusWindow = () => {}, send, clock = realClock }) => {
+const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, setVisible, focusWindow = () => {}, isFullscreenActive = () => false, isScreenReaderActive = () => false, send, clock = realClock }) => {
   let sizes = { dockWidth: DEFAULT_DOCK.width, dockHeight: DEFAULT_DOCK.height, sheetWidth: 0, sheetHeight: 0 }
   let appliedPhase = HIDDEN
   let hasReducedMotion = false
@@ -40,7 +40,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
   }
 
   // Le curseur n'est sondé que tant que l'île est cachée.
-  const edgePoller = createEdgePoller({ clock, getCursor, getArea, onEdge: isAtEdge => fsm.edge(isAtEdge) })
+  const edgePoller = createEdgePoller({ clock, getCursor, getArea, onEdge: isAtEdge => fsm.edge(isAtEdge && !isFullscreenActive()) })
 
   const settleNow = () => {
     cancelSettle()
@@ -55,6 +55,8 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
     if (delay === 0) place(to)
     else settleTimer = clock.setTimer(() => { settleTimer = null; place(fsm.state()) }, delay)
     send('island-state', to, cause)
+    // Lecteur d'écran : l'annonce n'est lue que si la fenêtre a le focus.
+    if (from === HIDDEN && cause === 'event' && isScreenReaderActive()) focusWindow()
   }
 
   const fsm = createIslandFsm({ clock, onChange })
@@ -67,6 +69,11 @@ const createIslandController = ({ getArea, getCursor, applyBounds, applyShape, s
     phase: () => fsm.state(),
     start() { fsm.reveal() },
     event() { fsm.reveal() },
+    forceHide() {
+      pageKind = 'none'
+      isOffline = false
+      fsm.forceHide()
+    },
     // Accès clavier : révèle l'île, la montre tout de suite et donne le focus au dock.
     showAndFocus() {
       fsm.reveal()

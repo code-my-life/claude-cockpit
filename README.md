@@ -86,6 +86,7 @@ Retire la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.j
 
 - **Durées d'ouverture et de fermeture** : 280 ms à l'ouverture et 180 ms à la fermeture (glissement depuis le bord, jetons locaux `--island-open` et `--island-close`), au lieu des 150 ms du modèle. L'île est une pièce qui apparaît et disparaît de l'écran, pas un changement d'état d'interface. Pas de rebond, pas d'`opacity`, pas de filtre ; `prefers-reduced-motion` donne les états finaux directs.
 - **Surface papier, pas verre** : l'île flotte sur le bureau, sans scène derrière, donc le verre n'aurait rien à réfracter. Le dock et la fiche utilisent `data-surface="paper"` (fond `--plate`, ombre `--shadow-pop`). La mise en page de la fiche, que le modèle réserve au verre, est reprise dans un sélecteur `body.mini-mode .t-sheet`.
+- **Coins arrondis gardés sur papier** : le modèle prévoit des coins droits sur la surface papier ; le dock, la fiche et les pastilles gardent leurs rayons (`--radius-glass`, `--radius-glass-s`, cercles) pour rester lisibles comme une île détachée du bureau.
 - **Clip-path** : la fiche s'ouvre et se ferme par `clip-path` et `transform`, sans toucher à l'opacité.
 - **Page de secours hors ligne** : une URL `data:` n'a pas accès aux jetons ; ses valeurs recopient le thème Nuit (commentaire dans `desktop/main.js`).
 - **Hérité, non traité** : `.mini-head.working > *` garde une opacité de 0,6 sur le contenu des pastilles ; les tailles `--head` et `--pad` du dock restent en pixels.

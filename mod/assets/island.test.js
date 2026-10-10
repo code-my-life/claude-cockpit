@@ -15,6 +15,9 @@ const {
   shouldAnnounce,
   createThrottle,
   createLeaveTimer,
+  hasNewWaiting,
+  focusSelectorOf,
+  zoneWordOf,
 } = require('./island');
 
 const targetMatching = selector => ({ closest: query => (query === selector ? {} : null) });
@@ -141,4 +144,33 @@ test('fermeture differee : replanifier ne laisse qu une minuterie', () => {
   leave.schedule();
   leave.schedule();
   assert.equal(timers.count(), 1);
+});
+
+test('hasNewWaiting : une conversation qui se met a attendre est nouvelle', () => {
+  const waiting = ['permission', 'done', 'external'];
+  const rows = [{ engineId: 'a', status: 'permission' }, { engineId: 'b', status: 'thinking' }];
+  assert.equal(hasNewWaiting(null, rows, waiting), false);
+  assert.equal(hasNewWaiting(new Set(['a']), rows, waiting), false);
+  assert.equal(hasNewWaiting(new Set(), rows, waiting), true);
+  assert.equal(hasNewWaiting(new Set(['a']), [...rows, { engineId: 'c', status: 'done' }], waiting), true);
+});
+
+test('focusSelectorOf : retrouve un bouton du dock par data-mini ou data-engine', () => {
+  const element = dataset => ({ dataset });
+  assert.equal(focusSelectorOf(element({ mini: 'search' })), '[data-mini="search"]');
+  assert.equal(focusSelectorOf(element({ engine: 'abc', action: 'team-open' })), '[data-engine="abc"][data-action="team-open"]');
+  assert.equal(focusSelectorOf(element({})), null);
+  assert.equal(focusSelectorOf(null), null);
+});
+
+test('focusSelectorOf : un identifiant avec des guillemets est echappe', () => {
+  assert.equal(focusSelectorOf({ dataset: { mini: 'a"b' } }), '[data-mini="a\\"b"]');
+});
+
+test('zoneWordOf : un mot pour les etats voiles ; l attente a deja le sien dans l etat de la tete', () => {
+  assert.equal(zoneWordOf('working'), 'au travail');
+  assert.equal(zoneWordOf('later'), 'remise à plus tard');
+  assert.equal(zoneWordOf('stuck'), 'bloquée');
+  assert.equal(zoneWordOf('waiting'), "");
+  assert.equal(zoneWordOf('rest'), '');
 });

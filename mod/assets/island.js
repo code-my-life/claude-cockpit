@@ -47,6 +47,26 @@
     return count === 1 ? '1 conversation t\'attend' : `${count} conversations t\'attendent`;
   };
 
+  // Une attente nouvelle : un identifiant qui attend maintenant et n'attendait pas au rendu précédent.
+  const hasNewWaiting = (previousIds, rows, waitingStatuses) => {
+    if (previousIds === null) return false;
+    return rows.some(row => waitingStatuses.includes(row.status) && !previousIds.has(row.engineId));
+  };
+
+  // Le dock est réécrit à chaque rendu : de quoi retrouver l'élément qui avait le focus.
+  const focusSelectorOf = element => {
+    if (!element || !element.dataset) return null;
+    const { mini, engine, action } = element.dataset;
+    const quote = value => String(value).replace(/(["\\])/g, '\\$1');
+    if (mini) return `[data-mini="${quote(mini)}"]`;
+    if (engine) return `[data-engine="${quote(engine)}"]${action ? `[data-action="${quote(action)}"]` : ''}`;
+    return null;
+  };
+
+  // L'état d'une tête passe aussi par un mot (nom accessible, infobulle), pas seulement par le voile.
+  const ZONE_WORDS = { working: 'au travail', later: 'remise à plus tard', stuck: 'bloquée' };
+  const zoneWordOf = zone => ZONE_WORDS[zone] || '';
+
   const shouldPauseLoops = phase => phase === 'hidden';
 
   const createThrottle = (action, intervalMs, clock = Date.now) => {
@@ -88,6 +108,7 @@
     let previousStatuses = null;
     let lastPin = null;
     let waitingCount = 0;
+    let waitingIds = null;
     let phase = 'hidden';
 
     const setPhase = next => {
@@ -146,7 +167,10 @@
       previousStatuses = next;
       if (hasChanged) desktop.islandEvent();
       const pin = pinKindOf(rows);
-      if (pin === lastPin) return;
+      const isNewWaiting = hasNewWaiting(waitingIds, rows, waitingStatuses);
+      waitingIds = new Set(rows.filter(row => waitingStatuses.includes(row.status)).map(row => row.engineId));
+      // Après un masquage forcé, l'épinglage se réarme à la prochaine attente nouvelle.
+      if (pin === lastPin && !(isNewWaiting && pin !== PIN_NONE)) return;
       lastPin = pin;
       desktop.islandPinned(pin);
     };
@@ -156,7 +180,7 @@
 
   const api = {
     SHAPE_SELECTOR, ACTIVITY_THROTTLE_MS, LEAVE_MS, isInsideShape, createPointerReporter, statusChanges, waitingCountOf,
-    pinKindOf, announcementOf, shouldPauseLoops, shouldAnnounce, createThrottle, createLeaveTimer, init,
+    pinKindOf, announcementOf, hasNewWaiting, focusSelectorOf, zoneWordOf, shouldPauseLoops, shouldAnnounce, createThrottle, createLeaveTimer, init,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

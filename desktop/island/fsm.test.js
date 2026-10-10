@@ -248,6 +248,24 @@ test('Echap cache une ile dont l epinglage done a expire', () => {
   assert.equal(fsm.state(), 'hidden')
 })
 
+test('forceHide cache une ile epinglee, hover et epinglage compris', () => {
+  const { fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.hover(true)
+  fsm.forceHide()
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('forceHide : l epinglage se rearme a la prochaine attente nouvelle', () => {
+  const { fsm, clock } = setup()
+  fsm.setPinned('attention')
+  fsm.forceHide()
+  clock.advance(PIN_DONE_MS * 2)
+  assert.equal(fsm.state(), 'hidden')
+  fsm.setPinned('attention')
+  assert.equal(fsm.state(), 'compact')
+})
+
 test('Echap replie l ile ouverte puis cache l ile reduite', () => {
   const { fsm, changes } = setup()
   fsm.open()

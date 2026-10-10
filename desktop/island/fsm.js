@@ -138,6 +138,14 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
       if (isPinned()) { markEvent(); showCompact() }
       rearm(0)
     },
+    // Masquage demandé par l'utilisateur : ignore l'épinglage, qui se réarme à la prochaine attente.
+    forceHide() {
+      applyPin(PIN_NONE)
+      isHovered = false
+      clearIntent()
+      clearTimer()
+      go(HIDDEN)
+    },
     dispose() {
       clearTimer()
       clearIntent()

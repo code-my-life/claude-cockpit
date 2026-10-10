@@ -267,6 +267,8 @@
   .dock[data-layout="grid"] .dock-heads { display: grid; grid-template-columns: repeat(var(--grid-columns, 1), auto); }
   .dock button { -webkit-app-region: no-drag; }
   .dock .dock-count.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: calc(var(--head) / 2.4); --glass-bezel: 14px; --glass-thickness: 34px; }
+  /* Sur papier le fond gris du modèle ramenait le contraste du libellé à 2,2:1 : fond plus sombre, jeton --paper-deep. */
+  .dock .dock-count.ep-glass, .dock .mini-head.ep-glass { background: var(--paper-deep); }
   .dock-count-value { font-family: var(--font-display); font-size: calc(var(--head) * 0.5); line-height: 1; color: var(--ink); display: flex; align-items: center; justify-content: center; }
   .dock-count.calm .dock-count-value { color: var(--success); }
   .dock-count-value .ep-icon { width: calc(var(--head) * 0.36); height: calc(var(--head) * 0.36); }
@@ -276,7 +278,7 @@
   .dock .mini-head.ep-glass { appearance: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: calc(var(--head) + 14px); height: calc(var(--head) + 14px); border-radius: 50%; --glass-bezel: 12px; --glass-thickness: 28px; transition: transform 150ms ease-out; }
   .dock .mini-head.ep-glass:hover { transform: translateY(-2px); }
   .dock[data-layout="column"] .mini-head.ep-glass:hover { transform: translateX(-2px); }
-  .mini-head.working > *, .mini-head.later > * { opacity: 0.6; }
+  .mini-head.working > *, .mini-head.later > * { opacity: var(--opacity-muted); }
   .mini-head.working:hover { opacity: 1; }
   /* Sur papier les visages perdent leur teinte de verre : la teinte d'identité passe sur le visage. */
   body.mini-mode .t-face { background: var(--epf, var(--plate)); border-radius: var(--radius-round); }
@@ -1302,8 +1304,9 @@
 
   const renderMiniHead = (row, zone, isFresh, head) => {
     const face = teamFaceOf(row);
-    const label = `${row.title} : ${face.bubble}`;
-    const tip = `${row.title}\n${face.state}\n${face.bubble}`;
+    const word = window.CockpitIsland.zoneWordOf(zone);
+    const label = `${row.title}${word ? ` (${word})` : ''} : ${face.bubble}`;
+    const tip = `${row.title}${word ? `\n${word}` : ''}\n${face.state}\n${face.bubble}`;
     return `<button type="button" class="mini-head ep-glass ${zone} ${isFresh ? 'fresh' : ''}" data-engine="${escapeHtml(row.engineId)}" data-action="team-open" aria-label="${escapeHtml(label)}" title="${escapeHtml(tip)}" style="${faceStyleOf(row.engineId)}">
       ${renderFace(row, head, { isBare: true })}
     </button>`;
@@ -1370,7 +1373,10 @@
     dock.dataset.size = prefs.size;
     dock.dataset.layout = prefs.layout;
     dock.style.setProperty('--grid-columns', String(gridColumns));
+    // Le dock est réécrit : le focus clavier retrouve son élément.
+    const focused = dock.contains(document.activeElement) ? window.CockpitIsland.focusSelectorOf(document.activeElement) : null;
     document.getElementById('dock-items').innerHTML = `<span class="dock-tools">${newButton}${layoutButton}${searchButton}${quit}</span>${counter}<span class="dock-heads">${waiting}${separator}${others}${calm}</span>`;
+    if (focused) dock.querySelector(focused)?.focus({ preventScroll: true });
     document.getElementById('mini-pop').innerHTML = popup;
     document.title = count > 0 ? `(${count}) Mini équipe` : 'Mini équipe';
     syncDesktopWindow();

@@ -5,6 +5,7 @@ const fs = require('node:fs')
 const { createIslandController } = require('./island/controller')
 const { applyBlur } = require('./blur')
 const { launcherBoundsOf, LAUNCHER_WIDTH, LAUNCHER_MIN_HEIGHT } = require('./launcher')
+const { createFullscreenProbe } = require('./island/fullscreen')
 const { startEmbeddedServer } = require('./embedded-server')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
@@ -36,7 +37,8 @@ const CLEAR = '#00000000'
 const TITLE_SYMBOLS = '#ecece6'
 const TITLE_BAR_HEIGHT = 36
 const SECURE_WEB_PREFERENCES = { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }
-// Page de secours (URL data:, sans accès aux jetons CSS). Ces valeurs sont le miroir du thème Nuit :
+// Page de secours (URL data:, sans accès aux jetons CSS). Ces valeurs sont le miroir du thème chargé
+// par le cockpit, <html data-theme="dark"> (Nuit) dans conversations.html, jamais changé à l'exécution :
 // margin 16px = --space-4, fond #1b1c20 = --plate, rayon 24px = --radius-glass, texte #a5a8ae = --ink-2,
 // Consolas en repli de --font-mono. À mettre à jour avec le thème.
 const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:16px;background:#1b1c20;border-radius:24px;height:calc(100vh - 32px);display:flex;align-items:center;justify-content:center;font:500 11px/1 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae">Cockpit éteint : ouvre une conversation Claude</body>')}`
@@ -101,6 +103,8 @@ const startServer = async () => {
 
 const workArea = () => screen.getPrimaryDisplay().workArea
 
+const fullscreenProbe = createFullscreenProbe()
+
 // Le contrôleur d'île tient l'automate, la géométrie et les clics traversants.
 const createIsland = () => createIslandController({
   getArea: workArea,
@@ -115,6 +119,8 @@ const createIsland = () => createIslandController({
     if (!isVisible && win.isVisible()) win.hide()
   },
   focusWindow: () => { if (win !== null) win.focus() },
+  isFullscreenActive: () => fullscreenProbe.isActive(),
+  isScreenReaderActive: () => app.isAccessibilitySupportEnabled(),
   send: (channel, payload, cause) => { if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload, cause) },
 })
 
@@ -283,7 +289,7 @@ const TRAY_SCALE = 2
 
 const toggleDock = () => {
   if (win === null) return createWindow()
-  if (win.isVisible()) island.escape()
+  if (win.isVisible()) island.forceHide()
   else island.event()
 }
 
