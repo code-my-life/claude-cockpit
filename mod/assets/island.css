@@ -64,11 +64,12 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .details .is-bubble.user { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .island .details p, .island .details ul, .island .details ol { margin: var(--space-1) 0; }
 /* La fenêtre de l'île fait 800 px : le modèle y applique sa mise en page étroite (.ep-side-group en ligne, titre masqué) ; on garde la colonne. */
-.island .side { align-self: center; display: grid; gap: 2px; }
+/* Colonne bornée à sa piste (312 px) : un titre long s'ellipse au lieu d'élargir la liste au-delà de l'île. */
+.island .side { align-self: center; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; min-width: 0; }
 .island .side .ep-side-title { display: block; }
-.island .side .ep-side-link { padding-block: var(--space-1); }
+.island .side .ep-side-link { padding-block: var(--space-1); min-width: 0; }
 .island .side .ep-side-link .ep-tag { white-space: nowrap; }
-.island .side .ep-side-link span.pn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.island .side .ep-side-link span.pn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .island .side .is-tools { display: flex; justify-content: flex-end; gap: var(--space-1); padding-top: var(--space-2); }
 .island .is-tools [aria-pressed="false"] { color: var(--ink-faint); }
 
