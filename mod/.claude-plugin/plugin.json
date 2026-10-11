@@ -3,5 +3,13 @@
   "version": "0.1.0",
   "author": { "name": "Code My Life" },
   "description": "Panneau listant les conversations ouvertes et leur statut : travaille, attend une permission, a fini",
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "ticketUrl": {
+      "type": "string",
+      "title": "Lien des tickets",
+      "description": "Adresse https d'un ticket, {ticket} à la place du numéro (sinon ajouté à la fin). Vide : les numéros de ticket s'affichent sans lien.",
+      "default": ""
+    }
+  }
 }

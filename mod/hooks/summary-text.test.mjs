@@ -11,7 +11,7 @@ import {
   parseSummaryJson,
   REPLY_PREAMBLE,
 } from './summary-text.mts'
-import { exportRows, inlineScriptSafe, rowStatsOf, seedScriptOf, versionOf } from './page-data.mts'
+import { exportRows, inlineScriptSafe, rowStatsOf, seedScriptOf, ticketTemplateOf, versionOf } from './page-data.mts'
 
 test('the model JSON reply gives what Claude waits for, its kind and the plain version', () => {
   const reply = 'Voici : {"type": "q", "attend": "« Valider la PR. »", "clair": "  - Une ligne  "}'
@@ -66,6 +66,14 @@ test('page data stays inert inside a script element', () => {
   assert.equal(safe.includes(separators[1]), false)
   assert.deepEqual(JSON.parse(safe), { text: `</script>${separators}` })
   assert.match(seedScriptOf('42', '{}'), /^<script>window\.__PAGE_VERSION__ = "42"; window\.__CONVERSATIONS__ = \{\};<\/script>$/)
+})
+
+test('the ticket link option takes an https address, with the number where it says or at the end', () => {
+  assert.equal(ticketTemplateOf(' https://tickets.example.com/browse/PROJ-{ticket} '), 'https://tickets.example.com/browse/PROJ-{ticket}')
+  assert.equal(ticketTemplateOf('https://tickets.example.com/requests?ticket='), 'https://tickets.example.com/requests?ticket={ticket}')
+  for (const refused of ['', 'http://tickets.example.com/', 'javascript:alert(1)', 'https://', 'https://exemple', 'https://a.b/x y', 42, undefined]) {
+    assert.equal(ticketTemplateOf(refused), null, String(refused))
+  }
 })
 
 test('the page version follows its code', () => {

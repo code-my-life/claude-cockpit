@@ -26,6 +26,15 @@ export const exportRows = (rows: ConversationRow[], shared: Record<string, RowSu
     context: row.context,
   }))
 
+// The ticket link set in the mod's options: an https address, `{ticket}` where
+// the number goes (at the end when absent). Anything else gives no link.
+export const ticketTemplateOf = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null
+  const template = raw.trim()
+  if (!/^https:\/\/[^\s/]+\.[^\s/]+/i.test(template) || /\s/.test(template)) return null
+  return template.includes('{ticket}') ? template : `${template}{ticket}`
+}
+
 export const versionOf = (text: string) => {
   let hash = 0
   for (let index = 0; index < text.length; index++) hash = (hash * 31 + text.charCodeAt(index)) | 0

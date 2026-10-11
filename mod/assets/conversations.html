@@ -730,9 +730,13 @@
     MERGED: ['fusionnée', 'ep-tag--success'],
     CLOSED: ['fermée', 'ctx-quiet'],
   };
-  const TICKET_URL = 'https://tickets.example.com/requests?ticket=';
   const GITHUB_URL = 'https://github.com/';
   const safeHref = value => (/^https:\/\//.test(String(value || '')) ? value : '');
+  // The link set in the mod's options (« Lien des tickets »), {ticket} where the number goes; none, no link.
+  const ticketHrefOf = ticket => {
+    const template = typeof state.data.ticketUrl === 'string' ? state.data.ticketUrl : '';
+    return template ? safeHref(template.split('{ticket}').join(encodeURIComponent(ticket))) : '';
+  };
 
   const contextTag = (content, isInteractive, { href = '', action = '', title = '', tone = '' } = {}) => {
     const className = `ep-tag ctx-tag ${tone}`;
@@ -754,7 +758,7 @@
     const prRepos = new Set(prs.map(pr => pr.repo));
     const isMultiRepo = prRepos.size > 1;
     if (context && context.repo && !isMultiRepo) tags.push(contextTag(escapeHtml(context.repo), isInteractive, { href: `${GITHUB_URL}${context.repo}`, title: 'Ouvrir le dépôt sur GitHub' }));
-    if (context && context.ticket) tags.push(contextTag(`#${escapeHtml(context.ticket)}`, isInteractive, { href: `${TICKET_URL}${context.ticket}`, title: 'Ouvrir le ticket' }));
+    if (context && context.ticket) tags.push(contextTag(`#${escapeHtml(context.ticket)}`, isInteractive, { href: ticketHrefOf(context.ticket), title: 'Ouvrir le ticket' }));
     const shown = prs.slice(0, limit);
     for (const pr of shown) {
       const [label, tone] = PR_LABELS[pr.state] || [String(pr.state || '').toLowerCase(), ''];
