@@ -4,6 +4,9 @@ const MAX_SUMMARY_CHARS = 300
 const MAX_DETAIL_CHARS = 4000
 const JSON_INDENT = 2
 const DENY_MESSAGE = 'Refusé depuis le cockpit.'
+const ALLOW_REASON = 'Autorisé depuis le cockpit.'
+// Outils qui demandent la personne elle-même (une question, un plan) : un hook ne peut que les durcir, jamais les valider.
+const PERSON_TOOLS = new Set(['AskUserQuestion', 'ExitPlanMode'])
 const MCP_PREFIX = 'mcp__'
 
 const textOf = value => (value === undefined || value === null ? '' : String(value))
@@ -53,4 +56,16 @@ export const decisionFor = (choice, suggestions) => {
   if (choice !== 'always') return null
   const hasRules = Array.isArray(suggestions) && suggestions.length > 0
   return hasRules ? { behavior: 'allow', updatedPermissions: suggestions } : { behavior: 'allow' }
+}
+
+// Claude Desktop décide lui-même des demandes (pas de hook PermissionRequest) : l'île tranche au niveau de tool.check.
+// Seul un vrai appel que Claude mettrait devant la personne y va.
+export const isIslandAsk = (verdict, call) =>
+  verdict?.decision === 'ask' && typeof call?.tool_use_id === 'string' && !PERSON_TOOLS.has(call.tool)
+
+// Le choix de l'île comme verdict de tool.check ; null rend la main à Claude (sa fenêtre s'affiche).
+export const verdictFor = choice => {
+  if (choice === 'allow' || choice === 'always') return { decision: 'allow', reason: ALLOW_REASON }
+  if (choice === 'deny') return { decision: 'deny', reason: DENY_MESSAGE }
+  return null
 }

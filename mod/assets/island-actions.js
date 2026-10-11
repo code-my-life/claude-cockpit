@@ -83,7 +83,8 @@
       if (ask === null || !ctx.model.isDecisionArmed(S.permShownAt, Date.now())) return;
       if (!(await actions.decide(ask.requestId, el.dataset.decision))) return;
       S.permissions = S.permissions.filter(entry => entry.requestId !== ask.requestId);
-      announce(el.dataset.decision === 'deny' ? `Refusé pour ${row.title}` : `Autorisé pour ${row.title}`);
+      const said = { deny: 'Refusé', defer: 'Rendu à Claude' }[el.dataset.decision] || 'Autorisé';
+      announce(`${said} pour ${row.title}`);
       ui().fold();
     };
 

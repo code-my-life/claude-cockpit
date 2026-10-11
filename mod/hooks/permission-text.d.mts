@@ -10,3 +10,7 @@ export type PermissionHookDecision<Rule> =
 export declare const describePermission: (toolName: unknown, input: unknown) => PermissionText
 
 export declare const decisionFor: <Rule>(choice: string | null, suggestions: Rule[] | undefined) => PermissionHookDecision<Rule> | null
+
+export declare const isIslandAsk: (verdict: { decision: string } | undefined, call: { tool: string; tool_use_id?: string }) => boolean
+
+export declare const verdictFor: (choice: string | null) => { decision: 'allow' | 'deny'; reason: string } | null

@@ -1,6 +1,6 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
-import { decisionFor, describePermission } from './permission-text.mjs'
+import { decisionFor, describePermission, isIslandAsk, verdictFor } from './permission-text.mjs'
 
 import type {
   ConversationContext,
@@ -730,6 +730,8 @@ const joinApp = async ($: EngineInterface, link: AppLink): Promise<JoinOutcome> 
 // steps aside by itself (exit code 4) once the app answers.
 // The permission request this conversation has open on the island, if any.
 let openPermission: string | null = null
+// Claude Desktop decides permission asks itself (no PermissionRequest hook): the island answers at tool.check there.
+let isDesktopSession = false
 
 const withdrawPermission = async ($: EngineInterface) => {
   const requestId = openPermission
@@ -1222,6 +1224,7 @@ const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     ownEngineId = await $.session.id()
+    isDesktopSession = (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) === 'claude-desktop'
     await $.command.register({
       name: 'sessions',
       description: 'Ouvre le panneau des conversations et de leur statut',
@@ -1268,8 +1271,16 @@ export const register: Register = on => {
     if (verdict.decision === 'ask' && e.tool_use_id !== undefined) {
       await writeOwn($, { status: 'permission' })
     }
-
-    return verdict
+    const link = appLink
+    if (!isDesktopSession || mode !== 'app' || link === null || !isIslandAsk(verdict, e)) return verdict
+    // Desktop shows its own dialog only once this verdict is given: the island answers first, or hands back to it.
+    const requestId = await askIsland($, link, e.tool, e.input, false)
+    if (requestId === null) return verdict
+    openPermission = requestId
+    const choice = await waitIslandChoice($, link, requestId, () => false)
+    if (choice === null) await withdrawPermission($)
+    else openPermission = null
+    return verdictFor(choice) ?? verdict
   })
 
   // The island answers permission requests next to the other hooks (coucou):

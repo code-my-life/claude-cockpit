@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { decisionFor, describePermission } from './permission-text.mjs'
+import { decisionFor, describePermission, isIslandAsk, verdictFor } from './permission-text.mjs'
 
 test('a command shows its first line, and the whole command in detail', () => {
   const described = describePermission('Bash', { command: 'npm test\nnpm run build', description: 'Lance les tests' })
@@ -56,4 +56,20 @@ test('always without a suggestion is a plain allow', () => {
 test('anything else gives no answer', () => {
   assert.equal(decisionFor(null, []), null)
   assert.equal(decisionFor('gone', []), null)
+})
+
+test('the island choice becomes a tool.check verdict', () => {
+  assert.deepEqual(verdictFor('allow'), { decision: 'allow', reason: 'Autorisé depuis le cockpit.' })
+  assert.deepEqual(verdictFor('always'), { decision: 'allow', reason: 'Autorisé depuis le cockpit.' })
+  assert.deepEqual(verdictFor('deny'), { decision: 'deny', reason: 'Refusé depuis le cockpit.' })
+  assert.equal(verdictFor('defer'), null)
+  assert.equal(verdictFor(null), null)
+})
+
+test('only a real call that Claude would put to the person goes to the island', () => {
+  assert.equal(isIslandAsk({ decision: 'ask' }, { tool: 'Bash', tool_use_id: 't1' }), true)
+  assert.equal(isIslandAsk({ decision: 'allow' }, { tool: 'Bash', tool_use_id: 't1' }), false)
+  assert.equal(isIslandAsk({ decision: 'ask' }, { tool: 'Bash' }), false)
+  assert.equal(isIslandAsk({ decision: 'ask' }, { tool: 'AskUserQuestion', tool_use_id: 't1' }), false)
+  assert.equal(isIslandAsk({ decision: 'ask' }, { tool: 'ExitPlanMode', tool_use_id: 't1' }), false)
 })

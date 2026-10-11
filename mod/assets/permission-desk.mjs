@@ -9,7 +9,8 @@ export const MAX_PENDING_PERMISSIONS = 50
 const MAX_SUMMARY_CHARS = 300
 const MAX_DETAIL_CHARS = 4000
 const MAX_TOOL_CHARS = 100
-const DECISIONS = new Set(['allow', 'deny', 'always'])
+// 'defer' rend la demande à Claude (sa propre fenêtre décide).
+const DECISIONS = new Set(['allow', 'deny', 'always', 'defer'])
 
 const textOf = (value, max) => String(value ?? '').slice(0, max)
 

@@ -119,3 +119,11 @@ test('texts are cut to a bounded size', () => {
   assert.ok(entry.summary.length <= 300)
   assert.ok(entry.detail.length <= 4000)
 })
+
+test('a request can be handed back to Claude', async () => {
+  const { desk } = deskWith()
+  const { requestId } = desk.ask(request)
+  const waiting = desk.waitDecision(requestId, 5000)
+  assert.equal(desk.decide(requestId, 'defer'), true)
+  assert.equal(await waiting, 'defer')
+})

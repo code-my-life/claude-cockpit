@@ -34,6 +34,7 @@
                   <button type="button" class="ep-btn" data-act="perm" data-decision="deny">Refuser</button>
                   <button type="button" class="ep-btn ep-btn--primary" data-act="perm" data-decision="allow">Autoriser</button>
                   <button type="button" class="ep-btn ep-btn--ghost" data-act="perm" data-decision="always" id="wAlways" data-ep-tip="Autoriser et ne plus demander pour cette règle">Toujours</button>
+                  <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="perm" data-decision="defer" data-ep-tip="Laisser Claude afficher sa propre demande">Dans Claude</button>
                 </div>
               </div>
               <p class="ep-hint" id="wNote" hidden></p>
