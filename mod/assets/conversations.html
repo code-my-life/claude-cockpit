@@ -1328,12 +1328,14 @@
   let toastExtent = '';
   let islandUi = null;
   let islandHost = null;
+  // Les demandes d'autorisation que l'app tient pour les conversations (lues à chaque signal de l'app).
+  let permissions = [];
 
   const toggleSounds = isOn => { if (desktop) desktop.setSounds(isOn); };
 
   const renderIsland = () => {
-    if (islandHost) islandHost.observe(state.data.rows);
-    islandUi.update(state.data.rows, { folders: state.data.folders, sounds: areSoundsOn });
+    if (islandHost) islandHost.observe(state.data.rows, permissions);
+    islandUi.update(state.data.rows, { folders: state.data.folders, sounds: areSoundsOn, permissions });
     const count = window.CockpitIslandModel.waitingOf(state.data.rows).length;
     document.title = count > 0 ? `(${count}) Île du cockpit` : 'Île du cockpit';
   };
@@ -2335,6 +2337,17 @@
       openCockpit: section => { if (desktop) desktop.openCockpit(section === 'search' ? 'search' : undefined); else window.open(section === 'search' ? '/#recherche' : '/', 'cockpit'); },
       setSounds: toggleSounds,
       quit: () => { if (desktop) desktop.quit(); },
+      decide: async (requestId, decision) => {
+        try {
+          const response = await sendPost('/permission', { requestId, decision });
+          if (response.ok) return true;
+          showReward('Décision non transmise', 'La demande a déjà été traitée ailleurs, ou la conversation est partie.', 'danger');
+        } catch {
+          showReward('Décision non transmise', 'Le cockpit ne répond pas : réessaie dans un instant.', 'danger');
+        }
+        await loadPermissions();
+        return false;
+      },
     };
     islandUi = window.CockpitIslandUi.create({ doc: document, win: window, host: document.getElementById('zone'), model: window.CockpitIslandModel, entities: window.CharacterEntity, helpers, actions, desktop, announce });
     if (desktop) {
@@ -2344,6 +2357,21 @@
       islandUi.setPhase('compact', 'event');
     }
     window.CockpitIsland.watchToasts(document, window, syncToasts);
+    if (desktop && desktop.onPermissionsChanged) {
+      desktop.onPermissionsChanged(() => { void loadPermissions(); });
+      void loadPermissions();
+    }
+  };
+
+  const loadPermissions = async () => {
+    try {
+      const response = await fetch(`${serverBase}/permissions`, { headers: { 'x-cockpit-token': cockpitToken } });
+      const body = response.ok ? await response.json() : null;
+      permissions = body && Array.isArray(body.requests) ? body.requests : [];
+    } catch {
+      permissions = [];
+    }
+    if (islandUi) renderIsland();
   };
 
   if (isIsland) {

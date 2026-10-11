@@ -143,20 +143,34 @@
       return 'Répondre demande la version servie du cockpit.';
     };
 
+    // Une autorisation que l'app tient : la commande et les trois décisions, à la place du champ de réponse. Les boutons
+    // s'arment 600 ms après l'arrivée d'une nouvelle demande (S.permShownAt), pour qu'un clic égaré ne l'autorise pas.
+    const renderPermission = (row, ask) => {
+      $('#wPerm').hidden = ask === null;
+      if (ask === null) return;
+      if (S.permId !== ask.requestId) { S.permId = ask.requestId; S.permShownAt = Date.now(); }
+      $('#wKind').textContent = `${ask.tool} · demande d'autorisation`;
+      $('#wQuote').textContent = ask.summary || 'Claude demande à continuer.';
+      $('#wCmd').textContent = ask.detail || ask.summary;
+      $('#wAlways').hidden = !ask.canAlways;
+    };
+
     const renderWait = () => {
       const row = ctx.waiting()[0] || ctx.focus();
       if (!row) return;
+      const ask = model.permissionOf(S.permissions, row.engineId);
       const can = ctx.canReply(row);
       const url = openUrlOf(row);
       $('#wName').textContent = row.title;
       $('#wKind').textContent = kindLabelOf(row);
       $('#wQuote').textContent = awaitingOf(row) || 'Regarde où en est cette conversation.';
+      renderPermission(row, ask);
       $('#replyForm').hidden = !can;
       $('#wQuick').hidden = !can;
       $('#wQuick').innerHTML = can ? quickReplies.map(text => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="quick" data-text="${esc(text)}">${esc(text)}</button>`).join('') : '';
-      $('#wNote').hidden = can;
+      $('#wNote').hidden = can || ask !== null;
       $('#wNote').textContent = cannotReplyNote(row);
-      $('#wOpen').hidden = can || !url;
+      $('#wOpen').hidden = can || ask !== null || !url;
       $('#wOpen').innerHTML = url ? `<button type="button" class="ep-btn ep-btn--primary" data-act="open">Ouvrir dans Claude ${icon('open')}</button>` : '';
       $$('[data-rail]', layerEl('wait')).forEach(rail => { rail.innerHTML = railHtml(); });
     };

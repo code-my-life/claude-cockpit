@@ -139,3 +139,26 @@ test('the status of the quick reply depends on the server and on the conversatio
   assert.equal(model.canReply(row('a', 'done'), { isServer: false }), false);
   assert.equal(model.canReply(row('a', 'permission'), { isServer: true }), false);
 });
+
+const ask = (engineId, extra = {}) => ({ requestId: `r-${engineId}`, engineId, tool: 'Commande', summary: 'npm test', detail: 'npm test', canAlways: true, askedAt: 1000, ...extra });
+
+test('the permission request of a conversation is found by its id', () => {
+  const asks = [ask('a'), ask('b')];
+  assert.equal(model.permissionOf(asks, 'b').requestId, 'r-b');
+  assert.equal(model.permissionOf(asks, 'z'), null);
+  assert.equal(model.permissionOf(undefined, 'a'), null);
+});
+
+test('a permission the island holds can be answered from the island, any other cannot', () => {
+  const waiting = row('a', 'permission');
+  assert.equal(model.canDecide(waiting, [ask('a')]), true);
+  assert.equal(model.canDecide(waiting, []), false);
+  assert.equal(model.canDecide(row('a', 'done'), [ask('a')]), true);
+  assert.equal(model.canDecide(null, [ask('a')]), false);
+});
+
+test('the buttons of a permission ignore clicks during its first 600 ms', () => {
+  assert.equal(model.isDecisionArmed(1000, 1500), false);
+  assert.equal(model.isDecisionArmed(1000, 1600), true);
+  assert.equal(model.isDecisionArmed(null, 1600), false);
+});

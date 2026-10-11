@@ -28,6 +28,14 @@
                 <button type="submit" class="ep-btn ep-btn--primary" id="replySend">Envoyer <span class="ep-icon ep-icon--arrow" aria-hidden="true"></span></button>
               </form>
               <div class="ep-cluster" id="wQuick" role="group" aria-label="Réponses courtes"></div>
+              <div class="perm" id="wPerm" hidden>
+                <pre class="ep-code" id="wCmd" tabindex="0" aria-label="Ce que Claude veut faire"></pre>
+                <div class="is-acts" role="group" aria-label="Décision">
+                  <button type="button" class="ep-btn" data-act="perm" data-decision="deny">Refuser</button>
+                  <button type="button" class="ep-btn ep-btn--primary" data-act="perm" data-decision="allow">Autoriser</button>
+                  <button type="button" class="ep-btn ep-btn--ghost" data-act="perm" data-decision="always" id="wAlways" data-ep-tip="Autoriser et ne plus demander pour cette règle">Toujours</button>
+                </div>
+              </div>
               <p class="ep-hint" id="wNote" hidden></p>
               <div class="is-acts" id="wOpen" hidden></div>
             </div>

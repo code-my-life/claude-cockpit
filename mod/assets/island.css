@@ -77,7 +77,10 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .alert-main { display: grid; gap: var(--space-2); min-width: 0; }
 .island .alert-main .h4 { margin: 0; }
 .island .reply { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2); align-items: end; }
-.island .reply[hidden], .island .ep-cluster[hidden], .island .is-acts[hidden], .island .ep-hint[hidden] { display: none; }
+.island .reply[hidden], .island .ep-cluster[hidden], .island .is-acts[hidden], .island .ep-hint[hidden], .island .perm[hidden], .island #wAlways[hidden] { display: none; }
+/* Autorisation : la commande demandée reste lisible en entier, bornée en hauteur, puis les trois décisions. */
+.island .perm { display: grid; gap: var(--space-2); }
+.island #wCmd { margin: 0; max-height: 120px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .island .rail { display: grid; gap: var(--space-2); align-content: start; }
 .island .rail .ep-btn--icon { padding: 0; width: auto; min-height: 0; }
 .island .simple { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: var(--space-4); align-items: start; }

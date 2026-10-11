@@ -33,11 +33,11 @@
   // Qui t'attend : une permission, une question, une attente d'autre chose (jamais une mission livrée).
   const waitingCountOf = rows => model.waitingOf(rows).length;
 
-  // Une question à laquelle on peut répondre depuis l'île épingle l'île (110 s au plus, plafond de l'automate) ; une mission livrée
+  // Une question à laquelle on peut répondre depuis l'île, ou une autorisation que l'île tient, épingle l'île (110 s au plus, plafond de l'automate) ; une mission livrée
   // l'épingle moins longtemps. Ce qu'on ne peut pas traiter ici (permission, conversation qui fait tourner le cockpit, cockpit sans
   // serveur) ne retient pas l'île : la pastille garde le signal sans la bloquer ouverte.
-  const pinKindOf = (rows, { isServer = true } = {}) => {
-    if (model.waitingOf(rows).some(row => model.canReply(row, { isServer }))) return PIN_ATTENTION;
+  const pinKindOf = (rows, { isServer = true, permissions = [] } = {}) => {
+    if (model.waitingOf(rows).some(row => model.canReply(row, { isServer }) || model.canDecide(row, permissions))) return PIN_ATTENTION;
     if (rows.some(row => model.kindOf(row) === model.KIND_DONE)) return PIN_DONE;
     return PIN_NONE;
   };
@@ -132,12 +132,12 @@
     html.dataset.island = 'hidden';
 
     // Appelé à chaque rendu : événement (révélation) et épinglage.
-    const observe = rows => {
+    const observe = (rows, permissions = []) => {
       waitingCount = waitingCountOf(rows);
       const { hasChanged, next } = statusChanges(previousStatuses, rows);
       previousStatuses = next;
       if (hasChanged) desktop.islandEvent();
-      const pin = pinKindOf(rows, { isServer });
+      const pin = pinKindOf(rows, { isServer, permissions });
       const isNewWaiting = hasNewWaiting(waitingIds, rows);
       waitingIds = model.waitingIdsOf(rows);
       // Après un masquage forcé, l'épinglage se réarme à la prochaine attente nouvelle.

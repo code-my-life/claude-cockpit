@@ -122,3 +122,9 @@ test('toasts: no toast takes no room, toasts take their height plus a margin and
   assert.deepEqual(toastExtentOf(1, 96), { width: TOAST_WIDTH, height: 96 + TOAST_MARGIN });
   assert.equal(toastExtentOf(2, 200.4).height, 201 + TOAST_MARGIN);
 });
+
+test('a permission the island can answer pins it like a question', () => {
+  const rows = [{ engineId: 'a', title: 'A', status: 'permission', updatedAt: 1 }];
+  assert.equal(pinKindOf(rows, { isServer: true }), 'none');
+  assert.equal(pinKindOf(rows, { isServer: true, permissions: [{ requestId: 'r', engineId: 'a' }] }), 'attention');
+});

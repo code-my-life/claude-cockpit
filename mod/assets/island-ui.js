@@ -9,7 +9,8 @@
   const FOCUS_DELAY_MS = 200;
   const LAYERS = ['compact', 'home', 'wait', 'order', 'new', 'park'];
   const FIRST_FOCUS = '[data-act="reply"], [data-act="open"], [data-act="to-order"], .ep-tab[aria-selected="true"]';
-  const FIELD_OF_VIEW = { wait: '#replyInput', order: '#orderInput', new: '#newSearch', park: '#parkInput' };
+  // Vue d'attente : le champ de réponse, ou Refuser pour une autorisation (jamais Autoriser, qu'un Entrée validerait).
+  const FIELD_OF_VIEW = { wait: '#replyInput, [data-decision="deny"]', order: '#orderInput', new: '#newSearch', park: '#parkInput' };
 
   const needs = (name, nodeFile) => (typeof module !== 'undefined' && module.exports ? require(nodeFile) : root[name]);
   const { shellHtml } = needs('CockpitIslandShell', './island-shell.js');
@@ -23,6 +24,7 @@
   const initialState = () => ({
     phase: 'hidden', view: 'home', focusId: null, by: 'click', nextView: null, nextBy: 'click', rows: [], key: '', waitIds: null, folderKey: '',
     details: false, exact: false, parkKind: 'later', images: [], folders: [], picked: [], sounds: true, isPointerIn: false,
+    permissions: [], permId: null, permShownAt: null,
   });
 
   const create = ({ doc, win, host, model, entities, helpers, actions, desktop = null, announce = () => {} }) => {
@@ -131,8 +133,9 @@
     // ---------------------------------------------------------------- Phases et vues
     const focusFirst = view => {
       const selector = FIELD_OF_VIEW[view] || FIRST_FOCUS;
-      const el = $(selector, ctx.layerEl(view)) || $(selector);
-      if (el && !el.hidden && el.offsetParent !== null) el.focus({ preventScroll: true });
+      const isShown = el => !el.hidden && el.offsetParent !== null;
+      const el = $(selector, ctx.layerEl(view)).find(isShown) || $(selector).find(isShown);
+      if (el) el.focus({ preventScroll: true });
     };
 
     const switchView = (view, { by } = {}) => {
@@ -202,14 +205,15 @@
       ctx.views.renderNewList();
     };
 
-    const update = (list, { folders, sounds } = {}) => {
+    const update = (list, { folders, sounds, permissions } = {}) => {
       S.rows = list;
+      if (Array.isArray(permissions)) S.permissions = permissions;
       takeFolders(folders);
       if (typeof sounds === 'boolean' && sounds !== S.sounds) { S.sounds = sounds; if (S.phase === 'open') ctx.views.renderPills(); }
       ctx.feed.observe(list, Date.now(), ctx.views.activityLabel);
       const fresh = model.newWaitOf(S.waitIds, list);
       S.waitIds = model.waitingIdsOf(list);
-      const key = `${relevantKey(list)}|${S.focusId}|${S.view}|${S.phase}|${S.details}`;
+      const key = `${relevantKey(list)}|${S.permissions.map(entry => entry.requestId).join(',')}|${S.focusId}|${S.view}|${S.phase}|${S.details}`;
       if (key !== S.key) {
         S.key = key;
         if (S.phase === 'hidden') ctx.views.renderCompact();

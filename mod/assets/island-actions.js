@@ -76,6 +76,17 @@
       ui().refresh();
     };
 
+    // Refuser, Autoriser ou Toujours : ignoré tant que la demande n'est pas armée, puis l'île se replie si l'app a pris la décision.
+    const decide = async el => {
+      const row = ctx.waiting()[0] || ctx.focus();
+      const ask = row ? ctx.model.permissionOf(S.permissions, row.engineId) : null;
+      if (ask === null || !ctx.model.isDecisionArmed(S.permShownAt, Date.now())) return;
+      if (!(await actions.decide(ask.requestId, el.dataset.decision))) return;
+      S.permissions = S.permissions.filter(entry => entry.requestId !== ask.requestId);
+      announce(el.dataset.decision === 'deny' ? `Refusé pour ${row.title}` : `Autorisé pour ${row.title}`);
+      ui().fold();
+    };
+
     const onFocused = fn => () => { const row = ctx.focus(); if (row) fn(row); };
     const act = {
       reply: () => ui().switchView('wait'),
@@ -90,6 +101,7 @@
       park: el => { S.parkKind = el.dataset.kind === 'blocked' ? 'blocked' : 'later'; $('#parkInput').value = ''; ui().switchView('park'); win.setTimeout(() => ui().focusFirst('park'), PARK_FOCUS_DELAY_MS); },
       'park-cancel': () => ui().switchView('home'),
       'park-chip': el => { actions.park((ctx.focus() || {}).engineId, S.parkKind, el.dataset.reason).then(ok => { if (ok) ui().switchView('home'); }); },
+      perm: el => { decide(el); },
       quick: el => { const row = ctx.waiting()[0] || ctx.focus(); if (row) resolveReply(row.engineId, el.dataset.text, []); },
       'rm-image': el => { S.images.splice(Number(el.dataset.index), 1); ctx.views.renderOrderThumbs(); ui().refresh(); },
       search: () => actions.openCockpit('search'),
