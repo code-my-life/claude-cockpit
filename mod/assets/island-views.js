@@ -153,6 +153,7 @@
       $('#wQuote').textContent = ask.summary || 'Claude demande à continuer.';
       $('#wCmd').textContent = ask.detail || ask.summary;
       $('#wAlways').hidden = !ask.canAlways;
+      $('#wHold').textContent = model.holdNoteOf(ask.deadlineAt, Date.now());
     };
 
     const renderWait = () => {
@@ -210,6 +211,8 @@
 
     const ageTick = () => {
       const row = ctx.focus();
+      const ask = model.permissionOf(S.permissions, S.permId === null ? '' : (S.permissions.find(entry => entry.requestId === S.permId) || {}).engineId);
+      if (ask !== null && !$('#wPerm').hidden) $('#wHold').textContent = model.holdNoteOf(ask.deadlineAt, Date.now());
       for (const el of $$('[data-age]')) el.textContent = `${ageOf(Number(el.dataset.age), Date.now())}${row && row.stats ? ` · ${statsLineOf(row)}` : ''}`;
     };
 

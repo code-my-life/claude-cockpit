@@ -23,7 +23,7 @@ const request = { engineId: 'conv-a', tool: 'Bash', summary: 'npm test', detail:
 test('a request is listed for the island with what it asks', () => {
   const { desk } = deskWith()
   const { requestId } = desk.ask(request)
-  assert.deepEqual(desk.list(), [{ requestId, engineId: 'conv-a', tool: 'Bash', summary: 'npm test', detail: 'npm test -- --watch', canAlways: true, askedAt: 1000 }])
+  assert.deepEqual(desk.list(), [{ requestId, engineId: 'conv-a', tool: 'Bash', summary: 'npm test', detail: 'npm test -- --watch', canAlways: true, askedAt: 1000, deadlineAt: 111000 }])
 })
 
 test('the decision reaches the conversation that waits for it', async () => {
@@ -126,4 +126,18 @@ test('a request can be handed back to Claude', async () => {
   const waiting = desk.waitDecision(requestId, 5000)
   assert.equal(desk.decide(requestId, 'defer'), true)
   assert.equal(await waiting, 'defer')
+})
+
+test('a request says until when the conversation holds for the island', () => {
+  const { desk } = deskWith()
+  desk.ask({ ...request, holdMs: 30000 })
+  assert.equal(desk.list()[0].deadlineAt, 31000)
+})
+
+test('the hold is kept within 5 s and 2 min, 110 s when not given', () => {
+  const { desk } = deskWith()
+  desk.ask({ ...request, engineId: 'a', holdMs: 10 })
+  desk.ask({ ...request, engineId: 'b', holdMs: 999999 })
+  desk.ask({ ...request, engineId: 'c' })
+  assert.deepEqual(desk.list().map(entry => entry.deadlineAt - entry.askedAt), [5000, 120000, 110000])
 })

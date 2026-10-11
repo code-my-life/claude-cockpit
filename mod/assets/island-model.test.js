@@ -168,3 +168,10 @@ test('a permission the island can answer comes first among the waits, then the o
   assert.deepEqual(model.waitOrderOf(rows, [ask('perm')]).map(entry => entry.engineId), ['perm', 'q-old', 'q-new']);
   assert.deepEqual(model.waitOrderOf(rows, []).map(entry => entry.engineId), ['q-old', 'q-new', 'perm']);
 });
+
+test('the permission card says how long Claude waits for the island', () => {
+  assert.equal(model.holdNoteOf(31000, 7000), 'Claude attend ta réponse ici. Sinon, il te la demande lui-même dans 24 s.');
+  assert.equal(model.holdNoteOf(31000, 30500), 'Claude attend ta réponse ici. Sinon, il te la demande lui-même dans 1 s.');
+  assert.equal(model.holdNoteOf(31000, 31000), 'Claude te la demande maintenant dans sa propre fenêtre.');
+  assert.equal(model.holdNoteOf(undefined, 1000), '');
+});

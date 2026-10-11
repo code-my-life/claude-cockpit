@@ -133,6 +133,9 @@ const APP_LINK_PROTOCOL = 1
 const ORDERS_WAIT_MS = 20000
 // Like coucou: the island answers within this time, or the request goes back to Claude.
 const PERMISSION_DEADLINE_MS = 110000
+// In Claude Desktop nothing shows that the conversation waits for the island: its own dialog comes sooner.
+const DESKTOP_HOLD_MS = 30000
+const MIN_WAIT_SLICE_MS = 1000
 const PERMISSION_WAIT_MS = 20000
 const RECONNECT_MS = 1000
 const MAX_HANDLED_ORDERS = 500
@@ -742,10 +745,11 @@ const withdrawPermission = async ($: EngineInterface) => {
 
 // Waits for the island's choice; null when the deadline passes, the request
 // disappears or another answer came first (`isSettled`).
-const waitIslandChoice = async ($: EngineInterface, link: AppLink, requestId: string, isSettled: () => boolean) => {
-  const deadline = Date.now() + PERMISSION_DEADLINE_MS
-  const route = `/permission/wait?requestId=${encodeURIComponent(requestId)}&wait=${PERMISSION_WAIT_MS}`
+const waitIslandChoice = async ($: EngineInterface, link: AppLink, requestId: string, holdMs: number, isSettled: () => boolean) => {
+  const deadline = Date.now() + holdMs
   while (!isSettled() && Date.now() < deadline) {
+    const slice = Math.max(MIN_WAIT_SLICE_MS, Math.min(PERMISSION_WAIT_MS, deadline - Date.now()))
+    const route = `/permission/wait?requestId=${encodeURIComponent(requestId)}&wait=${slice}`
     const waited = await bridgeRequest($, link, 'GET', route)
     if (waited === null || waited.status !== 200) return null
     const choice = waited.body?.decision
@@ -755,9 +759,9 @@ const waitIslandChoice = async ($: EngineInterface, link: AppLink, requestId: st
   return null
 }
 
-const askIsland = async ($: EngineInterface, link: AppLink, toolName: string, input: unknown, canAlways: boolean) => {
+const askIsland = async ($: EngineInterface, link: AppLink, toolName: string, input: unknown, canAlways: boolean, holdMs: number) => {
   const described = describePermission(toolName, input)
-  const asked = await bridgeRequest($, link, 'POST', '/permission/ask', { engineId: ownEngineId, ...described, canAlways })
+  const asked = await bridgeRequest($, link, 'POST', '/permission/ask', { engineId: ownEngineId, ...described, canAlways, holdMs })
   const requestId = asked?.status === 200 ? asked.body?.requestId : undefined
   return typeof requestId === 'string' ? requestId : null
 }
@@ -1274,10 +1278,10 @@ export const register: Register = on => {
     const link = appLink
     if (!isDesktopSession || mode !== 'app' || link === null || !isIslandAsk(verdict, e)) return verdict
     // Desktop shows its own dialog only once this verdict is given: the island answers first, or hands back to it.
-    const requestId = await askIsland($, link, e.tool, e.input, false)
+    const requestId = await askIsland($, link, e.tool, e.input, false, DESKTOP_HOLD_MS)
     if (requestId === null) return verdict
     openPermission = requestId
-    const choice = await waitIslandChoice($, link, requestId, () => false)
+    const choice = await waitIslandChoice($, link, requestId, DESKTOP_HOLD_MS, () => false)
     if (choice === null) await withdrawPermission($)
     else openPermission = null
     return verdictFor(choice) ?? verdict
@@ -1290,11 +1294,11 @@ export const register: Register = on => {
     if (mode !== 'app' || link === null) return next(e)
     const suggestions = e.permission_suggestions
     const canAlways = Array.isArray(suggestions) && suggestions.length > 0
-    const requestId = await askIsland($, link, e.tool_name, e.tool_input, canAlways)
+    const requestId = await askIsland($, link, e.tool_name, e.tool_input, canAlways, PERMISSION_DEADLINE_MS)
     if (requestId === null) return next(e)
     openPermission = requestId
     let isSettled = false
-    const fromIsland = waitIslandChoice($, link, requestId, () => isSettled)
+    const fromIsland = waitIslandChoice($, link, requestId, PERMISSION_DEADLINE_MS, () => isSettled)
     const fromOthers = next(e)
     const first = await Promise.race([
       fromIsland.then(choice => ({ kind: 'island' as const, choice })),

@@ -9,10 +9,15 @@ export const MAX_PENDING_PERMISSIONS = 50
 const MAX_SUMMARY_CHARS = 300
 const MAX_DETAIL_CHARS = 4000
 const MAX_TOOL_CHARS = 100
+// Combien de temps la conversation attend l'île avant que Claude n'affiche sa propre demande.
+const DEFAULT_HOLD_MS = 110000
+const MIN_HOLD_MS = 5000
+const MAX_HOLD_MS = 120000
 // 'defer' rend la demande à Claude (sa propre fenêtre décide).
 const DECISIONS = new Set(['allow', 'deny', 'always', 'defer'])
 
 const textOf = (value, max) => String(value ?? '').slice(0, max)
+const holdOf = value => (Number.isFinite(value) ? Math.min(MAX_HOLD_MS, Math.max(MIN_HOLD_MS, value)) : DEFAULT_HOLD_MS)
 
 export const createPermissionDesk = ({ now = Date.now, newId = () => crypto.randomUUID(), onChange = () => {} } = {}) => {
   const requests = new Map()
@@ -38,7 +43,7 @@ export const createPermissionDesk = ({ now = Date.now, newId = () => crypto.rand
     }
   }
 
-  const ask = ({ engineId, tool, summary, detail, canAlways }) => {
+  const ask = ({ engineId, tool, summary, detail, canAlways, holdMs }) => {
     prune()
     for (const entry of [...requests.values()]) if (entry.engineId === engineId) drop(entry.requestId, 'gone')
     if (requests.size >= MAX_PENDING_PERMISSIONS) return null
@@ -50,6 +55,7 @@ export const createPermissionDesk = ({ now = Date.now, newId = () => crypto.rand
       detail: textOf(detail, MAX_DETAIL_CHARS),
       canAlways: canAlways === true,
       askedAt: now(),
+      deadlineAt: now() + holdOf(holdMs),
       decision: null,
       waiters: new Set(),
     }
@@ -100,7 +106,7 @@ export const createPermissionDesk = ({ now = Date.now, newId = () => crypto.rand
     prune()
     return [...requests.values()]
       .filter(entry => entry.decision === null)
-      .map(({ requestId, engineId, tool, summary, detail, canAlways, askedAt }) => ({ requestId, engineId, tool, summary, detail, canAlways, askedAt }))
+      .map(({ requestId, engineId, tool, summary, detail, canAlways, askedAt, deadlineAt }) => ({ requestId, engineId, tool, summary, detail, canAlways, askedAt, deadlineAt }))
   }
 
   return { ask, decide, waitDecision, withdraw, list }

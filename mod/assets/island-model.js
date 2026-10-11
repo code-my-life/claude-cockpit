@@ -85,6 +85,13 @@
   const canDecide = (row, permissions) => Boolean(row) && permissionOf(permissions, row.engineId) !== null;
   // Comme coucou : les boutons ignorent les clics le temps de lire la demande (un clic destiné à autre chose ne l'autorise pas).
   const isDecisionArmed = (shownAt, now) => typeof shownAt === 'number' && now - shownAt >= PERMISSION_ARM_MS;
+  // Le délai que la conversation laisse à l'île avant que Claude ne pose la question lui-même : écrit en clair, la conversation qui
+  // semble « en cours » dans Claude attend en fait cette réponse.
+  const holdNoteOf = (deadlineAt, now) => {
+    if (typeof deadlineAt !== 'number') return '';
+    const left = Math.ceil((deadlineAt - now) / 1000);
+    return left > 0 ? `Claude attend ta réponse ici. Sinon, il te la demande lui-même dans ${left} s.` : 'Claude te la demande maintenant dans sa propre fenêtre.';
+  };
   // Ordre de la vue d'attente : une autorisation que l'île peut trancher d'abord (Claude est bloqué dessus), puis la plus ancienne attente.
   const waitOrderOf = (rows, permissions) => waitingOf(rows).sort((a, b) => Number(canDecide(b, permissions)) - Number(canDecide(a, permissions)) || a.updatedAt - b.updatedAt);
 
@@ -144,7 +151,7 @@
 
   const api = {
     ACTIVE_STATUSES, KIND_WAIT, KIND_DONE, KIND_WORK, KIND_STUCK, kindOf, shownOf, byUrgency, signalOf, waitingOf, waitingIdsOf, compactWordOf,
-    entityStateOf, focusOf, othersOf, newWaitOf, canReply, permissionOf, canDecide, isDecisionArmed, waitOrderOf, PERMISSION_ARM_MS, createFeed, springEase, createHoverIntent,
+    entityStateOf, focusOf, othersOf, newWaitOf, canReply, permissionOf, canDecide, isDecisionArmed, waitOrderOf, holdNoteOf, PERMISSION_ARM_MS, createFeed, springEase, createHoverIntent,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

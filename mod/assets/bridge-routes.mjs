@@ -74,7 +74,7 @@ const deskOf = bridge => {
 const handlePermissionAsk = async (bridge, request, response) => {
   guardJson(request)
   const body = await readJsonBody(request, MAX_BRIDGE_BODY_BYTES)
-  const asked = deskOf(bridge).ask({ engineId: engineIdOf(body), tool: body.tool, summary: body.summary, detail: body.detail, canAlways: body.canAlways === true })
+  const asked = deskOf(bridge).ask({ engineId: engineIdOf(body), tool: body.tool, summary: body.summary, detail: body.detail, canAlways: body.canAlways === true, holdMs: Number(body.holdMs) })
   if (asked === null) throw new HttpError(503, 'trop de demandes de permission en attente')
   sendJson(response, asked)
 }
