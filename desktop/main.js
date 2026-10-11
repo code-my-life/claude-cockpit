@@ -108,9 +108,15 @@ const openInBrowser = () => {
   shell.openExternal(`${cockpitBase()}open?ticket=${ticket}`)
 }
 
+// Une demande de permission réveille l'île ; la page lit ensuite les demandes elle-même.
+const announcePermissions = count => {
+  if (win !== null && !win.isDestroyed()) win.webContents.send('permissions-changed', count)
+  if (count > 0) island?.event()
+}
+
 const startServer = async () => {
   try {
-    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, onError: message => logLine(`serveur : ${message}`), onExit: restartServer })
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions })
     serverPort = embeddedServer.port
     await setSessionCookie()
   } catch (error) {

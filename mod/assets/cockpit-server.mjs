@@ -195,7 +195,24 @@ const postRoutesOf = ctx => ({
   '/unpark': body => deliver(ctx, { type: 'unpark', engineId: engineIdOf(body) }),
   '/ack': body => deliver(ctx, { type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
   '/summarize': body => deliver(ctx, { type: 'summarize', engineId: engineIdOf(body) }),
+  '/permission': body => {
+    const desk = deskOf(ctx)
+    if (!desk.decide(String(body.requestId ?? ''), body.decision)) throw new HttpError(409, 'demande de permission déjà traitée ou inconnue')
+  },
 })
+
+const deskOf = ctx => {
+  const desk = ctx.bridge?.desk
+  if (desk === undefined || desk === null) throw new HttpError(404, 'permissions disponibles avec l’app seulement')
+  return desk
+}
+
+// The open permission requests show what a conversation wants to run: only the
+// page that holds the session token may read them.
+const handlePermissions = (ctx, request, response) => {
+  if (!ctx.session.canWrite(request, request.headers[TOKEN_HEADER])) throw new HttpError(403, 'jeton refusé : recharge la page')
+  send(response, 200, JSON.stringify({ ok: true, requests: deskOf(ctx).list() }))
+}
 
 const readText = file => fs.promises.readFile(file, 'utf8')
 
@@ -275,6 +292,7 @@ const handleGet = async (ctx, url, request, response) => {
   if (url.pathname === '/conversations-data.js') return serveFile(ctx.dataDir, response, 'conversations-data.js', 'text/javascript; charset=utf-8')
   if (url.pathname === '/ping') return send(response, 200, '{"ok":true}')
   if (url.pathname === '/search') return handleSearch(ctx, url, response)
+  if (url.pathname === '/permissions') return handlePermissions(ctx, request, response)
   const staticType = Object.hasOwn(STATIC_FILES, url.pathname) ? STATIC_FILES[url.pathname] : undefined
   if (staticType) return serveFile(ctx.rootDir, response, url.pathname.slice(1), staticType)
   sendNotFound(response)

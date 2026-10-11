@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   islandMotion: isReduced => ipcRenderer.send('island-motion', isReduced),
   onIslandState: callback => ipcRenderer.on('island-state', (event, phase, cause) => callback(phase, cause)),
   onIslandFocus: callback => ipcRenderer.on('island-focus', () => callback()),
+  onPermissionsChanged: callback => ipcRenderer.on('permissions-changed', (event, count) => callback(Number(count) || 0)),
   onIslandTheme: callback => ipcRenderer.on('island-theme', (event, theme) => callback(theme)),
   openCockpit: section => ipcRenderer.send('open-cockpit', section),
   openLink: url => ipcRenderer.send('open-link', url),

@@ -6,6 +6,7 @@ import path from 'node:path'
 
 import { createBridgeHub } from '../mod/assets/bridge-hub.mjs'
 import { createCockpitServer } from '../mod/assets/cockpit-server.mjs'
+import { createPermissionDesk } from '../mod/assets/permission-desk.mjs'
 
 export const PREFERRED_PORT = 48123
 const ANY_FREE_PORT = 0
@@ -40,15 +41,17 @@ const purgeOldImages = (dataDir, now = Date.now()) => {
   }
 }
 
-export const startAppServer = async ({ rootDir, dataDir, secret, proof, pageToken, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {} }) => {
+export const startAppServer = async ({ rootDir, dataDir, secret, proof, pageToken, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {}, onPermissions = () => {} }) => {
   ensureStarterPage(rootDir, dataDir)
   purgeOldImages(dataDir)
   const hub = createBridgeHub({ onHubChange: engineId => onError(`hub du pont : ${engineId ?? 'aucune conversation'}`) })
+  // The island hears how many permission requests wait, then reads them itself.
+  const desk = createPermissionDesk({ onChange: () => onPermissions(desk.list().length) })
   const sink = order => {
     if (order.type === 'error') return onError(order.message)
     return hub.dispatch(order)
   }
-  const build = port => createCockpitServer({ rootDir, dataDir, port, sink, bridge: { hub, secret, proof }, pageAuth: 'cookie', token: pageToken, homeDir, env })
+  const build = port => createCockpitServer({ rootDir, dataDir, port, sink, bridge: { hub, desk, secret, proof }, pageAuth: 'cookie', token: pageToken, homeDir, env })
   let cockpit = build(preferredPort)
   let port
   try {

@@ -64,6 +64,41 @@ const handleAck = async ({ hub }, request, response) => {
   sendJson(response, {})
 }
 
+const PERMISSION_WAIT_MAX_MS = 25000
+
+const deskOf = bridge => {
+  if (bridge.desk === undefined || bridge.desk === null) throw new HttpError(404, 'permissions non prises en charge')
+  return bridge.desk
+}
+
+const handlePermissionAsk = async (bridge, request, response) => {
+  guardJson(request)
+  const body = await readJsonBody(request, MAX_BRIDGE_BODY_BYTES)
+  const asked = deskOf(bridge).ask({ engineId: engineIdOf(body), tool: body.tool, summary: body.summary, detail: body.detail, canAlways: body.canAlways === true })
+  if (asked === null) throw new HttpError(503, 'trop de demandes de permission en attente')
+  sendJson(response, asked)
+}
+
+// Long wait for the island's answer; a decision of null means ask again.
+const handlePermissionWait = async (bridge, url, response) => {
+  const requestId = bridgeIdOf(url.searchParams.get('requestId'))
+  const waitMs = Math.min(PERMISSION_WAIT_MAX_MS, Math.max(MIN_WAIT_MS, Number(url.searchParams.get('wait')) || DEFAULT_WAIT_MS))
+  const hangUp = new AbortController()
+  response.on('close', () => {
+    if (!response.writableFinished) hangUp.abort()
+  })
+  const decision = await deskOf(bridge).waitDecision(requestId, waitMs, hangUp.signal)
+  if (hangUp.signal.aborted) return
+  sendJson(response, { decision })
+}
+
+const handlePermissionWithdraw = async (bridge, request, response) => {
+  guardJson(request)
+  const body = await readJsonBody(request, MAX_BRIDGE_BODY_BYTES)
+  deskOf(bridge).withdraw(bridgeIdOf(body.requestId))
+  sendJson(response, {})
+}
+
 export const isBridgeRoute = pathname => pathname.startsWith('/bridge/')
 
 export const handleBridge = async (bridge, url, request, response) => {
@@ -72,5 +107,8 @@ export const handleBridge = async (bridge, url, request, response) => {
   if (route === 'POST /hello') return handleHello(bridge, request, response)
   if (route === 'GET /orders') return handleOrders(bridge, url, response)
   if (route === 'POST /ack') return handleAck(bridge, request, response)
+  if (route === 'POST /permission/ask') return handlePermissionAsk(bridge, request, response)
+  if (route === 'GET /permission/wait') return handlePermissionWait(bridge, url, response)
+  if (route === 'POST /permission/withdraw') return handlePermissionWithdraw(bridge, request, response)
   throw new HttpError(404, 'route du pont inconnue')
 }

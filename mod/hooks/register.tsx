@@ -1,5 +1,6 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
+import { decisionFor, describePermission } from './permission-text.mjs'
 
 import type {
   ConversationContext,
@@ -126,10 +127,13 @@ const transcriptCache = new Map<string, string>()
 // over HTTP instead of starting its own server.
 type AppLink = { port: number; secret: string; proof: string; dataDir: string }
 type BridgeOrder = BridgeMessage & { orderId: string }
-type BridgeReply = { status: number; body: { role?: string; bridgeId?: string; proof?: string; orders?: BridgeOrder[] } | null }
+type BridgeReply = { status: number; body: { role?: string; bridgeId?: string; proof?: string; orders?: BridgeOrder[]; requestId?: string; decision?: string | null } | null }
 type JoinOutcome = 'joined' | 'unreachable' | 'refused'
 const APP_LINK_PROTOCOL = 1
 const ORDERS_WAIT_MS = 20000
+// Like coucou: the island answers within this time, or the request goes back to Claude.
+const PERMISSION_DEADLINE_MS = 110000
+const PERMISSION_WAIT_MS = 20000
 const RECONNECT_MS = 1000
 const MAX_HANDLED_ORDERS = 500
 const LINK_SECRET_PATTERN = /^[0-9a-f]{64}$/
@@ -724,6 +728,38 @@ const joinApp = async ($: EngineInterface, link: AppLink): Promise<JoinOutcome> 
 
 // Joins the app when it runs, else runs the server locally. A local server
 // steps aside by itself (exit code 4) once the app answers.
+// The permission request this conversation has open on the island, if any.
+let openPermission: string | null = null
+
+const withdrawPermission = async ($: EngineInterface) => {
+  const requestId = openPermission
+  const link = appLink
+  openPermission = null
+  if (requestId !== null && link !== null) await bridgeRequest($, link, 'POST', '/permission/withdraw', { requestId })
+}
+
+// Waits for the island's choice; null when the deadline passes, the request
+// disappears or another answer came first (`isSettled`).
+const waitIslandChoice = async ($: EngineInterface, link: AppLink, requestId: string, isSettled: () => boolean) => {
+  const deadline = Date.now() + PERMISSION_DEADLINE_MS
+  const route = `/permission/wait?requestId=${encodeURIComponent(requestId)}&wait=${PERMISSION_WAIT_MS}`
+  while (!isSettled() && Date.now() < deadline) {
+    const waited = await bridgeRequest($, link, 'GET', route)
+    if (waited === null || waited.status !== 200) return null
+    const choice = waited.body?.decision
+    if (choice === 'gone') return null
+    if (typeof choice === 'string') return choice
+  }
+  return null
+}
+
+const askIsland = async ($: EngineInterface, link: AppLink, toolName: string, input: unknown, canAlways: boolean) => {
+  const described = describePermission(toolName, input)
+  const asked = await bridgeRequest($, link, 'POST', '/permission/ask', { engineId: ownEngineId, ...described, canAlways })
+  const requestId = asked?.status === 200 ? asked.body?.requestId : undefined
+  return typeof requestId === 'string' ? requestId : null
+}
+
 const connect = async ($: EngineInterface) => {
   if (isConnecting || mode !== 'none') return
   isConnecting = true
@@ -1236,7 +1272,34 @@ export const register: Register = on => {
     return verdict
   })
 
+  // The island answers permission requests next to the other hooks (coucou):
+  // the first answer wins, and the other side is told to drop the request.
+  on('classic.PermissionRequest', async ($, e, next) => {
+    const link = appLink
+    if (mode !== 'app' || link === null) return next(e)
+    const suggestions = e.permission_suggestions
+    const canAlways = Array.isArray(suggestions) && suggestions.length > 0
+    const requestId = await askIsland($, link, e.tool_name, e.tool_input, canAlways)
+    if (requestId === null) return next(e)
+    openPermission = requestId
+    let isSettled = false
+    const fromIsland = waitIslandChoice($, link, requestId, () => isSettled)
+    const fromOthers = next(e)
+    const first = await Promise.race([
+      fromIsland.then(choice => ({ kind: 'island' as const, choice })),
+      fromOthers.then(result => ({ kind: 'others' as const, result })),
+    ])
+    const islandChoice = first.kind === 'island' ? first.choice : (first.result.decision === undefined ? await fromIsland : null)
+    isSettled = true
+    const decision = decisionFor(islandChoice, suggestions)
+    if (decision === null) await withdrawPermission($)
+    else openPermission = null
+    if (decision !== null) return { decision }
+    return first.kind === 'others' ? first.result : fromOthers
+  })
+
   on('tool.call', async ($, e, next) => {
+    if (e.agentId === undefined && openPermission !== null) await withdrawPermission($)
     if (e.agentId === undefined) await writeOwn($, { status: 'tool', tool: e.tool })
 
     return next(e)
