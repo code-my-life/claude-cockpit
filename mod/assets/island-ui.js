@@ -134,7 +134,7 @@
     const focusFirst = view => {
       const selector = FIELD_OF_VIEW[view] || FIRST_FOCUS;
       const isShown = el => !el.hidden && el.offsetParent !== null;
-      const el = $(selector, ctx.layerEl(view)).find(isShown) || $(selector).find(isShown);
+      const el = $$(selector, ctx.layerEl(view)).find(isShown) || $$(selector).find(isShown);
       if (el) el.focus({ preventScroll: true });
     };
 
@@ -223,6 +223,31 @@
       if (fresh) onFreshWait(fresh);
     };
 
+    // Raccourcis globaux (relayés par l'app) : ouvrir, aller à ce qui attend, passer d'une conversation à l'autre.
+    // Le focus attend que la vue soit posée (comme une ouverture au clic), sauf en mouvement réduit.
+    const focusSoon = view => win.setTimeout(() => focusFirst(view), ctx.reduceQuery.matches ? 0 : FOCUS_DELAY_MS);
+    const shownRows = () => model.byUrgency(S.rows);
+    const step = delta => {
+      const rows = shownRows();
+      if (rows.length === 0) return;
+      const index = rows.findIndex(row => row.engineId === S.focusId);
+      S.focusId = rows[(index + delta + rows.length) % rows.length].engineId;
+      S.diff = null;
+      if (S.phase === 'open') switchView('home', { by: 'click' });
+      else openWith('home', 'click');
+      focusSoon('home');
+    };
+    const command = name => {
+      if (name === 'toggle') { openWith('home', 'click'); focusSoon('home'); return; }
+      if (name === 'next' || name === 'previous') { step(name === 'next' ? 1 : -1); return; }
+      if (name !== 'waiting') return;
+      const first = ctx.waiting()[0];
+      if (!first) { announce('Personne ne t’attend'); openWith('home', 'click'); return; }
+      S.focusId = first.engineId;
+      openWith('wait', 'click');
+      focusSoon('wait');
+    };
+
     ctx.ui = {
       fold, switchView, openWith, focusFirst,
       refresh: () => { if (S.phase === 'open') go('open', S.view); },
@@ -239,7 +264,7 @@
     const setTheme = theme => { ctx.islandEl.dataset.theme = theme === 'light' ? 'light' : 'dark'; };
 
     return {
-      setPhase, setTheme, update, openWith, fold, pointer, dispose: () => { stopAges(); ctx.living.dispose(); },
+      setPhase, setTheme, update, openWith, fold, pointer, command, dispose: () => { stopAges(); ctx.living.dispose(); },
       isOpen: () => S.phase === 'open', stateOf: () => ({ phase: S.phase, view: S.view, focusId: S.focusId }),
     };
   };

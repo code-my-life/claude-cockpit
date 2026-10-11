@@ -2357,6 +2357,7 @@
       islandUi.setPhase('compact', 'event');
     }
     window.CockpitIsland.watchToasts(document, window, syncToasts);
+    if (desktop && desktop.onIslandCommand) desktop.onIslandCommand(name => islandUi.command(name));
     if (desktop && desktop.onPermissionsChanged) {
       desktop.onPermissionsChanged(() => { void loadPermissions(); });
       void loadPermissions();

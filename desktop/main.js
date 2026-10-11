@@ -9,6 +9,7 @@ const { createFullscreenProbe } = require('./island/fullscreen')
 const { themeOf, sampleRectsOf, gridPointsOf, meanLuminanceOf } = require('./island/backdrop')
 const { readPixels } = require('./island/pixels')
 const { startEmbeddedServer } = require('./embedded-server')
+const { registerIslandShortcuts } = require('./island-shortcuts')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
 const { SOUND_FILE_NAME, readSoundState, serializeSoundState, parseSoundChoice, introDecision, oneLine } = require('./sound-setting')
@@ -304,6 +305,22 @@ const registerLauncherShortcut = () => {
   }
 }
 
+// Raccourcis globaux de l'île : le son se règle ici, le reste ouvre l'île (avec le focus clavier) sur la bonne vue.
+const runIslandShortcut = action => {
+  if (action === 'sounds') return setSounds(!areSoundsOn())
+  if (island === null || win === null || win.isDestroyed()) return
+  if (action === 'toggle' && island.phase() === 'open') return island.escape()
+  // Pas showAndFocus : son « island-focus » poserait le focus sur la pastille, inerte une fois l'île ouverte.
+  island.event()
+  win.focus()
+  win.webContents.send('island-command', action)
+}
+
+const registerIslandKeys = () => {
+  const { registered, failed } = registerIslandShortcuts(globalShortcut, runIslandShortcut)
+  logLine(`raccourcis de l'île : ${registered.join(', ') || 'aucun'}${failed.length > 0 ? ` ; déjà pris par une autre app : ${failed.join(', ')}` : ''}`)
+}
+
 const BOOT_SIZE = 1
 
 const createWindow = () => {
@@ -483,6 +500,7 @@ if (!app.requestSingleInstanceLock()) {
     createWindow()
     createLauncherWindow()
     registerLauncherShortcut()
+    registerIslandKeys()
     createTray()
     registerWizardIpc(refreshTrayMenu)
     if (!isModInstalled()) openWizard(SECURE_WEB_PREFERENCES)
