@@ -39,7 +39,9 @@ const trayIconBitmap = (size = TRAY_ICON_SIZE) => {
   return bitmap
 }
 
-const trayMenuOf = ({ isIslandVisible, isAutostart, areSoundsOn = true, canOpenInBrowser = false, canInstallMod = false }) => [
+// `updateVersion`: a downloaded version waiting for a restart, or null.
+const trayMenuOf = ({ isIslandVisible, isAutostart, areSoundsOn = true, canOpenInBrowser = false, canInstallMod = false, updateVersion = null }) => [
+  ...(updateVersion === null ? [] : [{ id: 'install-update', label: `Redémarrer pour passer à la v${updateVersion}` }, { type: 'separator' }]),
   { id: 'open-cockpit', label: 'Ouvrir le cockpit' },
   ...(canOpenInBrowser ? [{ id: 'open-browser', label: 'Ouvrir dans le navigateur' }] : []),
   ...(canInstallMod ? [{ id: 'install-mod', label: 'Installer le mod dans Claude' }] : []),

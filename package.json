@@ -1,5 +1,6 @@
 {
   "name": "claude-cockpit",
+  "license": "MIT",
   "private": true,
   "description": "Cockpit pour suivre toutes les conversations Claude Code",
   "engines": {

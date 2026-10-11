@@ -40,6 +40,15 @@ Le mod tient tout ce qui appelle le moteur dans `mod/hooks/register.tsx` : le mo
 
 ## Installation
 
+1. Télécharge `claude-cockpit-setup-<version>.exe` depuis la [dernière release](https://github.com/code-my-life/claude-cockpit/releases/latest) (sommes de contrôle dans `SHA256SUMS.txt`).
+2. Lance-le. L'installeur n'est pas encore signé : Windows peut afficher « Windows a protégé votre ordinateur ». Clique sur **Informations complémentaires**, puis **Exécuter quand même**.
+3. Au premier lancement, l'assistant montre la ligne exacte qu'il ajoute à `~/.claude/settings.json` pour charger le mod, et ne l'écrit qu'après ton clic.
+4. Redémarre Claude Desktop : chaque conversation charge le mod à son démarrage.
+
+L'app s'installe pour ton seul compte Windows, sans droits d'administrateur, et se désinstalle depuis les Paramètres de Windows.
+
+### Depuis le code (développement)
+
 ```powershell
 git clone https://github.com/code-my-life/claude-cockpit.git $HOME\source\repos\claude-cockpit
 cd $HOME\source\repos\claude-cockpit
@@ -72,6 +81,10 @@ Redémarre ensuite Claude Desktop : chaque conversation charge le mod à son dé
 
 ## Mise à jour
 
+L'app installée vérifie les releases GitHub 30 s après son lancement, puis toutes les 6 heures. Une nouvelle version se télécharge en arrière-plan ; le menu de l'icône propose alors « Redémarrer pour passer à la vX.Y.Z », et sinon elle s'installe à la prochaine fermeture de l'app. Le mod est mis à jour avec elle : redémarre Claude Desktop pour que les conversations le rechargent. Le journal `cockpit.log` note chaque échec de vérification.
+
+Depuis le code :
+
 ```powershell
 cd $HOME\source\repos\claude-cockpit
 git pull
@@ -79,9 +92,16 @@ git pull
 
 Puis redémarre Claude Desktop, et relance l'île si `desktop/` a changé.
 
+### Publier une version
+
+Monte `version` dans `desktop/package.json`, commite, puis pousse le tag correspondant (`git tag v0.2.0 && git push --tags`). Le workflow `release.yml` lance les tests, construit l'installeur, puis publie la release avec l'installeur, `latest.yml` (lu par les apps installées) et les sommes de contrôle.
+
 ## Désinstallation
 
-Retire la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.json`, supprime les deux raccourcis et le dossier cloné.
+Dans les deux cas, retire d'abord le dossier du mod de la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.json`. Ensuite :
+
+- **app installée** : désinstalle « Claude Cockpit » depuis les Paramètres de Windows (Applications) ;
+- **depuis le code** : supprime les deux raccourcis et le dossier cloné.
 
 ## Écarts au modèle Liquid Paper
 
@@ -110,3 +130,7 @@ Retire la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.j
 - **Survol vérifié au curseur réel** : le survol rapporté par la page ne vient que de mousemove et mouseleave, or une fenêtre qui rétrécit sous un curseur immobile ne reçoit plus rien. L'app confronte donc le curseur réel aux bornes de la fenêtre en fin de morphose et à chaque changement d'état.
 - **Raccourcis internes de coucou pas encore repris** : les raccourcis globaux existent (voir plus haut, choisis pour ne pas prendre ceux de coucou), mais pas encore Ctrl+1 à Ctrl+9, Ctrl+K (nouvelle conversation), Ctrl+P (épingler) ni Ctrl+virgule (réglages) dans l'île ouverte ; seuls Tab, les flèches entre onglets et Échap sont gérés. `Alt+Espace` ouvre toujours le lanceur de recherche.
 - **Infobulles** : les boutons à icône seule (recherche, cockpit, sons, quitter, autres conversations) portent l'infobulle Encre et Papier (`data-ep-tip`, au survol et au focus) et un nom accessible.
+
+## Licence
+
+[MIT](LICENSE).

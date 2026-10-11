@@ -48,6 +48,14 @@ test('installing the mod is offered only while it is not installed', () => {
   assert.ok(!installed.some(item => item.id === 'install-mod'))
 })
 
+test('a downloaded update is offered first, and only once it is ready', () => {
+  const ready = trayMenuOf({ isIslandVisible: true, isAutostart: false, updateVersion: '0.3.0' })
+  assert.deepEqual(ready[0], { id: 'install-update', label: 'Redémarrer pour passer à la v0.3.0' })
+  assert.equal(ready[1].type, 'separator')
+  const none = trayMenuOf({ isIslandVisible: true, isAutostart: false })
+  assert.ok(!none.some(item => item.id === 'install-update'))
+})
+
 test('quitting is set apart from the other actions', () => {
   const menu = trayMenuOf({ isIslandVisible: true, isAutostart: false })
   const quitIndex = menu.findIndex(item => item.id === 'quit')

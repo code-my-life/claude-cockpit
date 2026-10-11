@@ -14,6 +14,7 @@ const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
 const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
 const { SOUND_FILE_NAME, readSoundState, serializeSoundState, parseSoundChoice, introDecision, oneLine } = require('./sound-setting')
 const { writeFileAtomic } = require('./atomic-write')
+const { createUpdater } = require('./updater')
 
 // The app serves the cockpit itself; when its server cannot start, the windows
 // fall back on the server a conversation with the mod runs on this port.
@@ -416,10 +417,25 @@ const toggleSounds = () => setSounds(!soundState.enabled)
 
 const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLoginItemSettings().openAtLogin })
 
+// Les mises à jour viennent des releases GitHub, pour l'app installée seulement.
+let updater = null
+
+const startUpdates = () => {
+  if (!app.isPackaged) return
+  const { autoUpdater } = require('electron-updater')
+  updater = createUpdater({ autoUpdater, log: logLine, onChange: () => refreshTrayMenu() })
+  updater.start()
+}
+
+const readyUpdateVersion = () => {
+  const status = updater?.status()
+  return status?.phase === 'ready' ? status.version : null
+}
+
 const refreshTrayMenu = () => {
   if (tray === null) return
-  const actions = { 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-island': toggleIsland, autostart: toggleAutostart, 'toggle-sounds': toggleSounds, quit: () => app.quit() }
-  const state = { isIslandVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, areSoundsOn: areSoundsOn(), canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled() }
+  const actions = { 'install-update': () => updater?.install(), 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-island': toggleIsland, autostart: toggleAutostart, 'toggle-sounds': toggleSounds, quit: () => app.quit() }
+  const state = { isIslandVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, areSoundsOn: areSoundsOn(), canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled(), updateVersion: readyUpdateVersion() }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
 }
@@ -502,6 +518,7 @@ if (!app.requestSingleInstanceLock()) {
     registerLauncherShortcut()
     registerIslandKeys()
     createTray()
+    startUpdates()
     registerWizardIpc(refreshTrayMenu)
     if (!isModInstalled()) openWizard(SECURE_WEB_PREFERENCES)
   })
