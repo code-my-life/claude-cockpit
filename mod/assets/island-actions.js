@@ -93,7 +93,9 @@
       reply: () => ui().switchView('wait'),
       open: onFocused(row => actions.open(row)),
       'to-order': () => ui().switchView('order'),
-      details: () => { S.details = !S.details; if (S.details) actions.ensureSummary(ctx.focus()); ui().refresh(); },
+      diff: el => { const at = Number(el.dataset.at); S.diff = S.diff && S.diff.at === at ? null : { at }; S.details = false; ui().refresh(); },
+      'diff-close': () => { S.diff = null; ui().refresh(); },
+      details: () => { S.diff = null; S.details = !S.details; if (S.details) actions.ensureSummary(ctx.focus()); ui().refresh(); },
       exact: () => { S.exact = !S.exact; ui().refresh(); },
       summarize: onFocused(row => actions.summarize(row.engineId)),
       terminal: onFocused(row => actions.terminal(row.engineId)),
@@ -119,7 +121,7 @@
       ui().interacted();
       if (el.id === 'foldBtn') { ui().fold(); return; }
       if (el.dataset.tab) { S.focusId = (ctx.focus() || {}).engineId || null; ui().switchView(el.dataset.tab); return; }
-      if (el.dataset.pick) { S.focusId = el.dataset.pick; ui().switchView(S.view === 'order' ? 'order' : 'home'); return; }
+      if (el.dataset.pick) { S.diff = null; S.focusId = el.dataset.pick; ui().switchView(S.view === 'order' ? 'order' : 'home'); return; }
       if (el.id === 'startBtn') { startNewConv(); return; }
       const handler = act[el.dataset.act];
       if (handler) handler(el);

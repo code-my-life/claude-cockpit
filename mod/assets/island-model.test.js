@@ -175,3 +175,25 @@ test('the permission card says how long Claude waits for the island', () => {
   assert.equal(model.holdNoteOf(31000, 31000), 'Claude te la demande maintenant dans sa propre fenêtre.');
   assert.equal(model.holdNoteOf(undefined, 1000), '');
 });
+
+test('the feed shows the steps the mod saw, the last three, with files and line counts', () => {
+  const feed = model.createFeed({ max: 3 });
+  const steps = [
+    { at: 1, kind: 'read', label: 'Lit a.js', file: '/r/a.js' },
+    { at: 2, kind: 'command', label: 'Lance npm test' },
+    { at: 3, kind: 'edit', label: 'Modifie b.js', file: '/r/b.js', added: 4, removed: 1, diff: { before: 'x', after: 'y' } },
+    { at: 4, kind: 'edit', label: 'Écrit c.md', file: '/r/c.md', added: 2, removed: 0 },
+  ];
+  const lines = feed.linesOf(row('a', 'tool', { tool: 'Edit', steps }), () => 'Modifie le code');
+  assert.deepEqual(lines.map(line => line.label), ['Lance npm test', 'Modifie b.js', 'Écrit c.md']);
+  assert.deepEqual(lines.map(line => line.isCurrent), [false, false, true]);
+  assert.equal(lines[1].added, 4);
+  assert.equal(lines[1].removed, 1);
+  assert.equal(lines[1].diffAt, 3);
+  assert.equal(lines[2].diffAt, null);
+});
+
+test('a resting conversation keeps no feed, even with steps', () => {
+  const feed = model.createFeed({ max: 3 });
+  assert.deepEqual(feed.linesOf(row('a', 'done', { steps: [{ at: 1, kind: 'read', label: 'Lit a.js' }] }), () => ''), []);
+});

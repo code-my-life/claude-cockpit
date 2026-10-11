@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import { decisionFor, describePermission, isIslandAsk, verdictFor } from './permission-text.mjs'
+import { pushStep, stepOf } from './activity.mjs'
 
 import type {
   ConversationContext,
@@ -381,6 +382,7 @@ const buildRows = (
       cwd: host.cwd,
       status: statusOf(host.engineId, rowStatusOf(host, entry, isLive), updatedAt),
       tool: entry?.tool,
+      steps: entry?.steps,
       updatedAt,
       isCurrent: host.engineId === ownEngineId,
       isLive,
@@ -398,6 +400,7 @@ const buildRows = (
       cwd: entry.cwd,
       status: statusOf(entry.id, entry.status, entry.updatedAt),
       tool: entry.tool,
+      steps: entry.steps,
       updatedAt: entry.updatedAt,
       isCurrent: entry.id === ownEngineId,
       isLive: true,
@@ -1204,6 +1207,7 @@ const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared
     cwd: row.cwd,
     status: row.status,
     tool: row.tool,
+    steps: row.steps,
     updatedAt: row.updatedAt,
     isLive: row.isLive,
     summary: shared[row.engineId],
@@ -1254,7 +1258,8 @@ export const register: Register = on => {
 
   on('turn.start', async ($, e, next) => {
     const prompt = e.text.slice(0, PROMPT_MAX_CHARS)
-    await writeOwn($, { status: 'working', prompt })
+    // A new turn starts a new activity feed.
+    await writeOwn($, { status: 'working', prompt, steps: [] })
 
     return next(e)
   })
@@ -1315,7 +1320,12 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     if (e.agentId === undefined && openPermission !== null) await withdrawPermission($)
-    if (e.agentId === undefined) await writeOwn($, { status: 'tool', tool: e.tool })
+    if (e.agentId === undefined) {
+      const current = (await readAll($))[ownEngineId]
+      // The tool's arguments sit beside its name in the event (e.command, e.file_path).
+      const call = e as unknown as { tool: string } & Record<string, unknown>
+      await writeOwn($, { status: 'tool', tool: call.tool, steps: pushStep(current?.steps ?? [], stepOf(call.tool, call, Date.now())) })
+    }
 
     return next(e)
   })

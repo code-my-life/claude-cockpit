@@ -23,3 +23,18 @@ test('no source file holds a raw line or paragraph separator', () => {
   })
   assert.deepEqual(offenders, [])
 })
+
+// The page scripts load in the island and the cockpit with no build step: a
+// syntax error there blanks the island while every other test stays green.
+test('every page script parses', () => {
+  const scripts = trackedSources().filter(file => file.startsWith('mod/assets/') && /\.(m?js|cjs)$/.test(file))
+  const broken = scripts.filter(file => {
+    try {
+      execSync(`node --check "${path.join(ROOT, file)}"`, { stdio: 'pipe' })
+      return false
+    } catch {
+      return true
+    }
+  })
+  assert.deepEqual(broken, [])
+})

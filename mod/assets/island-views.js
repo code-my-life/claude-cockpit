@@ -30,7 +30,26 @@
     const canvasHtml = (row, size) => `<canvas class="ent" data-ent="${esc(row.engineId)}" data-size="${size}" data-state="${model.entityStateOf(row)}" aria-hidden="true"></canvas>`;
     const heroRowFor = view => (view === 'wait' ? ctx.waiting()[0] || ctx.focus() : ctx.focus());
 
-    const feedHtml = row => feed.linesOf(row, activityLabel).map(line => `<li class="body-s${line.isCurrent ? ' now' : ''}"><span aria-hidden="true">${icon(line.isCurrent ? 'play' : 'check')}</span><span class="t">${esc(line.label)}</span></li>`).join('');
+    // Une ligne du fil : l'étape, ses lignes ajoutées et retirées (icône et chiffres, jamais la couleur seule), et pour une
+    // modification dont le mod a gardé le texte, un bouton qui ouvre son diff sous la carte.
+    const countsHtml = line => (typeof line.added === 'number' ? `<span class="spec counts" aria-label="${line.added} lignes ajoutées, ${line.removed} retirées"><span class="add">+${line.added}</span> <span class="del">−${line.removed}</span></span>` : '');
+    const stepHtml = line => {
+      if (line.diffAt === null || line.diffAt === undefined) return `<span class="t">${esc(line.label)}</span>`;
+      const isOpen = Boolean(S.diff && S.diff.at === line.diffAt);
+      return `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm is-step" data-act="diff" data-at="${line.diffAt}" aria-expanded="${isOpen}" aria-controls="details" data-ep-tip="Voir le diff">${esc(line.label)}</button>`;
+    };
+    const feedHtml = row => feed.linesOf(row, activityLabel).map(line => `<li class="body-s${line.isCurrent ? ' now' : ''}"><span aria-hidden="true">${icon(line.isCurrent ? 'play' : 'check')}</span>${stepHtml(line)}${countsHtml(line)}</li>`).join('');
+
+    // Le diff d'une étape : les lignes retirées puis ajoutées, chacune marquée − ou +.
+    const NL = '\n';
+    const diffLinesHtml = (text, mark, cls) => (text === '' ? '' : text.split(NL).map(line => `<span class="${cls}">${mark} ${esc(line)}</span>`).join(NL));
+    const diffHtml = step => {
+      const before = diffLinesHtml(step.diff.before, '−', 'del');
+      const after = diffLinesHtml(step.diff.after, '+', 'add');
+      const head = `<div class="is-meta"><span class="caption-s">${esc(step.file || step.label)}</span>${countsHtml(step)}<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="diff-close">Fermer</button></div>`;
+      return `<div class="is-diff">${head}<pre class="ep-code is-diffcode" tabindex="0" aria-label="Diff de ${esc(step.label)}">${[before, after].filter(Boolean).join(NL)}</pre></div>`;
+    };
+    const diffStepOf = row => (S.diff && row && Array.isArray(row.steps) ? row.steps.find(step => step.at === S.diff.at && step.diff) || null : null);
 
     const bodyOf = row => {
       const kind = model.kindOf(row);
@@ -74,8 +93,9 @@
 
     const renderDetails = row => {
       const box = $('#details');
-      box.hidden = !(S.details && row);
-      box.innerHTML = S.details && row ? detailsHtml(row) : '';
+      const step = diffStepOf(row);
+      box.hidden = !((S.details || step) && row);
+      box.innerHTML = step ? diffHtml(step) : (S.details && row ? detailsHtml(row) : '');
     };
 
     const renderHomeText = () => {

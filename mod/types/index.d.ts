@@ -19,12 +19,24 @@ export type SectionId = 'waiting' | 'working' | 'others' | 'archived'
 
 export type SectionFilters = Record<SectionId, boolean>
 
+// One step of a conversation's activity feed (mod/hooks/activity.mjs).
+export type ActivityStep = {
+  at: number
+  kind: 'edit' | 'read' | 'command' | 'search' | 'web' | 'agent' | 'tool'
+  label: string
+  file?: string
+  added?: number
+  removed?: number
+  diff?: { before: string; after: string }
+}
+
 export type SessionEntry = {
   id: string
   cwd: string
   prompt: string
   status: SessionStatus
   tool?: string
+  steps?: ActivityStep[]
   updatedAt: number
 }
 
@@ -52,6 +64,7 @@ export type ConversationRow = {
   cwd: string
   status: RowStatus
   tool?: string
+  steps?: ActivityStep[]
   updatedAt: number
   isCurrent: boolean
   isLive: boolean

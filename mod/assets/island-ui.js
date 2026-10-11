@@ -24,7 +24,7 @@
   const initialState = () => ({
     phase: 'hidden', view: 'home', focusId: null, by: 'click', nextView: null, nextBy: 'click', rows: [], key: '', waitIds: null, folderKey: '',
     details: false, exact: false, parkKind: 'later', images: [], folders: [], picked: [], sounds: true, isPointerIn: false,
-    permissions: [], permId: null, permShownAt: null,
+    permissions: [], permId: null, permShownAt: null, diff: null,
   });
 
   const create = ({ doc, win, host, model, entities, helpers, actions, desktop = null, announce = () => {} }) => {
@@ -113,7 +113,7 @@
       const previous = S.phase;
       S.phase = phase;
       S.view = view;
-      if (phase !== 'open') { S.details = false; S.exact = false; S.focusId = (ctx.urgent() || {}).engineId || null; stopAges(); }
+      if (phase !== 'open') { S.details = false; S.exact = false; S.diff = null; S.focusId = (ctx.urgent() || {}).engineId || null; stopAges(); }
       if (phase === 'open') ctx.living.rebaseHero(HERO_PX);
       renderAll();
       const target = ctx.motion.targetFor(phase, view);
@@ -213,7 +213,7 @@
       ctx.feed.observe(list, Date.now(), ctx.views.activityLabel);
       const fresh = model.newWaitOf(S.waitIds, list);
       S.waitIds = model.waitingIdsOf(list);
-      const key = `${relevantKey(list)}|${S.permissions.map(entry => entry.requestId).join(',')}|${S.focusId}|${S.view}|${S.phase}|${S.details}`;
+      const key = `${relevantKey(list)}|${S.permissions.map(entry => entry.requestId).join(',')}|${S.focusId}|${S.view}|${S.phase}|${S.details}|${S.diff ? S.diff.at : ''}`;
       if (key !== S.key) {
         S.key = key;
         if (S.phase === 'hidden') ctx.views.renderCompact();

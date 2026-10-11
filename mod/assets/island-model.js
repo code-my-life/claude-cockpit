@@ -109,8 +109,15 @@
         steps.set(row.engineId, [...list, { key, label: labelOf(row), at: now }].slice(-max));
       }
     };
+    // Les étapes vues par le mod (fichier, lignes ajoutées et retirées, diff) quand il en a ; sinon le nom de l'outil relevé ici.
+    // `diffAt` désigne l'étape dont l'île peut montrer le diff.
+    const modLinesOf = row => row.steps.slice(-max).map((step, index, shown) => ({
+      label: step.label, at: step.at, isCurrent: index === shown.length - 1, kind: step.kind, file: step.file || null,
+      added: step.added, removed: step.removed, diffAt: step.diff ? step.at : null,
+    }));
     const linesOf = (row, labelOf) => {
       if (!ACTIVE_STATUSES.includes(row.status)) return [];
+      if (Array.isArray(row.steps) && row.steps.length > 0) return modLinesOf(row);
       const list = steps.get(row.engineId) || [];
       const current = { label: labelOf(row), at: null, isCurrent: true };
       if (list.length === 0) return [current];

@@ -55,6 +55,13 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .feed li { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .island .feed .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .island .feed .ep-icon { width: 12px; height: 12px; }
+/* Étape modifiée : le nom du fichier ouvre son diff ; lignes ajoutées et retirées en chiffres signés (+ et −), teintés. */
+.island .feed .is-step { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: normal; }
+.island .counts { flex: none; white-space: nowrap; }
+.island .add { color: var(--success); }
+.island .del { color: var(--danger); }
+.island .is-diff { grid-column: 1 / -1; display: grid; gap: var(--space-2); min-width: 0; }
+.island .is-diffcode { margin: 0; max-height: 180px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .island .details { display: grid; grid-template-columns: minmax(0, 1fr) 312px; column-gap: var(--space-4); margin-top: var(--space-3); }
 .island .details[hidden] { display: none; }
 .island .details .col { display: grid; gap: var(--space-2); align-content: start; min-width: 0; }
