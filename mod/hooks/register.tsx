@@ -1,17 +1,33 @@
+// Every part of the mod that calls the engine lives in this file: the engine
+// follows `$` only into functions of the module it loaded, never across an
+// import. What needs no `$` (rows, sections, summary text, page data, the
+// pane's tree) lives in its own module, with its tests.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import { decisionFor, describePermission, isIslandAsk, verdictFor } from './permission-text.mjs'
 import { pushStep, stepOf } from './activity.mjs'
+import { exportRows, seedScriptOf, versionOf } from './page-data.mts'
+import { paneTree } from './pane.tsx'
+import { buildRows, mergeSummaries } from './rows.mts'
+import type { Acks, Parked } from './rows.mts'
+import {
+  ancestorsOf,
+  buildSummaryPrompt,
+  buildTailScript,
+  firstLineOf,
+  lastMessagesOf,
+  parseAwaiting,
+  parseSummaryJson,
+  REPLY_PREAMBLE,
+  SUMMARY_SYSTEM,
+} from './summary-text.mts'
+import type { LastMessages } from './summary-text.mts'
 
 import type {
-  ConversationContext,
   ConversationRow,
   HostSession,
-  RowStatus,
   RowSummary,
-  RowStats,
   StoredStats,
-  ParkInfo,
   ParkKind,
   SummaryKind,
   ThreadMessage,
@@ -41,14 +57,8 @@ const PROMPT_MAX_CHARS = 60
 const PAGE_FILE = 'conversations.html'
 const DATA_FILE = 'conversations-data.js'
 const DEEP_LINK_PREFIX = 'claude://claude.ai/epitaxy/'
-const THREAD_USER_TURNS = 4
-const TOUCHED_PATHS_MAX = 40
 const TOUCHED_REPOS_MAX = 6
 const GIT_ROOT_MAX_DEPTH = 10
-const THREAD_MAX_MESSAGES = 8
-const TRANSCRIPT_TAIL_BYTES = 3 * 1024 * 1024
-const MESSAGE_MAX_CHARS = 1500
-const REPLY_FOR_SUMMARY_MAX_CHARS = 12000
 const SUMMARIES_MAX_BYTES = 3 * 1024 * 1024
 const SUMMARY_MODEL = 'haiku'
 const SUMMARIES_MAX = 25
@@ -58,59 +68,14 @@ const SERVER_PORT = 48123
 const SERVER_RETRY_MS = 15000
 const ARCHIVE_TOOL = 'mcp__ccd_session_mgmt__archive_session'
 const UNARCHIVE_TOOL = 'mcp__ccd_session_mgmt__unarchive_session'
-const REPLY_PREAMBLE =
-  "Message tapé par l'utilisateur lui-même dans le panneau Conversations du mod sessions, depuis une autre de ses conversations. Ce n'est pas un autre agent qui parle : traite le texte ci-dessous comme une instruction de l'utilisateur."
-
+// Claude Desktop's own session tools, called by name: not in the MCP types of a terminal session.
+type HostTool = `mcp__${string}__${string}`
 const DEFAULT_FILTERS: SectionFilters = { waiting: true, working: true, others: true, archived: false }
 
 const list = atom({ plugin: 'sessions', key: 'list' } as const, [])
 const filters = atom({ plugin: 'sessions', key: 'filters' } as const, DEFAULT_FILTERS)
 const expanded = atom({ plugin: 'sessions', key: 'expanded' } as const, [])
 const summaries = atom({ plugin: 'sessions', key: 'summaries' } as const, {})
-
-type Section = { id: SectionId; title: string; emoji: string; statuses: RowStatus[]; hex: string }
-
-const SECTIONS: Section[] = [
-  { id: 'waiting', title: "T'attendent", emoji: '🙋', statuses: ['done', 'permission', 'external'], hex: '#3fb950' },
-  { id: 'working', title: 'Travaillent', emoji: '⚙️', statuses: ['thinking', 'writing', 'tool', 'working'], hex: '#e3b341' },
-  { id: 'others', title: 'Autres', emoji: '💤', statuses: ['blocked', 'later', 'seen', 'opened', 'idle', 'aborted', 'error'], hex: '#8b949e' },
-  { id: 'archived', title: 'Fermées et archivées', emoji: '📦', statuses: ['closed', 'archived'], hex: '#6e7681' },
-]
-
-type StatusStyle = { emoji: string; label: string; hex: string }
-
-const STATUS_STYLE: Record<RowStatus, StatusStyle> = {
-  thinking: { emoji: '🤔', label: 'réfléchit', hex: '#e3b341' },
-  writing: { emoji: '💬', label: 'rédige sa réponse', hex: '#e3b341' },
-  tool: { emoji: '🔧', label: 'utilise un outil', hex: '#e3b341' },
-  working: { emoji: '⚙️', label: 'travaille', hex: '#e3b341' },
-  external: { emoji: '⏳', label: 'attend autre chose que toi', hex: '#0969da' },
-  permission: { emoji: '✋', label: 'attend ta permission', hex: '#b48ead' },
-  done: { emoji: '✅', label: "a fini, t'attend", hex: '#3fb950' },
-  aborted: { emoji: '⏹️', label: 'interrompue', hex: '#8b949e' },
-  error: { emoji: '💥', label: 'en erreur', hex: '#f85149' },
-  seen: { emoji: '👀', label: 'vue, en attente de toi', hex: '#8b949e' },
-  blocked: { emoji: '🚫', label: 'bloquée', hex: '#d1242f' },
-  later: { emoji: '⏸️', label: 'mise de côté', hex: '#8b949e' },
-  opened: { emoji: '📂', label: 'ouverte, rien de nouveau', hex: '#8b949e' },
-  idle: { emoji: '😴', label: 'sans le mod', hex: '#8b949e' },
-  closed: { emoji: '💤', label: 'fermée', hex: '#6e7681' },
-  archived: { emoji: '📦', label: 'archivée', hex: '#6e7681' },
-}
-
-type ToolFlavor = { match: RegExp; emoji: string; label: string }
-
-const TOOL_FLAVORS: ToolFlavor[] = [
-  { match: /^(Read|Grep|Glob)$/, emoji: '🔎', label: 'fouille le code' },
-  { match: /^(Edit|Write|NotebookEdit)$/, emoji: '📝', label: 'modifie des fichiers' },
-  { match: /^Bash$/, emoji: '🖥️', label: 'lance une commande' },
-  { match: /^Agent$/, emoji: '🤖', label: 'délègue à un agent' },
-  { match: /^(WebFetch|WebSearch)$/, emoji: '🌐', label: 'va sur le web' },
-  { match: /^AskUserQuestion$/, emoji: '❓', label: 'te pose une question' },
-  { match: /^mcp__/, emoji: '🔌', label: 'interroge un service' },
-]
-
-const HOVER_HEX = '#58a6ff'
 
 let ownEngineId = ''
 let ownPhase: SessionStatus | null = null
@@ -153,14 +118,6 @@ const handledOrders = new Set<string>()
 
 // The page, its data and the session index live with the app when it runs.
 const dataDirOf = ($: EngineInterface) => appLink?.dataDir ?? pageDir($)
-
-const styleOf = (row: Pick<ConversationRow, 'status' | 'tool'>): StatusStyle => {
-  const base = STATUS_STYLE[row.status]
-  if (row.status !== 'tool' || row.tool === undefined) return base
-  const flavor = TOOL_FLAVORS.find(candidate => candidate.match.test(row.tool as string))
-  if (flavor === undefined) return base
-  return { ...base, emoji: flavor.emoji, label: flavor.label }
-}
 
 const readAll = async ($: EngineInterface): Promise<Record<string, SessionEntry>> => {
   const stored = await $.store.get(STORE_KEY)
@@ -279,9 +236,6 @@ const readSessionIndex = async ($: EngineInterface): Promise<SessionIndex> => {
   return sessionIndex
 }
 
-type ParkEntry = { kind: ParkKind; reason: string; at: number; updatedAt: number }
-type Parked = Record<string, ParkEntry>
-
 const readParked = async ($: EngineInterface): Promise<Parked> => {
   const stored = await $.store.get(PARKED_STORE_KEY)
   return (stored ?? {}) as Parked
@@ -302,13 +256,6 @@ const unparkConversation = async ($: EngineInterface, row: ConversationRow) => {
   await refresh($)
 }
 
-const parkInfoOf = (entry: ParkEntry | undefined, updatedAt: number): ParkInfo | undefined => {
-  if (entry === undefined) return undefined
-  return { ...entry, hasMoved: updatedAt > entry.updatedAt }
-}
-
-type Acks = Record<string, number>
-
 const readAcks = async ($: EngineInterface): Promise<Acks> => {
   const stored = await $.store.get(ACKS_STORE_KEY)
   return (stored ?? {}) as Acks
@@ -322,104 +269,6 @@ const setSeen = async ($: EngineInterface, row: ConversationRow, isSeen: boolean
   await refresh($)
 }
 
-const isAcknowledged = (acks: Acks, engineId: string, updatedAt: number) => acks[engineId] === updatedAt
-
-const sectionOf = (status: RowStatus) => SECTIONS.find(section => section.statuses.includes(status)) ?? SECTIONS[2]
-
-const sectionRank = (status: RowStatus) => SECTIONS.indexOf(sectionOf(status))
-
-const WAITING_STATUSES: RowStatus[] = ['done', 'permission', 'external']
-
-const withAck = (status: RowStatus, acks: Acks, engineId: string, updatedAt: number): RowStatus => {
-  if (!WAITING_STATUSES.includes(status)) return status
-  return isAcknowledged(acks, engineId, updatedAt) ? 'seen' : status
-}
-
-const rowStatusOf = (host: HostSession, entry: SessionEntry | undefined, isLive: boolean): RowStatus => {
-  if (host.isArchived) return 'archived'
-  if (!isLive) return 'closed'
-  return entry?.status ?? 'idle'
-}
-
-const withExternal = (status: RowStatus, summary: RowSummary | undefined, updatedAt: number): RowStatus => {
-  if (status !== 'done' || summary === undefined || summary.isLoading) return status
-  const isCurrentOrPending = summary.updatedAt <= updatedAt
-  return isCurrentOrPending && summary.kind === 'external' ? 'external' : status
-}
-
-const contextOf = (host: HostSession): ConversationContext => ({
-  repo: host.repo ?? null,
-  branch: host.branch ?? null,
-  ticket: host.ticket ?? null,
-  prs: host.prs ?? [],
-})
-
-const buildRows = (
-  live: Record<string, SessionEntry>,
-  hosts: HostSession[],
-  liveEngineIds: Set<string>,
-  acks: Acks,
-  shared: Record<string, RowSummary>,
-  parked: Parked,
-): ConversationRow[] => {
-  const statusOf = (engineId: string, status: RowStatus, updatedAt: number): RowStatus => {
-    const park = parked[engineId]
-    if (park !== undefined && status !== 'archived' && status !== 'closed') return park.kind
-    const acknowledged = withAck(status, acks, engineId, updatedAt)
-    return withExternal(acknowledged, shared[engineId], updatedAt)
-  }
-  const rows: ConversationRow[] = []
-  const seen = new Set<string>()
-  for (const host of hosts) {
-    const entry = live[host.engineId]
-    const isLive = liveEngineIds.has(host.engineId)
-    const updatedAt = entry?.updatedAt ?? host.lastActivityAt
-    seen.add(host.engineId)
-    rows.push({
-      hostId: host.hostId,
-      engineId: host.engineId,
-      title: host.title,
-      cwd: host.cwd,
-      status: statusOf(host.engineId, rowStatusOf(host, entry, isLive), updatedAt),
-      tool: entry?.tool,
-      steps: entry?.steps,
-      updatedAt,
-      isCurrent: host.engineId === ownEngineId,
-      isLive,
-      park: parkInfoOf(parked[host.engineId], updatedAt),
-      context: contextOf(host),
-    })
-  }
-  for (const entry of Object.values(live)) {
-    if (seen.has(entry.id)) continue
-    if (!liveEngineIds.has(entry.id)) continue
-    rows.push({
-      hostId: null,
-      engineId: entry.id,
-      title: entry.prompt || '(terminal)',
-      cwd: entry.cwd,
-      status: statusOf(entry.id, entry.status, entry.updatedAt),
-      tool: entry.tool,
-      steps: entry.steps,
-      updatedAt: entry.updatedAt,
-      isCurrent: entry.id === ownEngineId,
-      isLive: true,
-      park: parkInfoOf(parked[entry.id], entry.updatedAt),
-      context: null,
-    })
-  }
-  return rows.sort((a, b) => {
-    const rankDelta = sectionRank(a.status) - sectionRank(b.status)
-    if (rankDelta !== 0) return rankDelta
-    const urgencyDelta = urgencyOf(a.status) - urgencyOf(b.status)
-    return urgencyDelta !== 0 ? urgencyDelta : b.updatedAt - a.updatedAt
-  })
-}
-
-const URGENCY: Partial<Record<RowStatus, number>> = { permission: 0, external: 2 }
-
-const urgencyOf = (status: RowStatus) => URGENCY[status] ?? 1
-
 const refresh = async ($: EngineInterface) => {
   const live = await readAll($)
   const { hosts, liveEngineIds } = await readSessionIndex($)
@@ -427,19 +276,10 @@ const refresh = async ($: EngineInterface) => {
   const shared = await readSharedSummaries($)
   const parked = await readParked($)
   const stats = await readStoredStats($)
-  const rows = buildRows(live, hosts, liveEngineIds, acks, shared, parked)
+  const rows = buildRows({ live, hosts, liveEngineIds, acks, shared, parked, ownEngineId })
   await update($, list, () => rows)
   await update($, summaries, current => mergeSummaries(shared, current))
   if (isServing) await writeDataFile($, rows, shared, stats)
-}
-
-const mergeSummaries = (shared: Record<string, RowSummary>, local: Record<string, RowSummary>) => {
-  const merged: Record<string, RowSummary> = { ...shared }
-  for (const [engineId, entry] of Object.entries(local)) {
-    const known = merged[engineId]
-    if (entry.isLoading || known === undefined || entry.updatedAt > known.updatedAt) merged[engineId] = entry
-  }
-  return merged
 }
 
 const openConversation = ($: EngineInterface, hostId: string) => {
@@ -501,13 +341,13 @@ const sendReply = async ($: EngineInterface, row: ConversationRow, text: string)
   }
 }
 
-const callHostTool = async ($: EngineInterface, tool: string, args: Record<string, unknown>, okText: string) => {
+const callHostTool = async ($: EngineInterface, tool: HostTool, args: Record<string, unknown>, okText: string) => {
   try {
     const ran = await $.tool.call({ tool, ...args })
     if (ran.deny !== undefined) {
       $.ui.toast(`Refusé : ${ran.deny.slice(0, 120)}`)
     } else if (ran.isError === true) {
-      $.ui.toast(`Échec : ${ran.text.slice(0, 120)}`)
+      $.ui.toast(`Échec : ${(ran.text ?? '').slice(0, 120)}`)
     } else {
       $.ui.toast(okText)
     }
@@ -807,12 +647,6 @@ const readStoredStats = async ($: EngineInterface): Promise<Record<string, Store
   return (stored ?? {}) as Record<string, StoredStats>
 }
 
-const rowStatsOf = (stored: StoredStats | undefined): RowStats | undefined => {
-  if (stored === undefined) return undefined
-  const acc = stored.acc
-  return { messages: acc.messages, tools: acc.tools, files: acc.files.length, activeMs: acc.activeMs, lastAt: acc.lastAt, today: acc.today }
-}
-
 type StatsJob = { id: string; path: string; offset: number; acc: StoredStats['acc'] | null }
 type StatsResult = { id: string; offset?: number; acc?: StoredStats['acc']; error?: string }
 
@@ -868,135 +702,21 @@ const refreshStats = async ($: EngineInterface) => {
   }
 }
 
-const powershellQuoted = (text: string) => text.replace(/'/g, "''")
-
-const buildTailScript = (path: string) => `
-[Console]::OutputEncoding = [Text.Encoding]::UTF8
-$stream = [System.IO.File]::Open('${powershellQuoted(path)}', 'Open', 'Read', 'ReadWrite')
-try {
-  $size = $stream.Length
-  $window = [Math]::Min($size, ${TRANSCRIPT_TAIL_BYTES})
-  $null = $stream.Seek($size - $window, 'Begin')
-  $bytes = New-Object byte[] $window
-  $read = $stream.Read($bytes, 0, $window)
-  $text = [Text.Encoding]::UTF8.GetString($bytes, 0, $read)
-} finally { $stream.Dispose() }
-$lines = $text -split "\`n"
-if ($window -lt $size -and $lines.Count -gt 1) { $lines = $lines[1..($lines.Count - 1)] }
-$entries = New-Object System.Collections.ArrayList
-$users = 0
-for ($i = $lines.Count - 1; $i -ge 0 -and $users -lt ${THREAD_USER_TURNS}; $i--) {
-  try { $o = $lines[$i] | ConvertFrom-Json } catch { continue }
-  if ($o.type -ne 'user' -and $o.type -ne 'assistant') { continue }
-  $isPeer = $o.isMeta -eq $true -and $null -ne $o.origin -and $o.origin.kind -eq 'peer' -and $o.origin.plugin -eq 'sessions'
-  if ($o.isMeta -eq $true -and -not $isPeer) { continue }
-  if ($isPeer) { $text = [string]$o.origin.body } else {
-    $c = $o.message.content
-    if ($c -is [string]) { $text = $c } else { $text = (($c | Where-Object { $_.type -eq 'text' } | ForEach-Object { $_.text }) -join "\`n") }
-  }
-  if ([string]::IsNullOrWhiteSpace($text)) { continue }
-  $null = $entries.Add(@{ r = $o.type; t = $text })
-  if ($o.type -eq 'user') { $users++ }
-}
-$entries.Reverse()
-$paths = New-Object System.Collections.ArrayList
-for ($i = $lines.Count - 1; $i -ge 0 -and $paths.Count -lt ${TOUCHED_PATHS_MAX}; $i--) {
-  if ($lines[$i] -notmatch '"tool_use"') { continue }
-  try { $o = $lines[$i] | ConvertFrom-Json } catch { continue }
-  if ($o.type -ne 'assistant' -or $o.message.content -is [string]) { continue }
-  foreach ($block in $o.message.content) {
-    if ($block.type -ne 'tool_use' -or $null -eq $block.input) { continue }
-    foreach ($key in @('file_path', 'path', 'notebook_path')) {
-      $value = $block.input.$key
-      if ($value -is [string] -and $value.Length -gt 2) { $null = $paths.Add($value) }
-    }
-    $command = $block.input.command
-    if ($command -is [string]) {
-      foreach ($match in [regex]::Matches($command, '(?:^|[;&|]\s*)cd\s+("([^"]+)"|''([^'']+)''|(\S+))')) {
-        $target = @($match.Groups[2].Value, $match.Groups[3].Value, $match.Groups[4].Value) | Where-Object { $_ } | Select-Object -First 1
-        if ($target) { $null = $paths.Add($target) }
-      }
-      foreach ($match in [regex]::Matches($command, 'git\s+-C\s+("([^"]+)"|(\S+))')) {
-        $target = @($match.Groups[2].Value, $match.Groups[3].Value) | Where-Object { $_ } | Select-Object -First 1
-        if ($target) { $null = $paths.Add($target) }
-      }
-    }
-  }
-}
-ConvertTo-Json -Compress -Depth 4 -InputObject @{ entries = @($entries); paths = @($paths) }
-`
-
-type LastMessages = { user: string | null; assistant: string | null; thread: ThreadMessage[]; paths: string[] }
-
-type RawEntry = { r: string; t: string }
-
-const cleanUserText = (text: string) => {
-  const withoutReminders = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
-  const preambleAt = withoutReminders.indexOf(REPLY_PREAMBLE)
-  const body = preambleAt >= 0 ? withoutReminders.slice(preambleAt + REPLY_PREAMBLE.length) : withoutReminders
-  return body.replace(/<\/?cross-session-message[^>]*>/g, '').trim()
-}
-
-const isCommandNoise = (text: string) => /^<(local-command|command-)/.test(text.trim())
-
-const buildThread = (raw: RawEntry[]): ThreadMessage[] => {
-  const thread: ThreadMessage[] = []
-  for (const entry of raw) {
-    const role: ThreadMessage['role'] = entry.r === 'user' ? 'user' : 'assistant'
-    const text = role === 'user' ? cleanUserText(entry.t) : entry.t.trim()
-    if (text.length === 0 || isCommandNoise(text)) continue
-    const last = thread.at(-1)
-    if (last !== undefined && last.role === role && role === 'assistant') {
-      last.text = text
-      continue
-    }
-    thread.push({ role, text })
-  }
-  return thread.slice(-THREAD_MAX_MESSAGES)
-}
-
 const readLastMessages = async ($: EngineInterface, path: string): Promise<LastMessages> => {
   const script = buildTailScript(path)
   const ran = await $.process.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script], {
     timeoutMs: 20000,
   })
   if (ran.exitCode !== 0) throw new Error(ran.stderr.slice(0, 200))
-  const parsed = JSON.parse(ran.stdout || '{}') as { entries?: RawEntry[] | RawEntry; paths?: string[] | string }
-  const raw = parsed.entries === undefined ? [] : Array.isArray(parsed.entries) ? parsed.entries : [parsed.entries]
-  const paths = parsed.paths === undefined ? [] : Array.isArray(parsed.paths) ? parsed.paths : [parsed.paths]
-  const thread = buildThread(raw)
-  const lastUser = [...thread].reverse().find(message => message.role === 'user')
-  const lastAssistant = [...thread].reverse().find(message => message.role === 'assistant')
-  return { user: lastUser?.text ?? null, assistant: lastAssistant?.text ?? null, thread, paths }
+  return lastMessagesOf(ran.stdout)
 }
-
-const buildSummaryPrompt = (messages: LastMessages) => {
-  const user = (messages.user ?? '(aucun)').slice(0, MESSAGE_MAX_CHARS)
-  const assistant = (messages.assistant ?? '(aucune)').slice(0, REPLY_FOR_SUMMARY_MAX_CHARS)
-  return `Dernier message de l'utilisateur :\n${user}\n\nDernière réponse de Claude :\n${assistant}`
-}
-
-const SUMMARY_SYSTEM =
-  "Tu lis le dernier échange entre un développeur et Claude. Réponds uniquement par un objet JSON, sans texte autour, avec trois champs. \"type\" : \"Q\" si Claude pose une question, propose des options ou attend une validation ou une réponse du développeur, \"E\" uniquement si la suite arrivera toute seule, sans que le développeur ait rien à faire ni à transmettre : Claude surveille lui-même une revue de PR, une CI, un déploiement, une tâche en arrière-plan ou une boucle qu'il a lancée, et reviendra de lui-même. Si la suite demande une action humaine (du développeur, ou d'une autre personne que le développeur doit prévenir ou relancer, comme lancer un outil, fusionner, tester, répondre), ce n'est jamais \"E\" : c'est \"Q\". \"L\" s'il a seulement livré ou constaté quelque chose sans rien demander ni attendre. \"attend\" : une phrase de 20 mots maximum, ce que Claude attend du développeur, ou ce qu'il vient de livrer. \"clair\" : la dernière réponse de Claude reformulée en français simple pour quelqu'un de pressé et fatigué, en Markdown, 3 à 8 lignes : phrases courtes, aucun jargon, une idée par ligne, listes à puces pour les éléments parallèles, options numérotées si Claude en propose, et termine par la question posée en gras s'il y en a une. Garde tous les faits et chiffres importants, n'invente rien, n'ajoute aucun avis. Reprends tels quels les liens, numéros de ticket ou de PR et noms de fichier. Pas de tiret cadratin."
 
 type SummaryParts = { awaiting: string; text: string; kind?: SummaryKind; plain?: string; thread?: ThreadMessage[]; repos?: string[] }
 
-const parentOf = (path: string) => {
-  const trimmed = path.replace(/[\\/]+$/, '')
-  const cut = Math.max(trimmed.lastIndexOf('\\'), trimmed.lastIndexOf('/'))
-  return cut > 2 ? trimmed.slice(0, cut) : null
-}
-
-const toWindowsPath = (path: string) => path.replace(/^\/([a-zA-Z])\//, (match, drive: string) => `${drive.toUpperCase()}:/`)
-
 const gitRootOf = async ($: EngineInterface, rawPath: string, cwd: string) => {
-  const path = toWindowsPath(rawPath)
-  const isAbsolute = /^[A-Za-z]:[\\/]/.test(path)
-  let current: string | null = (isAbsolute ? path : `${cwd}\\${path}`).replace(/\//g, '\\')
-  for (let depth = 0; current !== null && depth < GIT_ROOT_MAX_DEPTH; depth++) {
-    const hasGit = await $.fs.exists(`${current}\\.git`)
-    if (hasGit) return current
-    current = parentOf(current)
+  for (const folder of ancestorsOf(rawPath, cwd, GIT_ROOT_MAX_DEPTH)) {
+    const hasGit = await $.fs.exists(`${folder}\\.git`)
+    if (hasGit) return folder
   }
   return null
 }
@@ -1020,43 +740,6 @@ const cwdOf = async ($: EngineInterface, engineId: string) => {
   if (row !== undefined) return row.cwd
   const live = await readAll($)
   return live[engineId]?.cwd ?? ''
-}
-
-const parseSummaryJson = (reply: string): { awaiting: string; kind?: SummaryKind; plain?: string } | null => {
-  const start = reply.indexOf('{')
-  const end = reply.lastIndexOf('}')
-  if (start < 0 || end <= start) return null
-  try {
-    const data = JSON.parse(reply.slice(start, end + 1)) as Record<string, unknown>
-    const type = typeof data.type === 'string' ? data.type.trim().toUpperCase() : ''
-    const kind: SummaryKind | undefined = type === 'Q' ? 'question' : type === 'L' ? 'delivered' : type === 'E' ? 'external' : undefined
-    const attend = typeof data.attend === 'string' ? data.attend.trim().replace(/^["«\s]+|["»\s.]+$/g, '') : ''
-    const plain = typeof data.clair === 'string' && data.clair.trim().length > 0 ? data.clair.trim() : undefined
-    return { awaiting: endSentence(attend), kind, plain }
-  } catch {
-    return null
-  }
-}
-
-const firstLineOf = (text: string) => {
-  const line = text.split(/\r?\n/).find(candidate => candidate.trim().length > 0) ?? ''
-  return line.replace(/^[-*#>\s]+/, '').replace(/\*\*/g, '').slice(0, 160)
-}
-
-const endSentence = (line: string) => {
-  if (line.length === 0) return ''
-  return /[?!]$/.test(line) ? line : `${line}.`
-}
-
-const parseAwaiting = (reply: string): { awaiting: string; kind?: SummaryKind } => {
-  const raw = firstLineOf(reply)
-  const prefix = raw.match(/^\s*([QLE])\s*:\s*/i)
-  const letter = prefix === null ? '' : prefix[1].toUpperCase()
-  const kind: SummaryKind | undefined = letter === 'Q' ? 'question' : letter === 'L' ? 'delivered' : letter === 'E' ? 'external' : undefined
-  const body = prefix === null ? raw : raw.slice(prefix[0].length)
-  const line = body.replace(/^["«\s]+|["»\s.]+$/g, '')
-  const awaiting = endSentence(line)
-  return { awaiting, kind }
 }
 
 const readSharedSummaries = async ($: EngineInterface): Promise<Record<string, RowSummary>> => {
@@ -1151,23 +834,6 @@ const toggleExpanded = async ($: EngineInterface, row: ConversationRow) => {
   await ensureSummary($, row)
 }
 
-const formatAge = (updatedAt: number, now: number) => {
-  const seconds = Math.max(0, Math.round((now - updatedAt) / 1000))
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.round(minutes / 60)
-  if (hours < 48) return `${hours} h`
-  const days = Math.round(hours / 24)
-  return `${days} j`
-}
-
-const formatCwd = (cwd: string) => {
-  const parts = cwd.split(/[\\/]/)
-  const last = parts.filter(Boolean).at(-1)
-  return last ?? cwd
-}
-
 const pageDir = ($: EngineInterface) => $.plugin.root.replace(/[\\/][^\\/]+$/, '')
 
 const readPageTemplate = ($: EngineInterface) => $.fs.read(`${$.plugin.root}/assets/${PAGE_FILE}`)
@@ -1184,37 +850,15 @@ const readPageAssets = async ($: EngineInterface) => {
   return pageAssets
 }
 
-const versionOf = (text: string) => {
-  let hash = 0
-  for (let index = 0; index < text.length; index++) hash = (hash * 31 + text.charCodeAt(index)) | 0
-  return String(hash >>> 0)
-}
-
-const inlineScriptSafe = (json: string) => json.replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
-
 const writePage = async ($: EngineInterface, payload: string, template: string, version: string) => {
-  const seed = `<script>window.__PAGE_VERSION__ = ${inlineScriptSafe(JSON.stringify(version))}; window.__CONVERSATIONS__ = ${inlineScriptSafe(payload)};</script>`
+  const seed = seedScriptOf(version, payload)
   const page = template.replace(SEED_MARKER, () => seed)
   await $.fs.write(`${dataDirOf($)}/${PAGE_FILE}`, page)
 }
 
 const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared: Record<string, RowSummary>, stats: Record<string, StoredStats>) => {
   const shown = rows.filter(row => row.status !== 'archived')
-  const exported = shown.map(row => ({
-    hostId: row.hostId,
-    engineId: row.engineId,
-    title: row.title,
-    cwd: row.cwd,
-    status: row.status,
-    tool: row.tool,
-    steps: row.steps,
-    updatedAt: row.updatedAt,
-    isLive: row.isLive,
-    summary: shared[row.engineId],
-    park: row.park,
-    stats: rowStatsOf(stats[row.engineId]),
-    context: row.context,
-  }))
+  const exported = exportRows(shown, shared, stats)
   const template = await readPageTemplate($)
   const assets = await readPageAssets($)
   const versionSource = `${template}\n${assets}`
@@ -1349,213 +993,24 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button, Input, Markdown } = $.ui.resolve(e)
-    const rows = await read($, list)
-    const visible = await read($, filters)
-    const expandedIds = await read($, expanded)
-    const known = await read($, summaries)
-    const now = Date.now()
-
-    const countOf = (section: Section) => rows.filter(row => section.statuses.includes(row.status)).length
-
-    const renderChip = (section: Section) => {
-      const isOn = visible[section.id]
-      return (
-        <Box
-          key={`chip-${section.id}`}
-          borderStyle="round"
-          borderColor={isOn ? section.hex : undefined}
-          borderDimColor={!isOn}
-          paddingX={1}
-          hover={{ borderColor: HOVER_HEX }}
-        >
-          <Button plain dimColor={!isOn} onPress={() => toggleFilter($, section.id)}>
-            {`${section.emoji} ${section.title} ${countOf(section)}`}
-          </Button>
-        </Box>
-      )
+    const data = {
+      rows: await read($, list),
+      visible: await read($, filters),
+      expandedIds: await read($, expanded),
+      known: await read($, summaries),
+      now: Date.now(),
     }
-
-    const renderHeader = () => (
-      <Box flexDirection="row" gap={1} alignItems="center" marginBottom={1} flexWrap="wrap">
-        {SECTIONS.map(renderChip)}
-      </Box>
-    )
-
-    const awaitingOf = (entry: RowSummary) => entry.awaiting ?? firstLineOf(entry.text)
-
-    const renderSummaryText = (row: ConversationRow) => {
-      const entry = known[row.engineId]
-      if (entry === undefined || entry.isLoading) return <Text dimColor>🧠 Résumé en cours…</Text>
-      const isStale = entry.updatedAt !== row.updatedAt
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text bold dimColor={isStale}>👉 {awaitingOf(entry)}</Text>
-          <Text dimColor>{entry.plain !== undefined ? 'En clair :' : 'Réponse de Claude :'}</Text>
-          <Markdown text={entry.plain ?? entry.text} dimColor={isStale} />
-        </Box>
-      )
-    }
-
-    const renderCollapsedSummary = (row: ConversationRow) => {
-      if (row.park !== undefined) {
-        const parkLabel = row.park.kind === 'blocked' ? '🚫 Bloquée' : '⏸️ Plus tard'
-        const parkReason = row.park.reason.length > 0 ? ` : ${row.park.reason}` : ''
-        const moved = row.park.hasMoved ? ' · a bougé' : ''
-        return (
-          <Box paddingLeft={3}>
-            <Text color={row.park.kind === 'blocked' ? '#d1242f' : undefined} dimColor={row.park.kind === 'later'} wrap="truncate">{`${parkLabel}${parkReason}${moved}`}</Text>
-          </Box>
-        )
-      }
-      if (sectionOf(row.status).id === 'working') return null
-      const entry = known[row.engineId]
-      if (entry === undefined || entry.isLoading) return null
-      const awaiting = awaitingOf(entry)
-      if (awaiting.length === 0) return null
-      const isStale = entry.updatedAt !== row.updatedAt
-      return (
-        <Box paddingLeft={3}>
-          <Text dimColor={isStale} wrap="truncate">👉 {awaiting}</Text>
-        </Box>
-      )
-    }
-
-    const renderDetails = (row: ConversationRow) => {
-      const isArchived = row.status === 'archived'
-      const canReply = !row.isCurrent && row.isLive
-      return (
-        <Box flexDirection="column" gap={1} marginTop={1} paddingLeft={3}>
-          {renderSummaryText(row)}
-          {!row.isLive && !isArchived && (
-            <Text dimColor>Conversation fermée : « Ouvrir » la relance, la réponse redevient possible ensuite.</Text>
-          )}
-          {canReply && (
-            <Input
-              key={`reply-${row.engineId}`}
-              placeholder={`Répondre à « ${row.title} »…`}
-              submitLabel="Envoyer"
-              autoFocus
-              onSubmit={value => sendReply($, row, value)}
-            />
-          )}
-          <Box flexDirection="row" gap={1}>
-            {!row.isCurrent && !isArchived && row.hostId !== null && (
-              <Button variant="secondary" onPress={() => openConversation($, row.hostId as string)}>
-                Ouvrir
-              </Button>
-            )}
-            <Button variant="secondary" onPress={() => regenerateSummary($, row)}>
-              Rafraîchir le résumé
-            </Button>
-            <Button variant="secondary" onPress={() => collapseRow($, row.engineId)}>
-              Replier
-            </Button>
-          </Box>
-        </Box>
-      )
-    }
-
-    const renderActions = (row: ConversationRow) => {
-      const canAct = !row.isCurrent
-      const isArchived = row.status === 'archived'
-      const isWaiting = WAITING_STATUSES.includes(row.status)
-      const isSeen = row.status === 'seen'
-      const isParked = row.park !== undefined
-      return (
-        <Box flexDirection="row" gap={1}>
-          {isParked && (
-            <Button plain onPress={() => unparkConversation($, row)}>
-              Reprendre
-            </Button>
-          )}
-          {isWaiting && (
-            <Button plain onPress={() => setSeen($, row, true)}>
-              Vu
-            </Button>
-          )}
-          {isSeen && (
-            <Button plain onPress={() => setSeen($, row, false)}>
-              À traiter
-            </Button>
-          )}
-          {canAct && !isArchived && row.hostId !== null && (
-            <Button plain onPress={() => openConversation($, row.hostId as string)}>
-              Ouvrir
-            </Button>
-          )}
-          {canAct && !isArchived && row.hostId !== null && (
-            <Button plain dimColor onPress={() => archiveConversation($, row)}>
-              Archiver
-            </Button>
-          )}
-          {isArchived && row.hostId !== null && (
-            <Button plain onPress={() => unarchiveConversation($, row)}>
-              Restaurer
-            </Button>
-          )}
-        </Box>
-      )
-    }
-
-    const renderCard = (row: ConversationRow) => {
-      const style = styleOf(row)
-      const isExpanded = expandedIds.includes(row.engineId)
-      const isFaded = !row.isLive
-      return (
-        <Box
-          key={row.engineId}
-          flexDirection="column"
-          borderStyle="round"
-          borderColor={style.hex}
-          borderDimColor={isFaded}
-          paddingX={1}
-          hover={{ borderColor: HOVER_HEX }}
-        >
-          <Box flexDirection="row" gap={1} alignItems="center">
-            <Button plain onPress={() => toggleExpanded($, row)}>
-              {isExpanded ? '▾' : '▸'}
-            </Button>
-            <Button plain onPress={() => toggleExpanded($, row)}>
-              {`${style.emoji} ${row.title}`}
-            </Button>
-            {row.isCurrent && <Text dimColor>ici</Text>}
-          </Box>
-          <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
-            <Text dimColor>
-              {style.label} · {formatCwd(row.cwd)} · {formatAge(row.updatedAt, now)}
-            </Text>
-            {renderActions(row)}
-          </Box>
-          {!isExpanded && renderCollapsedSummary(row)}
-          {isExpanded && renderDetails(row)}
-        </Box>
-      )
-    }
-
-    const renderSection = (section: Section) => {
-      if (!visible[section.id]) return null
-      const sectionRows = rows.filter(row => section.statuses.includes(row.status))
-      if (sectionRows.length === 0) return null
-      return (
-        <Box flexDirection="column" marginBottom={1} key={section.id}>
-          <Box flexDirection="row" gap={1}>
-            <Text color={section.hex} bold>
-              {section.emoji} {section.title}
-            </Text>
-            <Text dimColor>{sectionRows.length}</Text>
-          </Box>
-          {sectionRows.map(renderCard)}
-        </Box>
-      )
-    }
-
-    return (
-      <Box flexDirection="column" paddingX={1}>
-        {renderHeader()}
-        {rows.length === 0 && <Text dimColor>Aucune conversation connue.</Text>}
-        {SECTIONS.map(renderSection)}
-      </Box>
-    )
+    return paneTree($.ui.resolve(e), data, {
+      toggleFilter: id => toggleFilter($, id),
+      toggleExpanded: row => toggleExpanded($, row),
+      collapse: row => collapseRow($, row.engineId),
+      regenerate: row => regenerateSummary($, row),
+      reply: (row, text) => sendReply($, row, text),
+      open: hostId => openConversation($, hostId),
+      setSeen: (row, isSeen) => setSeen($, row, isSeen),
+      unpark: row => unparkConversation($, row),
+      archive: row => archiveConversation($, row),
+      unarchive: row => unarchiveConversation($, row),
+    })
   })
 }

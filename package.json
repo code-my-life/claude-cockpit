@@ -3,9 +3,10 @@
   "private": true,
   "description": "Cockpit pour suivre toutes les conversations Claude Code",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.18"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test \"**/*.test.mjs\" \"**/*.test.js\"",
+    "test:mod": "claude plugin test mod"
   }
 }

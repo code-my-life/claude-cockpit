@@ -30,10 +30,13 @@ Trois morceaux :
 ## Développement
 
 ```bash
-npm test
+npm test          # Node 22.18 ou plus : les modules purs du mod sont en TypeScript (.mts)
+npm run test:mod  # le panneau du mod, dessiné par le moteur de Claude Code sur chaque surface
 ```
 
 Les tests tournent sur Windows, macOS et Linux dans GitHub Actions.
+
+Le mod tient tout ce qui appelle le moteur dans `mod/hooks/register.tsx` : le moteur ne suit `$` que dans le module qu'il charge, jamais à travers un import. Ce qui n'en a pas besoin vit à côté, avec ses tests : `rows.mts`, `sections.mts`, `summary-text.mts`, `page-data.mts`, `pane.tsx`.
 
 ## Installation
 
