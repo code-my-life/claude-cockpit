@@ -162,3 +162,9 @@ test('the buttons of a permission ignore clicks during its first 600 ms', () => 
   assert.equal(model.isDecisionArmed(1000, 1600), true);
   assert.equal(model.isDecisionArmed(null, 1600), false);
 });
+
+test('a permission the island can answer comes first among the waits, then the oldest wait', () => {
+  const rows = [row('q-old', 'done', { updatedAt: 100, summary: { kind: 'question' } }), row('perm', 'permission', { updatedAt: 900 }), row('q-new', 'external', { updatedAt: 500 })];
+  assert.deepEqual(model.waitOrderOf(rows, [ask('perm')]).map(entry => entry.engineId), ['perm', 'q-old', 'q-new']);
+  assert.deepEqual(model.waitOrderOf(rows, []).map(entry => entry.engineId), ['q-old', 'q-new', 'perm']);
+});

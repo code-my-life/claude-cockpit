@@ -41,7 +41,7 @@
       rows: () => S.rows,
       focus: () => model.focusOf(S.rows, S.focusId),
       urgent: () => model.byUrgency(S.rows)[0] || null,
-      waiting: () => model.waitingOf(S.rows).sort((a, b) => a.updatedAt - b.updatedAt),
+      waiting: () => model.waitOrderOf(S.rows, S.permissions),
       rowOf: id => S.rows.find(row => row.engineId === id) || null,
       canReply: row => Boolean(row) && model.canReply(row, { isServer: helpers.isServer }),
     };
