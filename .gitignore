@@ -12,3 +12,4 @@ desktop/node_modules/
 /search-cache.json
 /search-cache.json.tmp
 desktop/dist/
+/node_modules/

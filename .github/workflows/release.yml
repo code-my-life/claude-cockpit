@@ -18,7 +18,10 @@ jobs:
         with:
           node-version: 22
       - name: Tests
-        run: npm test
+        run: |
+          npm ci
+          npm test
+          npm run typecheck:mod
       - name: The tag matches the app version
         shell: bash
         run: test "v$(node -p "require('./desktop/package.json').version")" = "$GITHUB_REF_NAME"

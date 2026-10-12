@@ -8,6 +8,10 @@
   },
   "scripts": {
     "test": "node --test \"**/*.test.mjs\" \"**/*.test.js\"",
+    "typecheck:mod": "tsc -p ci/tsconfig.mod.json",
     "test:mod": "claude plugin test mod"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
   }
 }

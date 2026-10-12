@@ -30,11 +30,14 @@ Trois morceaux :
 ## Développement
 
 ```bash
-npm test          # Node 22.18 ou plus : les modules purs du mod sont en TypeScript (.mts)
-npm run test:mod  # le panneau du mod, dessiné par le moteur de Claude Code sur chaque surface
+npm test               # Node 22.18 ou plus : les modules purs du mod sont en TypeScript (.mts)
+npm run typecheck:mod  # les types de tout le mod, register.tsx compris
+npm run test:mod       # le panneau du mod, dessiné par le moteur de Claude Code sur chaque surface
 ```
 
-Les tests tournent sur Windows, macOS et Linux dans GitHub Actions.
+Les tests et la vérification des types tournent sur Windows, macOS et Linux dans GitHub Actions. `npm test` ne charge jamais `register.tsx` : seule la vérification des types y voit une variable manquante.
+
+Le moteur n'écrit les types de son API (`mod/.claude-plugin/types/`, ignoré par git) que sur une machine où il a chargé le mod. La CI lit donc une copie, `ci/mod-types/`, sans les outils MCP propres à chaque machine. Après une mise à jour de Claude Code, rafraîchis-la depuis `mod/.claude-plugin/types/claude-code/` et `claude-code-tools/`, puis lance `npm run typecheck:mod`.
 
 Le mod tient tout ce qui appelle le moteur dans `mod/hooks/register.tsx` : le moteur ne suit `$` que dans le module qu'il charge, jamais à travers un import. Ce qui n'en a pas besoin vit à côté, avec ses tests : `rows.mts`, `sections.mts`, `summary-text.mts`, `page-data.mts`, `pane.tsx`.
 
