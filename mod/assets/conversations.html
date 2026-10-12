@@ -48,7 +48,6 @@
   .stats { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
   .stats .count { display: inline-block; color: var(--ink); font-weight: 500; }
   .tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-  .tools .bell.on { color: var(--accent); }
   .clock { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; padding-left: var(--space-3); }
   .fresh-note { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); margin-top: calc(var(--space-4) * -1); }
   .fresh-note.stale { color: var(--warning); }
@@ -196,6 +195,8 @@
   .card.big > * { flex: none; }
   .card.big > .card-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   .card.big .thread { max-height: none; overflow: visible; }
+  .lane.cards sg-flip.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: var(--z-bar); width: auto; height: auto; aspect-ratio: auto; }
+  .lane.cards sg-flip.big .conv-card-body .thread { max-height: none; overflow: visible; }
 
   .pop { animation: pop 420ms cubic-bezier(0.3, 1.35, 0.45, 1); }
   @keyframes pop { 0% { transform: scale(0.85); } 100% { transform: scale(1); } }
@@ -363,7 +364,6 @@
         </div>
         <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" id="zoom-out" aria-label="Réduire le texte">A−</button>
         <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" id="zoom-in" aria-label="Agrandir le texte">A+</button>
-        <button type="button" class="ep-btn ep-btn--ghost ep-btn--icon bell" id="bell" aria-label="Activer les notifications"><span class="ep-icon ep-icon--bell" aria-hidden="true"></span></button>
         <span class="clock display" id="clock">--:--</span>
       </div>
     </div>
@@ -966,7 +966,7 @@
       ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}`;
   };
 
-  const renderCardBody = row => {
+  const renderCardBody = (row, { inCard = false } = {}) => {
     const isBig = state.bigId === row.engineId;
     const canOrder = isServer && !row.isCurrent;
     const feedback = state.feedback.get(row.engineId);
@@ -975,6 +975,7 @@
       ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
       : renderComposer(row);
     const sendLabel = WAITING_STATUSES.includes(row.status) ? 'Relancer l\'agent' : 'Envoyer à l\'agent';
+    const canCollapse = !inCard || isBig || state.exactThreads.has(row.engineId);
     return `<div class="card-body">
         ${renderPlain(row)}
         ${renderThread(row)}
@@ -987,7 +988,7 @@
             ${feedbackHtml}
           </div>
           <div class="group">
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle">Replier</button>
+            ${canCollapse ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle">Replier</button>` : ''}
             ${canOrder ? `<button type="button" class="ep-btn ep-btn--primary" data-action="send">${sendLabel}</button>` : ''}
           </div>
         </div>
@@ -1185,7 +1186,7 @@
       isServer && isWaiting ? `<button type="button" class="${ICON_BUTTON}" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : '',
       section === 'parked' && isServer ? `<button type="button" class="ep-btn ep-btn--sm resume" data-action="unpark">${iconOf('arrow')} Reprendre</button>` : parkButtons(row),
     ].join('');
-    return `<div class="conv-card-head">${head}</div>${ask}${renderContext(row, { limit: 3 })}${quick}${renderCardBody(row)}<div class="card-side">${tools}</div>`;
+    return `<div class="conv-card-head">${head}</div>${ask}${renderContext(row, { limit: 3 })}${quick}${renderCardBody(row, { inCard: true })}<div class="card-side">${tools}</div>`;
   };
 
   // Ce que le dos d'une carte dit d'une conversation : mot d'état, âge, dossier, état de l'entité à graver.
@@ -1198,6 +1199,11 @@
   const renderCardLane = (lane, rows, now) => {
     lane.classList.add('cards');
     window.CockpitCards.renderLane(lane, rows, row => cardInfoOf(row, now), row => renderCardFront(row, now));
+    for (const el of lane.querySelectorAll(':scope > sg-flip[data-engine]')) {
+      const isBig = state.bigId === el.dataset.engine;
+      el.classList.toggle('big', isBig);
+      if (isBig) el.flip(true);
+    }
   };
 
   const renderEmpty = () => {
@@ -1593,7 +1599,10 @@
     if (big) big.scrollTop = scroll.bigTop;
     for (const box of document.querySelectorAll('.thread[data-engine-thread]')) {
       const engineId = box.dataset.engineThread;
-      if (state.pendingBottom.has(engineId)) scrollToBottom(box);
+      if (state.pendingBottom.has(engineId)) {
+        scrollToBottom(box);
+        if (box.closest('[data-body]')) box.scrollIntoView({ block: 'nearest' });
+      }
       else if (scroll.threads.has(engineId)) box.scrollTop = scroll.threads.get(engineId);
     }
     if (big && state.pendingBottom.has(state.bigId)) scrollToBottom(big);
@@ -1820,20 +1829,6 @@
     const fresh = [...waiting.values()].filter(row => state.knownWaiting.get(row.engineId) !== row.updatedAt);
     state.knownWaiting = snapshot;
     if (fresh.length > 0) announce(fresh.map(row => `${KINDS[kindOf(row)].label} : ${row.title}`).join(', '));
-    if (fresh.length === 0 || !('Notification' in window) || Notification.permission !== 'granted' || document.hasFocus()) return;
-    for (const row of fresh) {
-      const notification = new Notification(`${KINDS[kindOf(row)].label} · ${row.title}`, { body: awaitingOf(row) || 'attend tes ordres', tag: row.engineId });
-      notification.onclick = () => { window.focus(); expand(row.engineId); };
-    }
-  };
-
-  const updateBell = () => {
-    const bell = document.getElementById('bell');
-    const granted = 'Notification' in window && Notification.permission === 'granted';
-    bell.classList.toggle('on', granted);
-    const label = granted ? 'Notifications activées' : 'Activer les notifications';
-    bell.setAttribute('aria-label', label);
-    bell.title = label;
   };
 
   const loadData = () => new Promise(resolve => {
@@ -2199,6 +2194,13 @@
     keepInView(engineId);
   };
 
+  // En cartes, « Replier » ramène la face avant à son état compact, sans retourner la carte.
+  const collapseCard = engineId => {
+    state.exactThreads.delete(engineId);
+    if (state.bigId === engineId) { state.bigId = null; syncBackdrop(); }
+    render({ force: true });
+  };
+
   const toggle = engineId => (state.expanded.has(engineId) ? collapse(engineId) : expand(engineId));
 
   const toggleBig = engineId => {
@@ -2245,8 +2247,8 @@
     const action = button.dataset.action;
     if (action === 'team-open') { openTeamPopup(engineId); return; }
     if (action === 'team-close') { closeTeamPopup(); return; }
-    // En cartes, « Replier » retourne la carte ; en lignes, il plie le détail.
-    if (action === 'toggle') { if (holder.matches('sg-flip')) holder.flip(false); else toggle(engineId); }
+    // En cartes, « Replier » ferme l'état agrandi et la réponse exacte, sans retourner la carte.
+    if (action === 'toggle') { if (holder.matches('sg-flip')) collapseCard(engineId); else toggle(engineId); }
     if (action === 'send') sendReply(engineId);
     if (action === 'summarize') requestSummary(engineId);
     if (action === 'seen') setSeen(engineId, true);
@@ -2380,12 +2382,6 @@
   let zoom = applyZoom(readZoom());
   document.getElementById('zoom-in').addEventListener('click', () => { zoom = applyZoom(zoom + ZOOM_STEP); });
   document.getElementById('zoom-out').addEventListener('click', () => { zoom = applyZoom(zoom - ZOOM_STEP); });
-
-  document.getElementById('bell').addEventListener('click', async () => {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'default') await Notification.requestPermission();
-    updateBell();
-  });
 
   if (isOsGlass) document.documentElement.classList.add('os-glass');
 
@@ -2550,7 +2546,6 @@
     hydrateIdentities();
   });
   wireIdentityPointer();
-  updateBell();
   renderStats();
   tickClock();
   setInterval(tickClock, 1000);

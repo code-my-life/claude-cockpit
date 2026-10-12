@@ -11,6 +11,7 @@ import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
 import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, send, sendNotFound } from './cockpit-server-http.mjs'
 import { handleBridge, isBridgeRoute } from './bridge-routes.mjs'
 import { createPageSession, sendNeedsApp } from './page-session.mjs'
+import { isKnownFolder, knownRootsOf } from './known-folders.mjs'
 
 const SEARCH_SAVE_MS = 60000
 const INDEX_REFRESH_MS = 3000
@@ -50,18 +51,6 @@ const IMAGE_EXTENSIONS = new Map([['image/png', 'png'], ['image/jpeg', 'jpg'], [
 const PARK_KINDS = new Set(['blocked', 'later'])
 const UNSAFE_FOLDER_PATTERN = /[\x00-\x1f";]/
 const FOREIGN_SITES = new Set(['cross-site', 'same-site'])
-const comparable = folder => (process.platform === 'win32' ? folder.toLowerCase() : folder)
-
-const isInside = (parent, child) => {
-  const relative = path.relative(comparable(path.resolve(parent)), comparable(path.resolve(child)))
-  const isOutside = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
-  return !isOutside
-}
-
-const isBroadFolder = (folder, homeDir) => {
-  const isDriveRoot = path.resolve(folder) === path.parse(path.resolve(folder)).root
-  return isDriveRoot || isInside(folder, homeDir)
-}
 
 // Lists MSIX package folders under LOCALAPPDATA/Packages on Windows.
 const msixPackageNames = (homeDir, env) => {
@@ -166,12 +155,6 @@ const saveImages = (ctx, images) => {
   })
 }
 
-const isKnownFolder = (ctx, folder) => {
-  const roots = sessionsOf(ctx.state.sessionIndex).map(session => session.cwd).filter(cwd => typeof cwd === 'string' && cwd !== '')
-  const siblingsAllowed = root => !isBroadFolder(path.dirname(root), ctx.homeDir) && isInside(path.dirname(root), folder)
-  return roots.some(root => isInside(root, folder) || siblingsAllowed(root))
-}
-
 const launchFirstWorking = (ctx, candidates) => {
   const [candidate, ...others] = candidates
   if (candidate === undefined) return reportError(ctx, 'terminal', new Error('aucun terminal disponible'))
@@ -182,7 +165,7 @@ const launchFirstWorking = (ctx, candidates) => {
 
 const openTerminal = (ctx, cwd) => {
   if (cwd === '' || UNSAFE_FOLDER_PATTERN.test(cwd) || !path.isAbsolute(cwd)) throw new HttpError(400, 'dossier invalide')
-  if (!isKnownFolder(ctx, cwd)) throw new HttpError(403, 'dossier inconnu du cockpit')
+  if (!isKnownFolder(knownRootsOf(sessionsOf(ctx.state.sessionIndex), ctx.state.searchIndex), cwd, ctx.homeDir)) throw new HttpError(403, 'dossier inconnu du cockpit')
   const isFolder = fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
   if (!isFolder) throw new HttpError(404, 'dossier introuvable')
   launchFirstWorking(ctx, terminalCandidatesOf(process.platform, cwd))

@@ -5,6 +5,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import { decisionFor, describePermission, isIslandAsk, verdictFor } from './permission-text.mjs'
+import { permissionStatusOf } from './permission-status.mts'
 import { pushStep, stepOf } from './activity.mjs'
 import { exportRows, seedScriptOf, ticketTemplateOf, versionOf } from './page-data.mts'
 import { paneTree } from './pane.tsx'
@@ -929,15 +930,13 @@ export const register: Register = (on, options) => {
 
   on('tool.check', async ($, e, next) => {
     const verdict = await next(e)
-    if (verdict.decision === 'ask' && e.tool_use_id !== undefined) {
-      await writeOwn($, { status: 'permission' })
-    }
     const link = appLink
     if (!isDesktopSession || mode !== 'app' || link === null || !isIslandAsk(verdict, e)) return verdict
     // Desktop shows its own dialog only once this verdict is given: the island answers first, or hands back to it.
     const requestId = await askIsland($, link, e.tool, e.input, false, DESKTOP_HOLD_MS)
     if (requestId === null) return verdict
     openPermission = requestId
+    if (permissionStatusOf({ event: 'check', verdict: verdict.decision, isDesktopSession, hasIslandRequest: true }) === 'permission') await writeOwn($, { status: 'permission' })
     const choice = await waitIslandChoice($, link, requestId, DESKTOP_HOLD_MS, () => false)
     if (choice === null) await withdrawPermission($)
     else openPermission = null
@@ -947,6 +946,7 @@ export const register: Register = (on, options) => {
   // The island answers permission requests next to the other hooks (coucou):
   // the first answer wins, and the other side is told to drop the request.
   on('classic.PermissionRequest', async ($, e, next) => {
+    if (permissionStatusOf({ event: 'request', isDesktopSession, hasIslandRequest: false }) === 'permission') await writeOwn($, { status: 'permission' })
     const link = appLink
     if (mode !== 'app' || link === null) return next(e)
     const suggestions = e.permission_suggestions
