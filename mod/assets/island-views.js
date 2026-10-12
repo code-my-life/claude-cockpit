@@ -28,6 +28,8 @@
     const tagHtml = row => { const tag = tagOf(row); return `<span class="${tag.cls}">${tag.lead}${esc(tag.word)}</span>`; };
     const setTag = (el, row, word) => { const tag = tagOf(row); el.className = tag.cls; el.innerHTML = `${tag.lead}${esc(word || tag.word)}`; };
     const canvasHtml = (row, size) => `<canvas class="ent" data-ent="${esc(row.engineId)}" data-size="${size}" data-state="${model.entityStateOf(row)}" aria-hidden="true"></canvas>`;
+    // En cartes, une mini-carte (posée après le rendu par island-deck.js) remplace la petite entité.
+    const headHtml = (row, size) => (ctx.cards ? `<span class="mini-slot" data-mini-slot="${esc(row.engineId)}" style="--mini: ${size}px"></span>` : canvasHtml(row, size));
     const heroRowFor = view => (view === 'wait' ? ctx.waiting()[0] || ctx.focus() : ctx.focus());
 
     // Une ligne du fil : l'étape, ses lignes ajoutées et retirées (icône et chiffres, jamais la couleur seule), et pour une
@@ -110,7 +112,7 @@
       target.innerHTML = `<h2 class="h4">${esc(row.title)}</h2><div class="is-meta">${tagHtml(row)}${metaLine(row)}</div>${bodyOf(row)}<div class="is-acts">${primaryOf(row)}${toggle}</div>`;
     };
 
-    const pillHtml = row => `<a href="#" class="ep-side-link is-head" data-pick="${esc(row.engineId)}">${canvasHtml(row, 24)}<span class="pn">${esc(row.title)}</span>${tagHtml(row)}</a>`;
+    const pillHtml = row => `<a href="#" class="ep-side-link is-head" data-pick="${esc(row.engineId)}">${headHtml(row, 24)}<span class="pn">${esc(row.title)}</span>${tagHtml(row)}</a>`;
 
     const toolsHtml = () => {
       const sounds = `<button type="button" class="ep-btn ep-btn--ghost ep-btn--icon ep-btn--sm" data-act="sounds" aria-pressed="${S.sounds}" ${tipOf(`Alertes sonores : ${S.sounds ? 'activées' : 'coupées'}`)}>${icon('volume')}</button>`;
@@ -129,7 +131,7 @@
       const focusRow = heroRowFor(S.view);
       return model.othersOf(ctx.rows(), focusRow ? focusRow.engineId : null, RAIL_SHOWN).map(row => {
         const label = `${row.title} : ${model.signalOf(row).word}`;
-        return `<button type="button" class="ep-btn ep-btn--ghost ep-btn--icon is-head" data-pick="${esc(row.engineId)}" ${tipOf(label)}>${canvasHtml(row, 28)}</button>`;
+        return `<button type="button" class="ep-btn ep-btn--ghost ep-btn--icon is-head" data-pick="${esc(row.engineId)}" ${tipOf(label)}>${headHtml(row, 28)}</button>`;
       }).join('');
     };
 
@@ -146,7 +148,7 @@
       }
       const word = model.compactWordOf(ctx.rows());
       setTag(sig, row, word);
-      $('#cOthers').innerHTML = model.othersOf(ctx.rows(), row.engineId, RAIL_SHOWN).map(other => canvasHtml(other, 22)).join('');
+      $('#cOthers').innerHTML = model.othersOf(ctx.rows(), row.engineId, RAIL_SHOWN).map(other => headHtml(other, 22)).join('');
       button.setAttribute('aria-label', `Ouvrir l'île : ${row.title}, ${word}`);
     };
 
@@ -177,7 +179,9 @@
     };
 
     const renderWait = () => {
-      const row = ctx.waiting()[0] || ctx.focus();
+      // En cartes, le formulaire est sur la carte du dessus : il suit la conversation visée quand elle t'attend.
+      const focus = ctx.focus();
+      const row = ctx.cards && focus && model.kindOf(focus) === model.KIND_WAIT ? focus : (ctx.waiting()[0] || ctx.focus());
       if (!row) return;
       const ask = model.permissionOf(S.permissions, row.engineId);
       const can = ctx.canReply(row);

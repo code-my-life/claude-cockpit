@@ -82,6 +82,8 @@ let ownPhase: SessionStatus | null = null
 let lastDataJson = ''
 // The ticket link of the mod's options; changing it reloads the module.
 let ticketTemplate: string | null = null
+let cardsOn = true
+let cardFinishes = ''
 let isServing = false
 let isStartingServer = false
 let isCountingStats = false
@@ -867,16 +869,19 @@ const writeDataFile = async ($: EngineInterface, rows: ConversationRow[], shared
   const pageVersion = versionOf(versionSource)
   const exportedJson = JSON.stringify(exported)
   const folders = await knownFoldersOf($, shown)
-  const json = `${pageVersion}:${exportedJson}:${folders.join('|')}:${ticketTemplate ?? ''}`
+  const json = `${pageVersion}:${exportedJson}:${folders.join('|')}:${ticketTemplate ?? ''}:${cardsOn}:${cardFinishes}`
   if (json === lastDataJson) return
   lastDataJson = json
-  const payload = JSON.stringify({ generatedAt: Date.now(), pageVersion, rows: exported, folders, ticketUrl: ticketTemplate })
+  const payload = JSON.stringify({ generatedAt: Date.now(), pageVersion, rows: exported, folders, ticketUrl: ticketTemplate, cards: cardsOn, cardFinishes })
   await $.fs.write(`${dataDirOf($)}/${DATA_FILE}`, `window.__CONVERSATIONS__ = ${payload};`)
   await writePage($, payload, template, pageVersion)
 }
 
 export const register: Register = (on, options) => {
   ticketTemplate = ticketTemplateOf(options.ticketUrl)
+  // Réglages des cartes : actives sauf refus explicite ; finitions permises en liste, vide pour toutes.
+  cardsOn = options.cards !== false
+  cardFinishes = typeof options.cardFinishes === 'string' ? options.cardFinishes : ''
   on('session.start', async ($, e, next) => {
     ownEngineId = await $.session.id()
     isDesktopSession = (await $.env.get('CLAUDE_CODE_ENTRYPOINT')) === 'claude-desktop'

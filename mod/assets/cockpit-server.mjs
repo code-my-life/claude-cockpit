@@ -27,6 +27,7 @@ const STATIC_FILES = {
   '/mod/assets/island-motion.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-living.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-views.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/island-deck.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-shell.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island.css': 'text/css; charset=utf-8',
   '/mod/assets/entity/entity.js': 'text/javascript; charset=utf-8',
@@ -37,6 +38,9 @@ const STATIC_FILES = {
   '/mod/assets/liquid-paper/theme.css': 'text/css; charset=utf-8',
   '/mod/assets/liquid-paper/bundle.css': 'text/css; charset=utf-8',
   '/mod/assets/liquid-paper/bundle.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/cards.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/systems-generator/index.global.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/systems-generator/cards.css': 'text/css; charset=utf-8',
 }
 const TOKEN_HEADER = 'x-cockpit-token'
 const TOKEN_META_ANCHOR = '<head>'
