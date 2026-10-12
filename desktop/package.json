@@ -1,7 +1,7 @@
 {
   "name": "cockpit-desktop",
   "productName": "Claude Cockpit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Cockpit pour suivre et piloter ses conversations Claude Code",
   "author": "Code My Life",
   "license": "MIT",
