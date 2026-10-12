@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process'
 
 import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, saveIndex, saveSessionList, scanHostFiles, sessionsOf } from './session-index.mjs'
 import { findMatches, hostsByEngineOf, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
-import { hostSessionsDirOf, terminalCandidatesOf } from './terminal.mjs'
+import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
 import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, send, sendNotFound } from './cockpit-server-http.mjs'
 import { handleBridge, isBridgeRoute } from './bridge-routes.mjs'
 import { createPageSession, sendNeedsApp } from './page-session.mjs'
@@ -63,6 +63,17 @@ const isBroadFolder = (folder, homeDir) => {
   return isDriveRoot || isInside(folder, homeDir)
 }
 
+// Lists MSIX package folders under LOCALAPPDATA/Packages on Windows.
+const msixPackageNames = (homeDir, env) => {
+  if (process.platform !== 'win32') return []
+  const packagesDir = path.join(env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), 'Packages')
+  try {
+    return fs.readdirSync(packagesDir)
+  } catch {
+    return []
+  }
+}
+
 // Everything one cockpit server needs: the fixed assets (`rootDir`), where it
 // reads and writes the page, index and pasted images (`dataDir`), its port,
 // its session token, and where the orders for the mod go (`sink`).
@@ -80,7 +91,7 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
   cacheFile: path.join(dataDir, 'session-cache.json'),
   searchCacheFile: path.join(dataDir, 'search-cache.json'),
   transcriptsDir: path.join(homeDir, '.claude', 'projects'),
-  hostSessionsDir: hostSessionsDirOf(process.platform, homeDir, env),
+  hostSessionsDirs: hostSessionsDirsOf(process.platform, homeDir, env, msixPackageNames(homeDir, env)),
   liveSessionsDir: path.join(homeDir, '.claude', 'sessions'),
   state: {
     sessionIndex: loadIndex(path.join(dataDir, 'session-cache.json')),
@@ -260,7 +271,7 @@ const refreshSessionIndex = async ctx => {
   if (state.isIndexing) return
   state.isIndexing = true
   try {
-    const scanned = await scanHostFiles(ctx.hostSessionsDir)
+    const scanned = (await Promise.all(ctx.hostSessionsDirs.map(dir => scanHostFiles(dir)))).flat()
     const refreshed = await refreshIndex(state.sessionIndex, scanned, readText)
     const live = await readLiveEngineIds(ctx.liveSessionsDir)
     const liveKey = [...live].sort().join('|')

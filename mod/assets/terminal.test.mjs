@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 
-import { hostSessionsDirOf, terminalCandidatesOf } from './terminal.mjs'
+import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
 
 test('on Windows the terminal is Windows Terminal, then cmd as a fallback', () => {
   const candidates = terminalCandidatesOf('win32', 'C:\\repos\\app')
@@ -29,9 +29,20 @@ test('on Linux the usual terminals are tried in order', () => {
 test('the Claude Desktop sessions folder follows each system convention', () => {
   const home = path.join(path.sep, 'home', 'x')
   const winEnv = { APPDATA: path.join(path.sep, 'roaming') }
-  assert.equal(hostSessionsDirOf('win32', home, winEnv), path.join(path.sep, 'roaming', 'Claude', 'claude-code-sessions'))
-  assert.equal(hostSessionsDirOf('win32', home, {}), path.join(home, 'AppData', 'Roaming', 'Claude', 'claude-code-sessions'))
-  assert.equal(hostSessionsDirOf('darwin', home, {}), path.join(home, 'Library', 'Application Support', 'Claude', 'claude-code-sessions'))
-  assert.equal(hostSessionsDirOf('linux', home, {}), path.join(home, '.config', 'Claude', 'claude-code-sessions'))
-  assert.equal(hostSessionsDirOf('linux', home, { XDG_CONFIG_HOME: path.join(path.sep, 'cfg') }), path.join(path.sep, 'cfg', 'Claude', 'claude-code-sessions'))
+  assert.deepEqual(hostSessionsDirsOf('win32', home, winEnv), [path.join(path.sep, 'roaming', 'Claude', 'claude-code-sessions')])
+  assert.deepEqual(hostSessionsDirsOf('win32', home, {}), [path.join(home, 'AppData', 'Roaming', 'Claude', 'claude-code-sessions')])
+  assert.deepEqual(hostSessionsDirsOf('darwin', home, {}), [path.join(home, 'Library', 'Application Support', 'Claude', 'claude-code-sessions')])
+  assert.deepEqual(hostSessionsDirsOf('linux', home, {}), [path.join(home, '.config', 'Claude', 'claude-code-sessions')])
+  assert.deepEqual(hostSessionsDirsOf('linux', home, { XDG_CONFIG_HOME: path.join(path.sep, 'cfg') }), [path.join(path.sep, 'cfg', 'Claude', 'claude-code-sessions')])
+})
+
+test('on Windows MSIX packages starting with Claude_ add extra folders', () => {
+  const home = path.join(path.sep, 'home', 'x')
+  const env = { APPDATA: path.join(path.sep, 'roaming'), LOCALAPPDATA: path.join(path.sep, 'local') }
+  const packageNames = ['Claude_test123', 'Other_app']
+  const expected = [
+    path.join(path.sep, 'roaming', 'Claude', 'claude-code-sessions'),
+    path.join(path.sep, 'local', 'Packages', 'Claude_test123', 'LocalCache', 'Roaming', 'Claude', 'claude-code-sessions')
+  ]
+  assert.deepEqual(hostSessionsDirsOf('win32', home, env, packageNames), expected)
 })
