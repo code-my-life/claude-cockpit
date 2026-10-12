@@ -6,7 +6,9 @@
   // face avant = le détail de la conversation ; et des mini-cartes à la place des pastilles. Les cartes sont
   // réconciliées, jamais recréées à chaque rafraîchissement : recréer une carte, c'est recompiler son shader.
   const STATE_OF_STATUS = { thinking: 'working', writing: 'working', tool: 'working', working: 'working', permission: 'permission', external: 'waiting', done: 'done', error: 'error', blocked: 'error', later: 'sleep', seen: 'rest' };
-  const TITLE_SPLIT_FROM = 16;
+  const HEADING_BUDGET = 0.8;
+  const HEADING_SIZE = 0.13;
+  const FALLBACK_CHAR = 0.05;
   const MINI_FPS = 20;
   const FLASH_MS = 1400;
   const settings = { finishes: [] };
@@ -36,14 +38,48 @@
   const systemOf = row => sg().systemOf(row.engineId);
   const stateOf = (row, isWaiting) => (isWaiting ? (row.status === 'permission' ? 'permission' : 'waiting') : STATE_OF_STATUS[row.status] || 'rest');
 
-  // Un titre long se coupe en deux lignes pour le lettrage du dos, à l'espace le plus proche du milieu.
-  const headingOf = title => {
-    const text = String(title || '').trim();
-    if (text.length <= TITLE_SPLIT_FROM) return text;
-    const middle = text.length / 2;
-    let best = -1;
-    for (let i = 0; i < text.length; i++) if (text[i] === ' ' && (best < 0 || Math.abs(i - middle) < Math.abs(best - middle))) best = i;
-    return best > 0 ? `${text.slice(0, best)}|${text.slice(best + 1)}` : text;
+  // Largeur d'un texte du dos, en part de la largeur de la carte : mesurée au canvas avec la police du lettrage,
+  // estimée au nombre de caractères hors navigateur.
+  let measureCtx = null;
+  const measureHeading = text => {
+    if (!measureCtx && root.document) {
+      measureCtx = root.document.createElement('canvas').getContext('2d');
+      const fonts = sg() && sg().DEFAULT_FONTS;
+      if (measureCtx) measureCtx.font = `400 100px ${fonts ? fonts.display : 'Georgia, serif'}`;
+    }
+    return measureCtx ? measureCtx.measureText(text).width / 100 * HEADING_SIZE : text.length * FALLBACK_CHAR;
+  };
+
+  // Les mots qui tiennent sur une ligne, pris dans l'ordre à partir de `from`.
+  const fillLine = (words, from, measure) => {
+    let line = '';
+    let next = from;
+    while (next < words.length) {
+      const candidate = line ? `${line} ${words[next]}` : words[next];
+      if (measure(candidate) > HEADING_BUDGET) break;
+      line = candidate;
+      next++;
+    }
+    return { line, next };
+  };
+
+  // Raccourcit un texte, par mots puis par caractères, jusqu'à ce qu'il tienne suivi de « … ».
+  const ellipsize = (text, measure) => {
+    let cut = text;
+    while (cut && measure(`${cut}…`) > HEADING_BUDGET) cut = cut.includes(' ') ? cut.slice(0, cut.lastIndexOf(' ')) : cut.slice(0, -1);
+    return `${cut}…`;
+  };
+
+  // Le titre du dos sur deux lignes au plus (séparées par |) qui tiennent dans la carte, « … » quand il est trop long.
+  const headingOf = (title, measure = measureHeading) => {
+    const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return '';
+    const first = fillLine(words, 0, measure);
+    if (!first.line) return ellipsize(words[0], measure);
+    if (first.next === words.length) return first.line;
+    const second = fillLine(words, first.next, measure);
+    if (second.next === words.length) return `${first.line}|${second.line}`;
+    return `${first.line}|${ellipsize(second.line || words[second.next], measure)}`;
   };
 
   const setAttrs = (el, attrs) => {
