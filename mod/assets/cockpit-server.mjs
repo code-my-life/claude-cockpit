@@ -37,6 +37,9 @@ const STATIC_FILES = {
   '/mod/assets/liquid-paper/theme.css': 'text/css; charset=utf-8',
   '/mod/assets/liquid-paper/bundle.css': 'text/css; charset=utf-8',
   '/mod/assets/liquid-paper/bundle.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/cards.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/systems-generator/index.global.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/systems-generator/cards.css': 'text/css; charset=utf-8',
 }
 const TOKEN_HEADER = 'x-cockpit-token'
 const TOKEN_META_ANCHOR = '<head>'

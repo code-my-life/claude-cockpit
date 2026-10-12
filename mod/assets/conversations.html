@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="mod/assets/liquid-paper/theme.css">
 <link rel="stylesheet" href="mod/assets/liquid-paper/bundle.css">
 <link rel="stylesheet" href="mod/assets/island.css">
+<link rel="stylesheet" href="mod/assets/systems-generator/cards.css">
 <style>
   :root {
     --ep-i-layout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z'/%3E%3C/svg%3E");
@@ -76,6 +77,19 @@
   section h2 { margin: 0 0 var(--space-4); font-size: 30px; line-height: 1.1; display: flex; align-items: baseline; gap: var(--space-3); }
   .count-tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; color: var(--ink-2); }
   .lane { display: flex; flex-direction: column; gap: var(--space-3); }
+  /* Cartes : une grille par section ; la face avant reprend le détail (question, réponses rapides, résumé, composeur). */
+  .lane.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: var(--space-4); align-items: start; }
+  .lane.cards.lane-plate { padding: var(--space-3); }
+  .lane.cards .empty { grid-column: 1 / -1; }
+  .conv-card-body { display: flex; flex-direction: column; gap: var(--space-2); overflow: auto; overscroll-behavior: contain; font-size: 13px; }
+  .conv-card-body .card-kind { font-size: 10px; }
+  .conv-card-body .conv-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .conv-card-body .card-ask { font-size: 14px; line-height: 1.4; }
+  .conv-card-body .card-quick, .conv-card-body .card-body { padding: 0; gap: var(--space-2); }
+  .conv-card-body .plain { font-size: 13px; line-height: 1.5; max-width: none; }
+  .conv-card-body .bubble { max-width: 100%; font-size: 13px; }
+  .conv-card-body textarea { font-size: 13px; }
+  .conv-card-body .card-actions .group { gap: var(--space-1); }
 
   .card { padding: 0; }
   .card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--space-4); padding: var(--space-5) var(--space-5) var(--space-3); }
@@ -376,6 +390,7 @@
 <div id="newconv" data-surface="paper"></div>
 
 <script src="mod/assets/liquid-paper/bundle.js"></script>
+<script src="mod/assets/systems-generator/index.global.js"></script>
 <script src="mod/assets/identity-motion.js"></script>
 <script src="mod/assets/identity.js"></script>
 <script src="mod/assets/identity-chrome.js"></script>
@@ -385,6 +400,7 @@
 <script src="mod/assets/entity/entity-forms.js"></script>
 <script src="mod/assets/entity/entity-2d.js"></script>
 <script src="mod/assets/entity/entity-mount.js"></script>
+<script src="mod/assets/cards.js"></script>
 <script src="mod/assets/dock.js"></script>
 <script src="mod/assets/island-model.js"></script>
 <script src="mod/assets/island.js"></script>
@@ -439,6 +455,8 @@
 
   const pageParams = new URLSearchParams(location.search);
   const isIsland = pageParams.has('island');
+  // Les conversations en cartes (systems-generator) ; ?cards=0 garde l'ancien affichage en lignes.
+  const isCards = !isIsland && pageParams.get('cards') !== '0';
   const isOsGlass = pageParams.has('glass');
   const isLauncher = pageParams.has('launcher');
   const isLocalFile = location.protocol === 'file:';
@@ -1134,6 +1152,43 @@
     return `<div class="rest-row" data-engine="${escapeHtml(row.engineId)}">${title}<span class="rest-side">${back}<span>${escapeHtml(label)} · <span class="rest-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span></span></span></div>`;
   };
 
+  // La face avant d'une carte : l'état et l'âge, la question ou l'activité, le contexte, les réponses rapides, puis le détail.
+  const renderCardFront = (row, now) => {
+    const section = sectionIdOf(row.status);
+    const isWaiting = section === 'waiting';
+    const info = isWaiting ? KINDS[kindOf(row)] : null;
+    const park = PARK_KINDS[row.status] || PARK_KINDS.later;
+    const [actIcon, actLabel] = activityOf(row);
+    const bonus = ageBonus(row, now);
+    const head = isWaiting
+      ? `<span class="card-kind" style="color: ${info.color}">${iconOf(info.icon)} ${info.label}</span><span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}">${escapeHtml(bonus.label)}</span>`
+      : `<span class="mrow-activity trunc">${iconOf(section === 'parked' ? park.icon : actIcon)} ${escapeHtml(section === 'parked' ? park.label : actLabel)}</span><span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span>`;
+    const askStale = row.summary && row.summary.updatedAt !== row.updatedAt ? ' stale' : '';
+    const ask = isWaiting ? `<span class="card-ask${askStale}">${iconOf('arrow')}<span>${inlineMarkdown(awaitingOf(row) || 'Regarde où en est cet agent.')}</span></span>` : '';
+    const canOrder = isServer && !row.isCurrent;
+    const quick = isWaiting && canOrder ? `<div class="card-quick">${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>` : '';
+    const openUrl = openUrlOf(row);
+    const tools = [
+      openUrl ? `<a href="${escapeHtml(openUrl)}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '',
+      isServer && isWaiting ? `<button type="button" class="${ICON_BUTTON}" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : '',
+      section === 'parked' && isServer ? `<button type="button" class="ep-btn ep-btn--sm resume" data-action="unpark">${iconOf('arrow')} Reprendre</button>` : parkButtons(row),
+    ].join('');
+    return `<div class="conv-card-head">${head}</div>${ask}${renderContext(row, { limit: 3 })}${quick}${renderCardBody(row)}<div class="card-side">${tools}</div>`;
+  };
+
+  // Ce que le dos d'une carte dit d'une conversation : mot d'état, âge, dossier, état de l'entité à graver.
+  const cardInfoOf = (row, now) => {
+    const section = sectionIdOf(row.status);
+    const word = section === 'waiting' ? KINDS[kindOf(row)].label : section === 'parked' ? (PARK_KINDS[row.status] || PARK_KINDS.later).label : activityOf(row)[1];
+    const states = window.CharacterCore ? window.CharacterCore.STATUS_TO_STATE : {};
+    return { isWaiting: section === 'waiting', word, age: formatAge(row.updatedAt, now), folder: folderOf(row.cwd), entityState: states[row.status] || 'idle' };
+  };
+
+  const renderCardLane = (lane, rows, now) => {
+    lane.classList.add('cards');
+    window.CockpitCards.renderLane(lane, rows, row => cardInfoOf(row, now), row => renderCardFront(row, now));
+  };
+
   const renderEmpty = () => {
     const stats = readStats();
     const line = stats.relaunched > 0 && stats.relaunched >= stats.record
@@ -1608,17 +1663,21 @@
     const avatars = [...groups.waiting.map(row => renderAvatar(row, 'waiting')), ...groups.working.map(row => renderAvatar(row, 'working'))];
     document.getElementById('crew').innerHTML = avatars.join('');
 
+    const useCards = isCards && window.CockpitCards && window.CockpitCards.isReady();
     document.getElementById('n-waiting').textContent = groups.waiting.length;
-    const waitingCards = groups.waiting.map(row => renderWaitingCard(row, now)).join('');
-    document.querySelector('#s-waiting .lane').innerHTML = groups.waiting.length === 0 ? renderEmpty() : waitingCards;
+    const waitingLane = document.querySelector('#s-waiting .lane');
+    if (useCards && groups.waiting.length > 0) renderCardLane(waitingLane, groups.waiting, now);
+    else waitingLane.innerHTML = groups.waiting.length === 0 ? renderEmpty() : groups.waiting.map(row => renderWaitingCard(row, now)).join('');
 
     document.getElementById('n-working').textContent = groups.working.length;
     document.getElementById('s-working').style.display = groups.working.length === 0 ? 'none' : '';
-    document.querySelector('#s-working .lane').innerHTML = groups.working.map(row => renderMissionRow(row, now)).join('');
+    if (useCards) renderCardLane(document.querySelector('#s-working .lane'), groups.working, now);
+    else document.querySelector('#s-working .lane').innerHTML = groups.working.map(row => renderMissionRow(row, now)).join('');
 
     document.getElementById('n-parked').textContent = groups.parked.length;
     document.getElementById('s-parked').style.display = groups.parked.length === 0 ? 'none' : '';
-    document.querySelector('#s-parked .lane').innerHTML = groups.parked.map(row => renderParkedRow(row, now)).join('');
+    if (useCards) renderCardLane(document.querySelector('#s-parked .lane'), groups.parked, now);
+    else document.querySelector('#s-parked .lane').innerHTML = groups.parked.map(row => renderParkedRow(row, now)).join('');
 
     const restToggle = document.getElementById('rest-toggle');
     const errorCount = groups.others.filter(row => row.status === 'error').length;
@@ -2170,7 +2229,8 @@
     const action = button.dataset.action;
     if (action === 'team-open') { openTeamPopup(engineId); return; }
     if (action === 'team-close') { closeTeamPopup(); return; }
-    if (action === 'toggle') toggle(engineId);
+    // En cartes, « Replier » retourne la carte ; en lignes, il plie le détail.
+    if (action === 'toggle') { if (holder.matches('sg-flip')) holder.flip(false); else toggle(engineId); }
     if (action === 'send') sendReply(engineId);
     if (action === 'summarize') requestSummary(engineId);
     if (action === 'seen') setSeen(engineId, true);
@@ -2198,6 +2258,13 @@
       draftOf(engineId).images.splice(Number(button.dataset.index), 1);
       render({ force: true });
     }
+  });
+
+  // Une carte retournée se lit : elle compte comme dépliée (l'ordre des sections reste figé pendant la lecture).
+  document.addEventListener('sg-flip', event => {
+    const engineId = event.target.dataset ? event.target.dataset.engine : null;
+    if (!engineId) return;
+    if (event.detail.flipped) state.expanded.add(engineId); else state.expanded.delete(engineId);
   });
 
   document.addEventListener('click', event => {
