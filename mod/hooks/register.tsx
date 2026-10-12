@@ -272,16 +272,13 @@ const setSeen = async ($: EngineInterface, row: ConversationRow, isSeen: boolean
 }
 
 const refresh = async ($: EngineInterface) => {
-  const live = await readAll($)
-  const { hosts, liveEngineIds } = await readSessionIndex($)
-  const acks = await readAcks($)
-  const shared = await readSharedSummaries($)
-  const parked = await readParked($)
-  const stats = await readStoredStats($)
+  const { hosts } = await readSessionIndex($)
+  const liveEngineIds = new Set(
+    Object.entries(live).filter(([_, entry]) => 
+      ACTIVE_STATUSES.includes(entry.status)
+    ).map(([id]) => id)
+  )
   const rows = buildRows({ live, hosts, liveEngineIds, acks, shared, parked, ownEngineId })
-  await update($, list, () => rows)
-  await update($, summaries, current => mergeSummaries(shared, current))
-  if (isServing) await writeDataFile($, rows, shared, stats)
 }
 
 const openConversation = ($: EngineInterface, hostId: string) => {
