@@ -46,11 +46,13 @@
     const syncHero = () => {
       const row = S.phase === 'open' ? ctx.views.heroRowFor(S.view) : ctx.urgent();
       if (!row) return;
+      islandEl.dataset.conv = row.engineId;
+      // En cartes : l'île garde le verre du cockpit, sans teinte ni grande entité (la carte porte l'identité).
+      if (ctx.cards) { islandEl.style.setProperty('--conv-tint', 'var(--paper)'); return; }
       const mount = heroOf(row);
       mount.setSeed(row.engineId);
       mount.setState(model.entityStateOf(row));
       islandEl.style.setProperty('--conv-tint', helpers.tintOf(row.engineId) || 'var(--paper)');
-      islandEl.dataset.conv = row.engineId;
     };
 
     // La grande entité change de taille de dessin (32 réduite, 96 ouverte) sans que son aspect bouge : l'échelle suit.

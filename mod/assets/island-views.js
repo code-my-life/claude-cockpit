@@ -177,7 +177,9 @@
     };
 
     const renderWait = () => {
-      const row = ctx.waiting()[0] || ctx.focus();
+      // En cartes, le formulaire est sur la carte du dessus : il suit la conversation visée quand elle t'attend.
+      const focus = ctx.focus();
+      const row = ctx.cards && focus && model.kindOf(focus) === model.KIND_WAIT ? focus : (ctx.waiting()[0] || ctx.focus());
       if (!row) return;
       const ask = model.permissionOf(S.permissions, row.engineId);
       const can = ctx.canReply(row);

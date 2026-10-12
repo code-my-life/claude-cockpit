@@ -18,6 +18,7 @@
   const { createLiving, HERO_PX } = needs('CockpitIslandLiving', './island-living.js');
   const { createMotion } = needs('CockpitIslandMotion', './island-motion.js');
   const { createActions } = needs('CockpitIslandActions', './island-actions.js');
+  const { createDeck } = needs('CockpitIslandDeck', './island-deck.js');
 
   const rankOf = phase => (phase === 'hidden' ? 0 : phase === 'compact' ? 1 : 2);
 
@@ -27,7 +28,7 @@
     permissions: [], permId: null, permShownAt: null, diff: null,
   });
 
-  const create = ({ doc, win, host, model, entities, helpers, actions, desktop = null, announce = () => {} }) => {
+  const create = ({ doc, win, host, model, entities, helpers, actions, desktop = null, announce = () => {}, cards = false }) => {
     const S = initialState();
     const $ = (selector, scope = host) => scope.querySelector(selector);
     const $$ = (selector, scope = host) => [...scope.querySelectorAll(selector)];
@@ -45,7 +46,13 @@
       rowOf: id => S.rows.find(row => row.engineId === id) || null,
       canReply: row => Boolean(row) && model.canReply(row, { isServer: helpers.isServer }),
     };
+    // En cartes, la vue « t'attend » se rend dans la couche d'accueil : la carte du dessus porte les formulaires.
+    ctx.cards = Boolean(cards && root.CockpitCards && root.CockpitCards.isReady());
+    const shownViewOf = view => (ctx.cards && view === 'wait' ? 'home' : view);
+    ctx.shownViewOf = shownViewOf;
+    ctx.islandEl.classList.toggle('cards', ctx.cards);
     ctx.views = createViews(ctx);
+    ctx.deck = createDeck(ctx);
     ctx.living = createLiving(ctx);
     ctx.motion = createMotion(ctx);
     ctx.act = createActions(ctx);
@@ -68,6 +75,7 @@
       v.renderWait();
       v.renderOrder();
       v.renderPark();
+      if (ctx.cards) ctx.deck.render();
       ctx.living.syncHero();
       ctx.living.mountVisible();
     };
@@ -77,7 +85,7 @@
       const focusKey = focusKeyOf(doc.activeElement);
       renderViews();
       if (!focusKey) return;
-      const again = $(focusKey, ctx.layerEl(S.phase === 'open' ? S.view : 'compact'));
+      const again = $(focusKey, ctx.layerEl(S.phase === 'open' ? shownViewOf(S.view) : 'compact'));
       if (again) again.focus({ preventScroll: true });
     };
 
@@ -93,7 +101,7 @@
     // La fenêtre s'anime côté app (ressort 300 ms / 260 ms) : on lui donne la cible tout de suite, qu'elle grandisse ou rétrécisse.
     const pushExtent = (phase, view) => {
       if (!desktop) return;
-      const { w, h } = ctx.motion.extentOf(phase, view);
+      const { w, h } = ctx.motion.extentOf(phase, shownViewOf(view));
       const key = `${phase}:${w}x${Math.round(h)}`;
       if (key === lastExtent) return;
       lastExtent = key;
@@ -102,7 +110,8 @@
     };
 
     const applyInert = (phase, view) => {
-      for (const name of LAYERS) ctx.layerEl(name).toggleAttribute('inert', !(phase === 'open' ? name === view : name === 'compact' && phase === 'compact'));
+      const shown = shownViewOf(view);
+      for (const name of LAYERS) ctx.layerEl(name).toggleAttribute('inert', !(phase === 'open' ? name === shown : name === 'compact' && phase === 'compact'));
       $('#hdr').toggleAttribute('inert', phase !== 'open');
     };
 
@@ -116,7 +125,7 @@
       if (phase !== 'open') { S.details = false; S.exact = false; S.diff = null; S.focusId = (ctx.urgent() || {}).engineId || null; stopAges(); }
       if (phase === 'open') ctx.living.rebaseHero(HERO_PX);
       renderAll();
-      const target = ctx.motion.targetFor(phase, view);
+      const target = ctx.motion.targetFor(phase, shownViewOf(view));
       const currentH = ctx.motion.heightNow();
       const isShrinking = rankOf(phase) < rankOf(previous) || (phase === previous && currentH !== null && target.h < currentH - 0.5);
       applyInert(phase, view);
@@ -134,7 +143,7 @@
     const focusFirst = view => {
       const selector = FIELD_OF_VIEW[view] || FIRST_FOCUS;
       const isShown = el => !el.hidden && el.offsetParent !== null;
-      const el = $$(selector, ctx.layerEl(view)).find(isShown) || $$(selector).find(isShown);
+      const el = $(selector, ctx.layerEl(shownViewOf(view))).find(isShown) || $(selector).find(isShown);
       if (el) el.focus({ preventScroll: true });
     };
 
@@ -168,7 +177,7 @@
       if (S.phase === 'open') { switchView(view, { by }); return; }
       if (!desktop) { setPhase('open'); return; }
       renderAll();
-      desktop.setExpanded(true, ctx.motion.extentOf('open', view).w, Math.round(ctx.motion.extentOf('open', view).h), by === 'hover', by !== 'click');
+      desktop.setExpanded(true, ctx.motion.extentOf('open', shownViewOf(view)).w, Math.round(ctx.motion.extentOf('open', shownViewOf(view)).h), by === 'hover', by !== 'click');
     };
 
     const fold = () => {

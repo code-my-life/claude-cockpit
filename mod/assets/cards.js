@@ -78,6 +78,21 @@
     return el;
   };
 
+  // Met une carte au niveau d'une conversation : attributs du dos et gravure (recuite seulement si l'état de l'entité change).
+  const syncCard = (el, row, info) => {
+    const back = el.querySelector('sg-card');
+    setAttrs(back, backAttrsOf(row, info));
+    const drawing = engravingOf(row, info.entityState);
+    if (drawing && back.engraving !== drawing) back.engraving = drawing;
+    return el;
+  };
+
+  // La carte d'une conversation dans un conteneur, réutilisée si elle y est déjà (clé : data-engine).
+  const cardIn = (container, row, info) => {
+    const known = container.querySelector(`:scope > sg-flip[data-engine="${CSS.escape(row.engineId)}"]`);
+    return syncCard(known || createCard(row, backAttrsOf(row, info)), row, info);
+  };
+
   // Réconcilie les cartes d'une section : dans l'ordre des lignes, en gardant chaque carte existante (et son retournement).
   const renderLane = (lane, rows, infoOf, frontHtmlOf) => {
     const existing = new Map();
@@ -85,12 +100,9 @@
     let cursor = null;
     for (const row of rows) {
       const info = infoOf(row);
-      const attrs = backAttrsOf(row, info);
       let el = existing.get(row.engineId);
-      if (el) { existing.delete(row.engineId); setAttrs(el.querySelector('sg-card'), attrs); } else el = createCard(row, attrs);
-      const back = el.querySelector('sg-card');
-      const drawing = engravingOf(row, info.entityState);
-      if (drawing && back.engraving !== drawing) back.engraving = drawing;
+      if (el) existing.delete(row.engineId); else el = createCard(row, backAttrsOf(row, info));
+      syncCard(el, row, info);
       const body = el.querySelector('[data-body]');
       const html = frontHtmlOf(row);
       if (body.dataset.html !== html) { body.innerHTML = html; body.dataset.html = html; }
@@ -101,5 +113,5 @@
     for (const el of lane.querySelectorAll(':scope > :not(sg-flip)')) el.remove();
   };
 
-  root.CockpitCards = { isReady, renderLane, rarityOf, finishOf, stateOf, scoreOf, headingOf, engravingOf };
+  root.CockpitCards = { isReady, renderLane, cardIn, syncCard, createCard, backAttrsOf, rarityOf, finishOf, stateOf, scoreOf, headingOf, engravingOf };
 })(typeof window !== 'undefined' ? window : globalThis);

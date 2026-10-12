@@ -43,6 +43,33 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .compact .others { display: flex; gap: var(--space-1); }
 .island .compact:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
 
+/* b. Ouverte, en cartes : la pile (cartes de systems-generator) prend la colonne de gauche ; la grande entité et la teinte disparaissent. */
+.island.cards .home { grid-template-columns: 300px minmax(0, 1fr); }
+.island.cards .is-card { display: none; }
+.island.cards .hero, .island.cards .slot-hero { display: none; }
+.island .pile { position: relative; width: 300px; }
+.island .pile[hidden] { display: none; }
+.island .pile .conv-card { position: absolute; left: 0; right: 0; top: 0; transform: translate(0, var(--y, 0)) scale(var(--s, 1)); transition: transform .4s cubic-bezier(.2,.8,.2,1), opacity .4s; }
+.island .pile .conv-card.is-peek { transform: translate(0, calc(var(--y, 0) + 56px)) scale(var(--s, 1)); }
+.island .pile .conv-card [data-body] { display: grid; gap: var(--space-2); align-content: start; overflow: auto; overscroll-behavior: contain; font-size: 13px; }
+.island .pile .conv-card [data-body] .is-card-text { min-height: 0; }
+.island .pile .conv-card [data-body] .is-card-text .h4 { font-size: 18px; }
+.island .pile .conv-card [data-body] .clamp { -webkit-line-clamp: 3; font-size: 13px; }
+.island .pile .conv-card [data-body] .feed { font-size: 12px; }
+.island .pile .conv-card [data-body].is-waiting .is-card-text .is-acts { display: none; }
+.island .pile .conv-card [data-body] .alert-main { display: grid; gap: var(--space-2); min-width: 0; }
+.island .pile .conv-card [data-body] .alert-main .h4 { display: none; }
+.island .pile .conv-card [data-body] .reply { grid-template-columns: minmax(0, 1fr); }
+.island .pile .conv-card [data-body] .reply .ep-btn { justify-self: end; }
+.island .pile .conv-card [data-body] .ep-alert { font-size: 13px; }
+.island .pile .conv-card [data-body].is-waiting .is-card-text .clamp { display: none; }
+/* Le champ de réponse porte son picto d'envoi ; l'étiquette reste pour les lecteurs d'écran. */
+.island .pile .conv-card [data-body] #replyForm { position: relative; }
+.island .pile .conv-card [data-body] #replyForm .ep-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.island .pile .conv-card [data-body] #replyForm .ep-input { padding-right: 44px; }
+.island .pile .conv-card [data-body] #replySend { position: absolute; right: 6px; bottom: 6px; width: 32px; min-height: 32px; height: 32px; padding: 0; border-radius: 999px; font-size: 0; justify-self: auto; }
+.island .pile .conv-card [data-body] #replySend .ep-icon { font-size: 16px; }
+
 /* b. Ouverte */
 .island .home { display: grid; grid-template-columns: minmax(0, 1fr) 312px; column-gap: var(--space-4); }
 .island .is-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--space-4); align-items: start; }

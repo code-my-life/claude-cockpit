@@ -406,6 +406,7 @@
 <script src="mod/assets/island.js"></script>
 <script src="mod/assets/island-shell.js"></script>
 <script src="mod/assets/island-views.js"></script>
+<script src="mod/assets/island-deck.js"></script>
 <script src="mod/assets/island-living.js"></script>
 <script src="mod/assets/island-motion.js"></script>
 <script src="mod/assets/island-actions.js"></script>
@@ -457,6 +458,7 @@
   const isIsland = pageParams.has('island');
   // Les conversations en cartes (systems-generator) ; ?cards=0 garde l'ancien affichage en lignes.
   const isCards = !isIsland && pageParams.get('cards') !== '0';
+  const isIslandCards = isIsland && pageParams.get('cards') !== '0';
   const isOsGlass = pageParams.has('glass');
   const isLauncher = pageParams.has('launcher');
   const isLocalFile = location.protocol === 'file:';
@@ -2420,7 +2422,7 @@
         return false;
       },
     };
-    islandUi = window.CockpitIslandUi.create({ doc: document, win: window, host: document.getElementById('zone'), model: window.CockpitIslandModel, entities: window.CharacterEntity, helpers, actions, desktop, announce });
+    islandUi = window.CockpitIslandUi.create({ doc: document, win: window, host: document.getElementById('zone'), model: window.CockpitIslandModel, entities: window.CharacterEntity, helpers, actions, desktop, announce, cards: isIslandCards });
     if (desktop) {
       desktop.onIslandTheme(theme => islandUi.setTheme(theme));
       islandHost = window.CockpitIsland.init({ desktop, doc: document, win: window, isServer, announce, playSound, onReveal: announceSoundsOnce, onPhase: islandUi.setPhase, onPointer: islandUi.pointer });
