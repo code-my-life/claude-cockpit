@@ -90,6 +90,16 @@
   .conv-card-body .bubble { max-width: 100%; font-size: 13px; }
   .conv-card-body textarea { font-size: 13px; }
   .conv-card-body .card-actions .group { gap: var(--space-1); }
+  /* Mini-cartes : le même dos en petit, à la place des pastilles rondes. */
+  .crew .mini { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); width: 60px; border-radius: 10px; padding: var(--space-1) 0; transition: transform 150ms ease-out; }
+  .crew .mini:hover { transform: translateY(-3px); }
+  .crew .mini:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  sg-card.conv-mini { width: 44px; border-radius: 5px; }
+  /* Éclat d'une réaction (terminé, erreur, nouvelle attente) sur la carte et sa mini-carte. */
+  .is-flash sg-card, sg-card.is-flash { animation: cardFlash 1.4s ease-out; }
+  .is-flash[data-flash="error"] sg-card, sg-card.is-flash[data-flash="error"] { animation-name: cardFlashError; }
+  @keyframes cardFlash { 0% { filter: brightness(1); } 18% { filter: brightness(1.9) saturate(1.3); } 100% { filter: brightness(1); } }
+  @keyframes cardFlashError { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
 
   .card { padding: 0; }
   .card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: var(--space-4); padding: var(--space-5) var(--space-5) var(--space-3); }
@@ -458,7 +468,7 @@
   const isIsland = pageParams.has('island');
   // Les conversations en cartes (systems-generator) ; ?cards=0 garde l'ancien affichage en lignes.
   const isCards = !isIsland && pageParams.get('cards') !== '0';
-  const isIslandCards = isIsland && pageParams.get('cards') !== '0';
+  const isIslandCards = isIsland && pageParams.get('cards') !== '0' && !(window.__CONVERSATIONS__ && window.__CONVERSATIONS__.cards === false);
   const isOsGlass = pageParams.has('glass');
   const isLauncher = pageParams.has('launcher');
   const isLocalFile = location.protocol === 'file:';
@@ -826,7 +836,7 @@
     const { CockpitIdentity: identity, CockpitIdentityMotion: motion, CockpitIdentitySound: sound } = window;
     if (!identity || !motion || !state.data) return;
     if (sound) for (const event of sound.soundEventsOf(identStatuses, state.data.rows)) playSound(event.kind, event.engineId);
-    for (const event of motion.eventsOf(identStatuses, state.data.rows)) identity.react(event.engineId, event.kind);
+    for (const event of motion.eventsOf(identStatuses, state.data.rows)) { identity.react(event.engineId, event.kind); if (window.CockpitCards) window.CockpitCards.react(event.engineId, event.kind); }
     identStatuses = motion.statusMapOf(state.data.rows);
   };
 
@@ -1182,8 +1192,7 @@
   const cardInfoOf = (row, now) => {
     const section = sectionIdOf(row.status);
     const word = section === 'waiting' ? KINDS[kindOf(row)].label : section === 'parked' ? (PARK_KINDS[row.status] || PARK_KINDS.later).label : activityOf(row)[1];
-    const states = window.CharacterCore ? window.CharacterCore.STATUS_TO_STATE : {};
-    return { isWaiting: section === 'waiting', word, age: formatAge(row.updatedAt, now), folder: folderOf(row.cwd), entityState: states[row.status] || 'idle' };
+    return { isWaiting: section === 'waiting', word, age: formatAge(row.updatedAt, now), folder: folderOf(row.cwd) };
   };
 
   const renderCardLane = (lane, rows, now) => {
@@ -1662,10 +1671,12 @@
     let offset = 0;
     for (const row of [...groups.waiting, ...groups.working, ...groups.parked]) state.shownOrder.set(row.engineId, offset++);
 
-    const avatars = [...groups.waiting.map(row => renderAvatar(row, 'waiting')), ...groups.working.map(row => renderAvatar(row, 'working'))];
-    document.getElementById('crew').innerHTML = avatars.join('');
+    const useCards = isCards && state.data.cards !== false && window.CockpitCards && window.CockpitCards.isReady();
+    if (useCards) window.CockpitCards.configure({ finishes: state.data.cardFinishes });
+    const crew = document.getElementById('crew');
+    if (useCards) window.CockpitCards.renderMinis(crew, [...groups.waiting, ...groups.working], row => cardInfoOf(row, now), row => (row.stats ? `${row.stats.messages} msg` : ''));
+    else crew.innerHTML = [...groups.waiting.map(row => renderAvatar(row, 'waiting')), ...groups.working.map(row => renderAvatar(row, 'working'))].join('');
 
-    const useCards = isCards && window.CockpitCards && window.CockpitCards.isReady();
     document.getElementById('n-waiting').textContent = groups.waiting.length;
     const waitingLane = document.querySelector('#s-waiting .lane');
     if (useCards && groups.waiting.length > 0) renderCardLane(waitingLane, groups.waiting, now);
@@ -2218,6 +2229,9 @@
     const avatar = event.target.closest('[data-av]');
     if (avatar) {
       const row = rowOf(avatar.dataset.av);
+      // En cartes : la mini-carte mène à sa carte, retournée ; en lignes : seules celles qui attendent se déplient.
+      const flipCard = row && document.querySelector(`sg-flip[data-engine="${escapeHtml(row.engineId)}"]`);
+      if (flipCard) { flipCard.flip(true); flipCard.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
       if (!row || !WAITING_STATUSES.includes(row.status)) return;
       expand(row.engineId);
       document.querySelector(`.card[data-engine="${escapeHtml(row.engineId)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });

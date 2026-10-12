@@ -58,7 +58,26 @@
       body.classList.toggle('is-waiting', Boolean(waits));
     };
 
+    // Les mini-cartes des pastilles et de l'état réduit : une par conversation et par taille, gardées d'un rendu à l'autre.
+    const minis = new Map();
+    const fillMinis = () => {
+      if (!cards() || !cards().isReady()) return;
+      for (const slot of islandEl.querySelectorAll('.mini-slot[data-mini-slot]')) {
+        const row = ctx.rowOf(slot.dataset.miniSlot);
+        if (!row) continue;
+        const key = `${row.engineId}@${slot.style.getPropertyValue('--mini')}`;
+        let mini = minis.get(key);
+        if (!mini) { mini = root.document.createElement('sg-card'); mini.className = 'conv-mini'; mini.dataset.mini = row.engineId; mini.setAttribute('aria-hidden', 'true'); minis.set(key, mini); }
+        for (const [name, value] of Object.entries(cards().miniAttrsOf(row, infoOf(row)))) if (mini.getAttribute(name) !== String(value)) mini.setAttribute(name, String(value));
+        if (mini.parentElement !== slot) slot.replaceChildren(mini);
+      }
+      for (const [key, mini] of minis) if (!mini.isConnected) minis.delete(key);
+    };
+
+    const flash = (engineId, kind = 'wait') => { if (cards()) cards().react(engineId, kind); };
+
     const render = () => {
+      fillMinis();
       const pile = $('#pile');
       if (!pile || !cards() || !cards().isReady()) return;
       const stack = stackOf();
@@ -88,7 +107,7 @@
       islandEl.classList.add('cards');
     };
 
-    return { render, stackOf, infoOf };
+    return { render, fillMinis, flash, stackOf, infoOf };
   };
 
   const api = { createDeck, SHOWN, STEP, PEEK };

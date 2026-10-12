@@ -10,6 +10,18 @@
       "title": "Lien des tickets",
       "description": "Adresse https d'un ticket, {ticket} à la place du numéro (sinon ajouté à la fin). Vide : les numéros de ticket s'affichent sans lien.",
       "default": ""
+    },
+    "cards": {
+      "type": "boolean",
+      "title": "Conversations en cartes",
+      "description": "Chaque conversation est une carte holographique (WebGPU) dans la page et dans l'île. Désactivé : l'affichage en lignes et les entités d'avant.",
+      "default": true
+    },
+    "cardFinishes": {
+      "type": "string",
+      "title": "Finitions des cartes",
+      "description": "Finitions permises, séparées par des virgules : rainbow, gold, copper, silver, emerald, sapphire, amethyst, rose. Vide : toutes. Chaque conversation garde la sienne.",
+      "default": ""
     }
   }
 }
