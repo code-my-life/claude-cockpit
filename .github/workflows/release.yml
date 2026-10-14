@@ -1,13 +1,11 @@
 name: Release
 
-# A tag vX.Y.Z builds the Windows installer, then a separate job with write
-# access publishes it. The build job only reads the repository.
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows:
@@ -38,7 +36,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          # latest.yml and the blockmap are what installed apps read to update themselves.
           path: |
             desktop/dist/*.exe
             desktop/dist/*.exe.blockmap
@@ -59,12 +56,43 @@ jobs:
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          NOTES: >-
-            Installeur Windows : claude-cockpit-setup-VERSION.exe.
-            Il n'est pas encore signé, Windows peut donc afficher « Windows a protégé votre ordinateur » :
-            Informations complémentaires, puis Exécuter quand même.
-            Sommes de contrôle dans SHA256SUMS.txt. Les versions installées se mettent à jour d'elles-mêmes.
         run: |
-          gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" \
-            --title "Claude Cockpit $GITHUB_REF_NAME" \
-            --notes "${NOTES//VERSION/${GITHUB_REF_NAME#v}}"
+          gh release create "${GITHUB_REF_NAME}" release/* \
+            --title "v${GITHUB_REF_NAME#v}" --notes "Release ${GITHUB_REF_NAME}"
+
+  build-graph:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          python-version: "3.12"
+      - name: Install graphify
+        run: uv pip install graphifyy
+      - name: Extract code graph (AST only)
+        run: |
+          uv run graphify extract . --code-only --out graphify-out --no-gitignore
+      - name: Cluster + report
+        run: uv run graphify cluster-only graphify-out --no-label
+      - name: Upload graph as release asset
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: graphify-out/graph.json
+
+  trigger-global-graph:
+    needs: [publish, build-graph]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Dispatch to code-graph
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          repository: code-my-life/code-graph
+          event-type: repo-released
+          client-payload: '{"repo": "${{ github.repository }}", "tag": "${{ github.ref_name }}"}'
