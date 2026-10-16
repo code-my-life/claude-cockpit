@@ -435,3 +435,14 @@ test('la fenetre dit si elle est en train de s animer : une mesure lourde attend
   clock.advance(GROW_MS)
   assert.equal(island.isAnimating(), false)
 })
+
+test('blur() delegue au fsm: l ile passe de open a compact', () => {
+  const { island, clock } = setup()
+  island.start()
+  clock.advance(GROW_MS)
+  island.setExpanded(true, 760, 280)
+  clock.advance(GROW_MS)
+  assert.equal(island.phase(), 'open')
+  island.blur()
+  assert.equal(island.phase(), 'compact')
+})

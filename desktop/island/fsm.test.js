@@ -468,3 +468,38 @@ test('quand plus personne n attend, la pastille se cache de nouveau apres 60 s',
   clock.advance(HIDE_DELAY_MS)
   assert.equal(fsm.state(), 'hidden')
 })
+
+test('blur() — OPEN → COMPACT ; COMPACT ou HIDDEN → inchangé', () => {
+  const { clock, fsm } = setup()
+  fsm.open()
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  fsm.forceHide()
+  fsm.blur()
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('blur() réarme le minuteur de masquage : une île ouverte se replie puis se cache apres 60 s', () => {
+  const { clock, fsm } = setup()
+  fsm.open()
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(HIDE_DELAY_MS - 1)
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(1)
+  assert.equal(fsm.state(), 'hidden')
+})
+
+test('blur() — OPEN + pin attention → COMPACT ; la pastille garde le signal', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.open()
+  assert.equal(fsm.state(), 'open')
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  // Après le repli, la pastille garde le signal : l'île ne se cache pas toute seule
+  clock.advance(HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'compact', 'l ile reste compacte tant que le signal est garde')
+})

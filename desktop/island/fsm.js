@@ -153,6 +153,10 @@ const createIslandFsm = ({ clock = realClock, onChange = () => {} } = {}) => {
       if (current === OPEN) go(COMPACT)
       rearm(0)
     },
+    // Perte de focus de la fenêtre : une île ouverte se replie en réduit, sans réarmer si elle n'est pas ouverte.
+    blur() {
+      if (current === OPEN) { go(COMPACT); rearm(0) }
+    },
     escape() {
       if (current === OPEN) go(COMPACT)
       else if (current === COMPACT && !isSignalHeld()) go(HIDDEN)

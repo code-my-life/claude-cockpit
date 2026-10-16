@@ -112,6 +112,7 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
     },
     activity() { fsm.activity() },
     escape() { fsm.escape() },
+    blur() { fsm.blur() },
     setPinned(kind) {
       pageKind = kind
       fsm.setPinned(isOffline ? 'attention' : kind)
