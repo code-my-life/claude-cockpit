@@ -74,12 +74,21 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install graphify
-        run: uv pip install graphifyy
+        run: uv pip install "graphifyy[openai]"
       - name: Extract code graph (AST only)
         run: |
           uv run graphify extract . --code-only --out graphify-out --no-gitignore
       - name: Cluster + report
-        run: uv run graphify cluster-only graphify-out --no-label
+        run: |
+          uv run graphify cluster-only graphify-out --no-label
+          # graphify écrit parfois dans <out>/graphify-out/ : on normalise sur graphify-out/graph.json
+          [ -f graphify-out/graph.json ] || { mv graphify-out/graphify-out/* graphify-out/ && rmdir graphify-out/graphify-out; }
+      - name: Name communities (sans nom, le graphe est illisible pour un humain)
+        env:
+          OPENAI_BASE_URL: https://integrate.api.nvidia.com/v1
+          OPENAI_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          OPENAI_MODEL: nvidia/nemotron-3-super-120b-a12b
+        run: uv run graphify label . --backend openai --model nvidia/nemotron-3-super-120b-a12b
       - name: Upload graph as release asset
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
