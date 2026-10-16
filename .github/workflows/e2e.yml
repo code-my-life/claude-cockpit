@@ -1,0 +1,41 @@
+name: E2E
+
+# The real Electron app on a Windows desktop (Playwright _electron): island,
+# focus and always-on-top windows only behave for real there.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Dependencies
+        working-directory: desktop
+        run: npm ci
+      # npm can skip install scripts: the Electron binary is fetched explicitly (no-op when present).
+      - name: Electron binary
+        working-directory: desktop
+        run: node node_modules/electron/install.js
+      - name: E2E tests
+        working-directory: desktop
+        run: npm run test:e2e
+      - name: Artifacts (video, screenshots, traces)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            desktop/test/results/
+            desktop/test/report/
+          if-no-files-found: warn
+          retention-days: 14
