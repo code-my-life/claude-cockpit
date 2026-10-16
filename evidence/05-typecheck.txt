@@ -1,2 +1,0 @@
-npm notice run typecheck:mod
-npm notice run tsc -p ci/tsconfig.mod.json
