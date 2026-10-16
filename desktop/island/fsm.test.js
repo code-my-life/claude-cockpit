@@ -468,3 +468,15 @@ test('quand plus personne n attend, la pastille se cache de nouveau apres 60 s',
   clock.advance(HIDE_DELAY_MS)
   assert.equal(fsm.state(), 'hidden')
 })
+
+test('blur() — OPEN → COMPACT ; COMPACT ou HIDDEN → inchangé', () => {
+  const { clock, fsm } = setup()
+  fsm.open()
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  fsm.forceHide()
+  fsm.blur()
+  assert.equal(fsm.state(), 'hidden')
+})
