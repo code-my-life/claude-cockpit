@@ -28,13 +28,15 @@ jobs:
         run: node node_modules/electron/install.js
       # Video of the whole Windows desktop: the island, its focus and the other windows (Playwright's own
       # video waits for frames the hidden windows never paint). Matroska stays readable when ffmpeg is killed.
+      # GOP=10 (1 s at 10 fps), cluster_time_limit=1000 ms, flush_packets=1: every second of content is
+      # physically on disk, so a violent Stop-Process loses at most one cluster.
       - name: Start the screen recording
         continue-on-error: true
         shell: pwsh
         run: |
           if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg -y --no-progress | Out-Null; Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"; refreshenv | Out-Null }
           New-Item -ItemType Directory -Force desktop/test/screen | Out-Null
-          $ffmpeg = Start-Process ffmpeg -PassThru -WindowStyle Hidden -ArgumentList '-y','-loglevel','error','-f','gdigrab','-framerate','10','-i','desktop','-t','900','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','desktop/test/screen/desktop.mkv'
+          $ffmpeg = Start-Process ffmpeg -PassThru -WindowStyle Hidden -ArgumentList '-y','-loglevel','error','-f','gdigrab','-framerate','10','-i','desktop','-t','900','-g','10','-cluster_time_limit','1000','-flush_packets','1','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','desktop/test/screen/desktop.mkv'
           "FFMPEG_PID=$($ffmpeg.Id)" >> $env:GITHUB_ENV
       - name: E2E tests
         working-directory: desktop
@@ -43,6 +45,15 @@ jobs:
         if: always() && env.FFMPEG_PID != ''
         shell: pwsh
         run: Stop-Process -Id $env:FFMPEG_PID -ErrorAction SilentlyContinue
+      - name: Report video duration
+        if: always() && env.FFMPEG_PID != ''
+        shell: pwsh
+        run: |
+          if (Test-Path desktop/test/screen/desktop.mkv) {
+            $dur = ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 desktop/test/screen/desktop.mkv
+            Write-Host "video duration: ${dur}s"
+            "VIDEO_DURATION=${dur}" >> $env:GITHUB_ENV
+          } else { Write-Host 'no video produced (ffmpeg may not have started)' }
       - name: Artifacts (video, screenshots, traces)
         if: always()
         uses: actions/upload-artifact@v4
