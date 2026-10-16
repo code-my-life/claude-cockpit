@@ -81,7 +81,7 @@ const makeModel = () => ({
 })
 
 const makeEntities = () => ({
-  mount: () => ({ destroy: () => {}, setSeed: () => {} }),
+  mount: () => ({ destroy: () => {}, setSeed: () => {}, setState: () => {} }),
   pause: () => {},
   resume: () => {},
 })
@@ -97,7 +97,7 @@ const setup = () => {
     host,
     model,
     entities: makeEntities(),
-    helpers: { isServer: true, ageOf: () => '0', folderOf: () => null, esc: s => s, icon: () => '', markdown: () => '', activityOf: () => ['', ''], awaitingOf: () => '', statsLineOf: () => '', openUrlOf: () => '#', quickReplies: [] },
+    helpers: { isServer: true, ageOf: () => '0', folderOf: () => null, esc: s => s, icon: () => '', markdown: () => '', activityOf: () => ['', ''], awaitingOf: () => '', statsLineOf: () => '', openUrlOf: () => '#', quickReplies: [], tintOf: () => '' },
     actions: { reply: async () => true },
     desktop: null,
     announce: msg => announceCalls.push(msg),
