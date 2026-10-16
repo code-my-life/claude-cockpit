@@ -14,17 +14,25 @@ jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
+      # Un tag poussé avec GITHUB_TOKEN ne déclenche aucun workflow (règle GitHub) : on pousse avec
+      # un jeton de la GitHub App code-my-life-factory pour que release.yml démarre.
+      - uses: actions/create-github-app-token@v1
+        id: app
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
       - name: Tag si la version n'a pas encore de tag
         run: |
           v="v$(node -p "require('./desktop/package.json').version")"
           if git rev-parse -q --verify "refs/tags/$v" >/dev/null; then
             echo "tag $v déjà présent, rien à faire"; exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "code-my-life-factory[bot]"
+          git config user.email "code-my-life-factory[bot]@users.noreply.github.com"
           git tag -a "$v" -m "Release $v"
           git push origin "$v"
           echo "tag $v poussé : release.yml prend le relais"
