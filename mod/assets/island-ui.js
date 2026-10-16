@@ -204,8 +204,7 @@
       announce(`${row.title} t'attend`);
       if (ctx.cards) win.setTimeout(() => ctx.deck.flash(row.engineId, 'wait'), 0);
       S.focusId = row.engineId;
-      if (S.phase !== 'open') { openWith('wait', 'event'); return; }
-      if (S.view === 'home' || S.view === 'wait') switchView('wait');
+      if (S.phase === 'open' && (S.view === 'home' || S.view === 'wait')) switchView('wait');
     };
 
     const takeFolders = folders => {
