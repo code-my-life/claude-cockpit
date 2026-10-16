@@ -1,7 +1,7 @@
 {
   "name": "cockpit-desktop",
   "productName": "Claude Cockpit",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "Cockpit pour suivre et piloter ses conversations Claude Code",
   "author": "Code My Life",
   "license": "MIT",
@@ -14,7 +14,8 @@
     "start": "electron .",
     "icon": "node scripts/make-icon.js",
     "pack": "electron-builder --win dir --publish never",
-    "dist": "electron-builder --win nsis --publish never"
+    "dist": "electron-builder --win nsis --publish never",
+    "test:e2e": "playwright test -c test/playwright.config.ts"
   },
   "build": {
     "appId": "fr.codemylife.claude-cockpit",
@@ -28,7 +29,8 @@
       "!**/*.test.*",
       "!scripts/**",
       "!dist/**",
-      "!build/**"
+      "!build/**",
+      "!test/**"
     ],
     "extraResources": [
       {
@@ -62,7 +64,8 @@
   },
   "devDependencies": {
     "electron": "^44.7.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "@playwright/test": "^1.64.1"
   },
   "optionalDependencies": {
     "koffi": "^2.16.3"

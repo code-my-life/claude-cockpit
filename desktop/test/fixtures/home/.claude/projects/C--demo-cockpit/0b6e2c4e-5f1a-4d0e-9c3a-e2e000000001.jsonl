@@ -1,0 +1,2 @@
+{"type":"user","sessionId":"0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001","uuid":"e2e-user-1","parentUuid":null,"cwd":"C:\\demo\\cockpit","timestamp":"2026-10-16T09:00:00.000Z","message":{"role":"user","content":"Ajoute un test pour le repli de l'île"}}
+{"type":"assistant","sessionId":"0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001","uuid":"e2e-assistant-1","parentUuid":"e2e-user-1","cwd":"C:\\demo\\cockpit","timestamp":"2026-10-16T09:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Le test est en place."}]}}

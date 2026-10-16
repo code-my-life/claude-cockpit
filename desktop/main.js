@@ -46,6 +46,10 @@ const BACKDROP_DEBOUNCE_MS = 500
 const BACKDROP_EVERY_MS = 8000
 // Réglage de mise au point : ralentit la morphose (variable d'environnement du lanceur, jamais exposée à la page).
 const MOTION_SCALE = Number(process.env.COCKPIT_ISLAND_SLOW) || 1
+// Mode test de bout en bout, posé par le harnais Playwright (desktop/test) : dossier de données à part (--user-data-dir), serveur sur un
+// port libre, ni raccourcis globaux, ni sons, ni mises à jour, ni assistant d'installation.
+const IS_E2E = process.env.COCKPIT_E2E === '1'
+const ANY_FREE_PORT = 0
 const RETRY_MS = 5000
 const ERR_ABORTED = -3
 const OFFLINE_WIDTH = 380
@@ -118,7 +122,7 @@ const announcePermissions = count => {
 
 const startServer = async () => {
   try {
-    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions })
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, preferredPort: IS_E2E ? ANY_FREE_PORT : undefined, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions })
     serverPort = embeddedServer.port
     await setSessionCookie()
   } catch (error) {
@@ -396,6 +400,7 @@ let soundState = { enabled: true, isIntroShown: false }
 const areSoundsOn = () => soundState.enabled
 
 const loadSoundSetting = () => {
+  if (IS_E2E) { soundState = { enabled: false, isIntroShown: true }; return }
   let raw = null
   try { raw = fs.readFileSync(soundFile(), 'utf8') } catch { raw = null }
   soundState = readSoundState(raw)
@@ -422,7 +427,7 @@ const toggleAutostart = () => app.setLoginItemSettings({ openAtLogin: !app.getLo
 let updater = null
 
 const startUpdates = () => {
-  if (!app.isPackaged) return
+  if (!app.isPackaged || IS_E2E) return
   const { autoUpdater } = require('electron-updater')
   updater = createUpdater({ autoUpdater, log: logLine, onChange: () => refreshTrayMenu() })
   updater.start()
@@ -503,7 +508,30 @@ onTrusted('sound-log', (event, message) => logLine(oneLine(message)))
 
 onTrusted('quit', () => app.quit())
 
-if (!app.requestSingleInstanceLock()) {
+// Le verrou d'instance unique vaut par dossier de données : l'instance de test le prend dans le sien, à côté de l'app installée.
+const useTestDataDir = () => {
+  const dir = app.commandLine.getSwitchValue('user-data-dir')
+  if (dir === '') return false
+  app.setPath('userData', dir)
+  return true
+}
+
+// Le harnais lit l'état de l'app depuis le processus principal (electronApp.evaluate).
+const exposeTestProbe = () => {
+  globalThis.cockpitE2E = {
+    serverPort: () => (embeddedServer === null ? null : serverPort),
+    islandPhase: () => island?.phase() ?? null,
+    isIslandFocused: () => win !== null && !win.isDestroyed() && win.isFocused(),
+    areSoundsOn: () => areSoundsOn(),
+    hasGlobalShortcuts: () => activeShortcut !== null || globalShortcut.isRegistered('Control+Alt+I'),
+    hasUpdater: () => updater !== null,
+  }
+}
+
+if (IS_E2E && !useTestDataDir()) {
+  console.error('COCKPIT_E2E=1 needs --user-data-dir: the test run never touches the real app data')
+  app.exit(1)
+} else if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => {
@@ -513,15 +541,18 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform === 'darwin') app.dock?.hide()
     nativeTheme.themeSource = 'dark'
     loadSoundSetting()
+    if (IS_E2E) exposeTestProbe()
     await startServer()
     createWindow()
     createLauncherWindow()
-    registerLauncherShortcut()
-    registerIslandKeys()
+    if (!IS_E2E) {
+      registerLauncherShortcut()
+      registerIslandKeys()
+    }
     createTray()
     startUpdates()
     registerWizardIpc(refreshTrayMenu)
-    if (!isModInstalled()) openWizard(SECURE_WEB_PREFERENCES)
+    if (!IS_E2E && !isModInstalled()) openWizard(SECURE_WEB_PREFERENCES)
   })
   app.on('will-quit', () => {
     globalShortcut.unregisterAll()
