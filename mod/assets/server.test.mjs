@@ -4,7 +4,6 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import http from 'node:http'
 import os from 'node:os'
-process.env.TMPDIR = '/tmp'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
