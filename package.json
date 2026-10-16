@@ -12,6 +12,7 @@
     "test:mod": "claude plugin test mod"
   },
   "devDependencies": {
+    "jsdom": "^30.1.3",
     "typescript": "7.0.2"
   }
 }
