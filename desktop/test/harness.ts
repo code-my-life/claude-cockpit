@@ -9,6 +9,8 @@ import path from 'node:path'
 const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
 const SCREENSHOT_TIMEOUT_MS = 5000
+const WINDOW_TIMEOUT_MS = 30_000
+const WINDOW_POLL_MS = 100
 
 export type Cockpit = { app: ElectronApplication, root: string, close: () => Promise<void> }
 
@@ -44,11 +46,16 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   return { app, root, close }
 }
 
-// The first window whose address matches, waiting for it when it is not open yet.
+// The first window whose address matches, waiting for it when it is not open yet. A window
+// is announced on about:blank before it loads its address, so the addresses are polled.
 export const windowWhere = async (app: ElectronApplication, isWanted: (url: string) => boolean): Promise<Page> => {
-  const found = app.windows().find(page => isWanted(page.url()))
-  if (found !== undefined) return found
-  return app.waitForEvent('window', { predicate: page => isWanted(page.url()) })
+  const deadline = Date.now() + WINDOW_TIMEOUT_MS
+  for (;;) {
+    const found = app.windows().find(page => isWanted(page.url()))
+    if (found !== undefined) return found
+    if (Date.now() > deadline) throw new Error(`no matching window, open ones: ${app.windows().map(page => page.url()).join(', ') || 'none'}`)
+    await new Promise(resolve => setTimeout(resolve, WINDOW_POLL_MS))
+  }
 }
 
 export const islandWindow = async (app: ElectronApplication): Promise<Page> => {
