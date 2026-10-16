@@ -1,0 +1,40 @@
+✖ onFreshWait : pas d ouverture de l ile sur un evenement (5.761551ms)
+✖ onFreshWait : mutation — remise de openWith ouvre l ile (0.360244ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.019384
+
+✖ failing tests:
+
+test at mod/assets/island-ui.test.js:112:1
+✖ onFreshWait : pas d ouverture de l ile sur un evenement (5.761551ms)
+  TypeError: islandEl.style.setProperty is not a function
+      at Object.syncHero (/tmp/base_new/mod/assets/island-living.js:55:22)
+      at renderViews (/tmp/base_new/mod/assets/island-ui.js:79:18)
+      at renderAll (/tmp/base_new/mod/assets/island-ui.js:86:7)
+      at go (/tmp/base_new/mod/assets/island-ui.js:127:7)
+      at setPhase (/tmp/base_new/mod/assets/island-ui.js:170:7)
+      at openWith (/tmp/base_new/mod/assets/island-ui.js:178:23)
+      at onFreshWait (/tmp/base_new/mod/assets/island-ui.js:207:33)
+      at Object.update (/tmp/base_new/mod/assets/island-ui.js:233:18)
+      at TestContext.<anonymous> (/tmp/base_new/mod/assets/island-ui.test.js:115:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+
+test at mod/assets/island-ui.test.js:124:1
+✖ onFreshWait : mutation — remise de openWith ouvre l ile (0.360244ms)
+  TypeError: islandEl.style.setProperty is not a function
+      at Object.syncHero (/tmp/base_new/mod/assets/island-living.js:55:22)
+      at renderViews (/tmp/base_new/mod/assets/island-ui.js:79:18)
+      at renderAll (/tmp/base_new/mod/assets/island-ui.js:86:7)
+      at go (/tmp/base_new/mod/assets/island-ui.js:127:7)
+      at setPhase (/tmp/base_new/mod/assets/island-ui.js:170:7)
+      at openWith (/tmp/base_new/mod/assets/island-ui.js:178:23)
+      at onFreshWait (/tmp/base_new/mod/assets/island-ui.js:207:33)
+      at Object.update (/tmp/base_new/mod/assets/island-ui.js:233:18)
+      at TestContext.<anonymous> (/tmp/base_new/mod/assets/island-ui.test.js:128:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)

@@ -1,0 +1,2 @@
+node node_modules/.bin/tsc -p ci/tsconfig.mod.json
+RC=0, aucune erreur
