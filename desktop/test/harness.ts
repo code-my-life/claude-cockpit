@@ -35,12 +35,17 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
     cwd: DESKTOP_DIR,
     env: isolatedEnv(root, home) as Record<string, string>,
-    recordVideo: { dir: testInfo.outputPath('video') },
   }).catch(error => { removeRoot(); throw error })
+  const output: string[] = []
+  app.process().stdout?.on('data', chunk => output.push(String(chunk)))
+  app.process().stderr?.on('data', chunk => output.push(String(chunk)))
   await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
   const close = async () => {
     await app.context().tracing.stop({ path: testInfo.outputPath('trace.zip') }).catch(() => {})
     await app.close().catch(() => {})
+    await testInfo.attach('electron-output', { body: output.join(''), contentType: 'text/plain' })
+    const log = path.join(root, 'user-data', 'cockpit.log')
+    if (fs.existsSync(log)) await testInfo.attach('cockpit.log', { body: fs.readFileSync(log), contentType: 'text/plain' })
     removeRoot()
   }
   return { app, root, close }
@@ -53,10 +58,13 @@ export const windowWhere = async (app: ElectronApplication, isWanted: (url: stri
   for (;;) {
     const found = app.windows().find(page => isWanted(page.url()))
     if (found !== undefined) return found
-    if (Date.now() > deadline) throw new Error(`no matching window, open ones: ${app.windows().map(page => page.url()).join(', ') || 'none'}`)
+    if (Date.now() > deadline) throw new Error(`no matching window, seen by the test: [${app.windows().map(page => page.url()).join(', ')}], by the app: [${await mainProcessUrls(app)}]`)
     await new Promise(resolve => setTimeout(resolve, WINDOW_POLL_MS))
   }
 }
+
+const mainProcessUrls = (app: ElectronApplication) =>
+  app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(window => window.webContents.getURL()).join(', ')).catch(error => String(error))
 
 export const islandWindow = async (app: ElectronApplication): Promise<Page> => {
   const page = await windowWhere(app, url => url.includes('island=1'))
