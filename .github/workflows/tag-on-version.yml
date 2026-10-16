@@ -1,0 +1,30 @@
+name: Tag on version
+
+# Quand la version de desktop/package.json change sur main (bump inclus dans la PR),
+# pose le tag vX.Y.Z s'il n'existe pas : c'est lui qui déclenche release.yml.
+on:
+  push:
+    branches: [main]
+    paths: [desktop/package.json]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag si la version n'a pas encore de tag
+        run: |
+          v="v$(node -p "require('./desktop/package.json').version")"
+          if git rev-parse -q --verify "refs/tags/$v" >/dev/null; then
+            echo "tag $v déjà présent, rien à faire"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$v" -m "Release $v"
+          git push origin "$v"
+          echo "tag $v poussé : release.yml prend le relais"
