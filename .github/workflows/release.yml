@@ -57,7 +57,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" release/* \
+          # --repo explicite : ce job n'a pas de checkout, gh ne peut pas deviner le dépôt
+          gh release create "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" \
             --title "v${GITHUB_REF_NAME#v}" --notes "Release ${GITHUB_REF_NAME}"
 
   build-graph:
