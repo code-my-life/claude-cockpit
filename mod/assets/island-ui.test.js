@@ -4,7 +4,7 @@ const { create } = require('./island-ui.js')
 
 // ---------------------------------------------------------------- Fake DOM (minimal)
 const makeEl = id => {
-  const obj = { id, tagName: 'DIV', dataset: {}, classList: { toggle: () => {}, add: () => {}, remove: () => {}, contains: () => false }, style: {}, value: '', hidden: false, offsetHeight: 44, offsetWidth: 320 }
+  const obj = { id, tagName: 'DIV', dataset: {}, classList: { toggle: () => {}, add: () => {}, remove: () => {}, contains: () => false }, style: { setProperty: () => {} }, value: '', hidden: false, offsetHeight: 44, offsetWidth: 320 }
   obj.textContent = ''
   obj.innerHTML = ''
   obj.querySelector = q => { if (!q) return null; if (q === `#${id}`) return obj; if (q === '.compact') return obj; return null }
