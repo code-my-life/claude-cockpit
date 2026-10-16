@@ -14,6 +14,8 @@ const makeEl = id => {
   obj.toggleAttribute = () => {}
   obj.addEventListener = () => {}
   obj.getBoundingClientRect = () => ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 })
+// evidence removed
+
   obj.focus = () => {}
   obj.blur = () => {}
   obj.matches = () => false
@@ -42,7 +44,9 @@ const makeHost = () => {
 }
 
 const makeWin = () => ({
-  matchMedia: () => ({ matches: false }),
+  matchMedia: () => ({ matches: false })
+// evidence removed
+,
   performance: { now: () => 0 },
   setTimeout: (fn, ms) => setTimeout(fn, ms),
   clearTimeout: id => clearTimeout(id),
@@ -50,11 +54,15 @@ const makeWin = () => ({
   clearInterval: () => {},
   requestAnimationFrame: () => 0,
 })
+// evidence removed
+
 
 const isWait = row => row.status === 'permission' || row.status === 'external'
 
 const makeModel = () => ({
-  createFeed: () => ({ observe: () => {}, linesOf: () => [] }),
+  createFeed: () => ({ observe: () => {}, linesOf: () => [] })
+// evidence removed
+,
   focusOf: (rows, id) => rows.find(r => r.engineId === id) || null,
   byUrgency: rows => rows.slice().sort((a, b) => isWait(b) - isWait(a)),
   waitOrderOf: (rows, _perms) => rows.filter(isWait),
@@ -66,11 +74,15 @@ const makeModel = () => ({
     return null
   },
   waitingIdsOf: rows => new Set(rows.filter(isWait).map(r => r.engineId)),
-  createHoverIntent: () => ({ enter: () => {}, leave: () => {} }),
+  createHoverIntent: () => ({ enter: () => {}, leave: () => {} })
+// evidence removed
+,
   springEase: (_spring, t) => t,
   KIND_WAIT: 'wait', KIND_DONE: 'done', KIND_WORK: 'work', KIND_STUCK: 'stuck',
   kindOf: row => isWait(row) ? 'wait' : row.status === 'done' ? 'done' : 'work',
-  signalOf: row => ({ kind: 'wait', word: 'attend', icon: 'alert', tone: 'warning' }),
+  signalOf: row => ({ kind: 'wait', word: 'attend', icon: 'alert', tone: 'warning' })
+// evidence removed
+,
   compactWordOf: rows => rows.some(isWait) ? "T'attend" : 'Personne au travail',
   entityStateOf: () => 'working',
   othersOf: (rows, id, n) => rows.filter(r => r.engineId !== id).slice(0, n),
@@ -79,12 +91,18 @@ const makeModel = () => ({
   isDecisionArmed: () => false,
   canReply: (row, _opts) => row && isWait(row),
 })
+// evidence removed
+
 
 const makeEntities = () => ({
-  mount: () => ({ destroy: () => {}, setSeed: () => {}, setState: () => {} }),
+  mount: () => ({ destroy: () => {}, setSeed: () => {}, setState: () => {} })
+// evidence removed
+,
   pause: () => {},
   resume: () => {},
 })
+// evidence removed
+
 
 const setup = () => {
   const announceCalls = []
@@ -102,6 +120,8 @@ const setup = () => {
     desktop: null,
     announce: msg => announceCalls.push(msg),
   })
+// evidence removed
+
   // Initialisation avec une ligne non-attendante pour que S.waitIds ne contienne pas la nouvelle attente.
   island.update([{ engineId: 'x', title: 'X', status: 'tool', updatedAt: 0 }])
   return { island, announceCalls, host }
@@ -120,6 +140,8 @@ test('onFreshWait : pas d ouverture de l ile sur un evenement', () => {
   assert.deepEqual(announceCalls, ["Titre A t'attend"])
   assert.equal(island.stateOf().focusId, 'a')
 })
+// evidence removed
+
 
 test('onFreshWait : mutation — remise de openWith ouvre l ile', () => {
   // Capture la regression si openWith('wait','event') etait remis dans onFreshWait.
@@ -131,3 +153,4 @@ test('onFreshWait : mutation — remise de openWith ouvre l ile', () => {
   assert.equal(announceCalls[0], "C t'attend")
   assert.equal(island.stateOf().focusId, 'c')
 })
+// evidence removed
