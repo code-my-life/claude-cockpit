@@ -375,7 +375,6 @@ const createWindow = () => {
   })
   win.webContents.session.on('will-download', event => event.preventDefault())
   win.on('closed', () => { island.dispose(); island = null; win = null })
-  win.on('blur', () => island?.blur())
   loadCockpit()
 }
 
