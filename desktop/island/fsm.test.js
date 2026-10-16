@@ -480,3 +480,14 @@ test('blur() — OPEN → COMPACT ; COMPACT ou HIDDEN → inchangé', () => {
   fsm.blur()
   assert.equal(fsm.state(), 'hidden')
 })
+
+test('blur() réarme le minuteur de masquage : une île ouverte se replie puis se cache apres 60 s', () => {
+  const { clock, fsm } = setup()
+  fsm.open()
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(HIDE_DELAY_MS - 1)
+  assert.equal(fsm.state(), 'compact')
+  clock.advance(1)
+  assert.equal(fsm.state(), 'hidden')
+})
