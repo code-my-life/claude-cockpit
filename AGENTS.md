@@ -23,10 +23,9 @@ Cockpit pour suivre toutes les conversations Claude Code : Desktop (electron) + 
 ## Conventions
 
 - gestionnaire de paquets : npm (verrouille `package-lock.json` racine + `desktop/package-lock.json`).
-- style : JS/TS modules ESM, noms en camelCase, messages en anglais? Non : UI/erreurs/commentaires en anglais (tests en anglais), la doc technique en anglais. Les tests decrient en anglais.
+- style : JS/TS en modules ESM, noms en camelCase. Langue : interface utilisateur et documentation en français ; code, commentaires, noms de tests et messages d'erreur en anglais.
 - commits : titre court, corps justifie, pas de co-sign. Branches `fix/...` ou `factory/...`, PR vers `main` avec `--fill`.
-- chemins sensibles : `.env` (aucun), `mod/.claude-plugin/types/` (generé), `desktop/dist/` (généré), `session-index.json`, `session-cache.json`, `search-cache.json` (données runtime du cockpit, ignores par `.gitignore`).
-- fichiers de données runtime (`inbox/`, `stats-job-*.json`, `conversations.html`, `conversations-data.js`) sont generés ou ignorés : ne pas les commit.
+- fichiers générés ou données runtime, ne jamais commit : `mod/.claude-plugin/types/`, `desktop/dist/`, `session-index.json`, `session-cache.json`, `search-cache.json`, `inbox/`, `stats-job-*.json`, `conversations.html`, `conversations-data.js`. Aucun `.env` dans ce repo.
 
 ## Echecs connus de la suite
 
