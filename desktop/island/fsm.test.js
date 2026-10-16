@@ -491,3 +491,15 @@ test('blur() réarme le minuteur de masquage : une île ouverte se replie puis s
   clock.advance(1)
   assert.equal(fsm.state(), 'hidden')
 })
+
+test('blur() — OPEN + pin attention → COMPACT ; la pastille garde le signal', () => {
+  const { clock, fsm } = setup()
+  fsm.setPinned('attention')
+  fsm.open()
+  assert.equal(fsm.state(), 'open')
+  fsm.blur()
+  assert.equal(fsm.state(), 'compact')
+  // Après le repli, la pastille garde le signal : l'île ne se cache pas toute seule
+  clock.advance(HIDE_DELAY_MS)
+  assert.equal(fsm.state(), 'compact', 'l ile reste compacte tant que le signal est garde')
+})
