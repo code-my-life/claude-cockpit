@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en" data-theme="noir">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<meta charset="utf-8">
+<title>Claude Cockpit: every Claude Code conversation at a glance</title>
+<link rel="stylesheet" href="ds/encrepapier/theme.css">
+<link rel="stylesheet" href="ds/encrepapier/components/bundle.css">
+<script src="ds/encrepapier/components/bundle.js"></script>
+<link rel="stylesheet" href="vendor/generator.css">
+<script src="vendor/generator.js"></script>
+<link rel="stylesheet" href="vendor/cards.css">
+<script src="vendor/cards.global.js" defer></script>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
+.cc-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.cc-section{margin-top:var(--space-24)}
+.cc-section > p.ep-lede{max-width:var(--measure)}
+.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:center}
+.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 3.4);justify-self:center}
+.ep-header{gap:var(--space-4)}
+.ep-header .ep-nav{min-width:0;flex:0 1 auto;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;justify-content:flex-start}
+.ep-header__brand{min-height:calc(var(--space-10) + var(--space-1))}
+.ep-header .ep-nav::-webkit-scrollbar{display:none}
+.ep-header__brand ep-mark{width:var(--space-8);height:var(--space-8);flex:none}
+.cc-flip{display:block;width:100%}
+.cc-flip sg-card{width:100%}
+.cc-flip:focus-visible{outline:2px solid var(--focus);outline-offset:var(--space-1)}
+.cc-flip:not([flipped]) [data-front]{visibility:hidden;transition:visibility 0s .35s}
+.cc-flip[flipped] [data-front]{visibility:visible}
+.cc-front{display:flex;flex-direction:column;gap:var(--space-2);overflow:auto;padding:var(--space-4);border-radius:var(--radius-glass-s);background:color-mix(in srgb,var(--paper) 86%,transparent)}
+.cc-front p{margin:0}
+.cc-grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-6)}
+.cc-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-6)}
+.cc-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6)}
+.cc-state .ep-toggle{display:flex;flex-wrap:wrap;max-width:100%}
+.cc-state .ep-toggle button{min-height:calc(var(--space-10) + var(--space-1))}
+.cc-band:focus-visible{outline:2px solid var(--focus);outline-offset:var(--space-1)}
+.cc-band figcaption{flex-direction:column;align-items:flex-start;gap:var(--space-1)}
+.cc-state{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:var(--space-12);align-items:center}
+.cc-band{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(calc(var(--space-24) * 1.4),1fr);gap:var(--space-4);overflow-x:auto;padding-bottom:var(--space-2)}
+.cc-band figure{margin:0}
+.cc-shot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-3);text-align:center;aspect-ratio:16 / 10}
+.cc-track{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--space-4);margin:var(--space-8) 0 0;padding:0;list-style:none}
+.cc-stage{display:flex;flex-direction:column;gap:var(--space-2);padding-top:var(--space-4);border-top:2px solid var(--rule)}
+.cc-stage[data-done]{border-top-color:var(--ink-2)}
+.cc-stage h3,.cc-stage p{margin:0}
+.cc-stage ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:var(--space-2)}
+.cc-stage a{color:var(--ink)}
+.cc-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-6)}
+@media (max-width:900px){
+  html{scroll-padding-top:calc(var(--bar-height) * 2 + var(--space-6))}
+  .ep-header{flex-wrap:wrap;row-gap:var(--space-2)}
+  .ep-header .ep-nav{flex:1 0 100%;margin-left:0}
+  .cc-hero,.cc-state{grid-template-columns:minmax(0,1fr)}
+  .cc-grid-4,.cc-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cc-track{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cc-section{margin-top:var(--space-16)}
+}
+@media (max-width:560px){
+  .cc-grid-4,.cc-grid-3,.cc-grid-2,.cc-track{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+
+</head>
+<body class="ep-root">
+
+
+<div class="ep-root" data-theme="noir" style="position: relative; min-height: 100%">
+<div id="cc-bg" class="cc-bg" aria-hidden="true"></div>
+
+<header class="ep-header">
+<a class="ep-header__brand" href="#top"><ep-mark name="Claude Cockpit" size="32"></ep-mark> Claude Cockpit</a>
+<nav class="ep-nav" aria-label="Main"><a href="#features">Features</a><a href="#install">Install</a><a href="#cards">Cards</a><a href="#roadmap">Roadmap</a><a href="fr/" hreflang="fr" lang="fr">Français</a></nav>
+</header>
+
+<main id="top">
+<section id="download" class="ep-wrap" aria-labelledby="h-hero" style="padding-top: var(--space-16)">
+<div class="cc-hero">
+<div class="ep-stack" style="gap: var(--space-6)">
+<h1 id="h-hero" class="display-xl">Every Claude Code conversation, <em>at a glance</em></h1>
+<p class="ep-lede">See who is waiting for you, who is working and who is stuck. Answer, allow or deny without opening the app.</p>
+<div class="ep-cluster">
+<a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Download for Windows</a>
+<a class="ep-btn ep-btn--ghost ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit">Source on GitHub</a>
+</div>
+<p class="ep-note">Windows 10 and 11. Free and open source, MIT licence.</p>
+</div>
+<div class="cc-hero-card">
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Island e2e tests card, waiting for permission, press to turn over">
+<sg-card system="guilloche" fit="fill" seed="a1b2c3d4-0001" finish="copper" rarity="mythic" state="permission" top-left="Permission" top-right="2 min" heading="Island e2e|tests" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag ep-tag--warning">Permission</span>
+<p>Allow the command npm run test:e2e in desktop/.</p>
+<div class="ep-cluster"><button class="ep-btn ep-btn--sm" type="button">Deny</button><button class="ep-btn ep-btn--sm" type="button">Allow</button><button class="ep-btn ep-btn--sm ep-btn--ghost" type="button">Always</button></div>
+<p class="ep-note">Claude wants to run the Playwright e2e suite on the Electron app.</p>
+</div></div>
+</sg-flip>
+<p class="ep-note" style="text-align: center; margin-top: var(--space-3)">Live card: click it or press Enter to turn it over.</p>
+</div>
+</div>
+</section>
+
+<div class="ep-wrap">
+<section class="cc-section" aria-labelledby="h-waiting">
+<h2 id="h-waiting" class="h2">Waiting for your orders</h2>
+<p class="ep-lede">The cockpit sorts your conversations by what they need from you. Turn a card over to read the plain summary and answer.</p>
+<div class="cc-grid-3" style="margin-top: var(--space-8)">
+
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Database migration card, waiting for permission, press to turn over">
+<sg-card system="halftone" fit="fill" seed="a1b2c3d4-0007" finish="silver" rarity="rare" state="permission" top-left="Permission" top-right="1 min" heading="Database|migration" subtitle="cv-site"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag ep-tag--warning">Permission</span>
+<p>Allow editing prisma/schema.prisma.</p>
+
+<p class="ep-note">Claude wants to add the contact table before running the migration.</p>
+</div></div>
+</sg-flip>
+
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Landing page card, a question waits, press to turn over">
+<sg-card system="voronoi" fit="fill" seed="a1b2c3d4-0002" finish="emerald" rarity="uncommon" state="waiting" top-left="Question" top-right="7 min" heading="Landing page" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag ep-tag--info">Question</span>
+<p>Pick the hero layout: A (full screenshot) or B (island only).</p>
+<div class="ep-cluster"><button class="ep-btn ep-btn--sm" type="button">OK</button><button class="ep-btn ep-btn--sm" type="button">GO</button><button class="ep-btn ep-btn--sm" type="button">No</button></div>
+<p class="ep-note">Two layouts for the hero: a full screenshot, or the island alone on the background.</p>
+</div></div>
+</sg-flip>
+
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Theme tokens card, mission delivered, press to turn over">
+<sg-card system="moire" fit="fill" seed="a1b2c3d4-0004" finish="gold" rarity="rare" state="done" top-left="Delivered" top-right="26 min" heading="Theme|tokens" subtitle="liquid-paper"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag ep-tag--success">Delivered</span>
+<p>Night theme tokens added, contrast measured at 7.8:1 or more.</p>
+
+<p class="ep-note">Mission done: tokens, tests and contrast checks are green.</p>
+</div></div>
+</sg-flip>
+
+</div>
+</section>
+
+<section id="features" class="cc-section" aria-labelledby="h-features">
+<h2 id="h-features" class="h2">Know who needs you, answer in one gesture</h2>
+<div class="cc-grid-3" style="margin-top: var(--space-8)">
+
+<figure class="ep-plate-wrap" style="margin: 0">
+
+
+<div class="ep-plate ep-plate--pad cc-shot">
+<span class="ep-tag ep-tag--info">Screenshot pending</span>
+<p class="ep-note">The island at the top of the screen, folded then open on a question</p>
+</div>
+
+<figcaption class="ep-cap"><b>The island</b></figcaption>
+<p class="ep-note">A glass shape at the top of your screen. It opens when someone waits for you.</p>
+</figure>
+
+<figure class="ep-plate-wrap" style="margin: 0">
+
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Repo graph card, working, press to turn over">
+<sg-card system="halftone" fit="fill" seed="a1b2c3d4-0003" finish="sapphire" rarity="rare" state="working" top-left="Searching the code" top-right="1 min" heading="Repo graph" subtitle="code-graph"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag ep-tag--info">Working</span>
+<p>Linking the graphs of the five repositories, 3 done.</p>
+<p class="ep-note">Reads graph.json files and looks for cross-repository imports.</p>
+</div></div>
+</sg-flip>
+
+
+<figcaption class="ep-cap"><b>Live status</b></figcaption>
+<p class="ep-note">Waiting, working, waiting for a PR or CI, blocked, later, at rest.</p>
+</figure>
+
+<figure class="ep-plate-wrap" style="margin: 0">
+
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Landing page card, a question waits, press to turn over" flipped="">
+<sg-card system="voronoi" fit="fill" seed="a1b2c3d4-0002" finish="emerald" rarity="uncommon" state="waiting" top-left="Question" top-right="7 min" heading="Landing page" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag ep-tag--info">Question</span>
+<p>Pick the hero layout: A (full screenshot) or B (island only).</p>
+<p class="ep-note">Two layouts for the hero: a full screenshot, or the island alone on the background.</p>
+</div></div>
+</sg-flip>
+
+
+<figcaption class="ep-cap"><b>Plain summaries</b></figcaption>
+<p class="ep-note">Claude Haiku rewrites the last answer in plain words, with the exact answer beside it.</p>
+</figure>
+
+<figure class="ep-plate-wrap" style="margin: 0">
+
+
+<div class="ep-plate ep-plate--pad cc-shot">
+<span class="ep-tag ep-tag--info">Screenshot pending</span>
+<p class="ep-note">The island open on a question with OK, GO and No</p>
+</div>
+
+<figcaption class="ep-cap"><b>Quick replies</b></figcaption>
+<p class="ep-note">OK, GO or No in one click, or a free message with pasted images.</p>
+</figure>
+
+<figure class="ep-plate-wrap" style="margin: 0">
+
+
+<div class="ep-plate ep-plate--pad cc-shot">
+<span class="ep-tag ep-tag--info">Screenshot pending</span>
+<p class="ep-note">The island on a permission request: Deny, Allow, Always</p>
+</div>
+
+<figcaption class="ep-cap"><b>Permissions</b></figcaption>
+<p class="ep-note">Allow or deny a command from the island, before Claude Desktop asks.</p>
+</figure>
+
+<figure class="ep-plate-wrap" style="margin: 0">
+
+
+<div class="ep-plate ep-plate--pad cc-shot">
+<span class="ep-tag ep-tag--info">Screenshot pending</span>
+<p class="ep-note">Search across every conversation with Ctrl+K</p>
+</div>
+
+<figcaption class="ep-cap"><b>Search</b></figcaption>
+<p class="ep-note">Search every message of every session, accents ignored.</p>
+</figure>
+
+</div>
+</section>
+
+<section id="install" class="cc-section" aria-labelledby="h-install">
+<h2 id="h-install" class="h2">Four steps, no admin rights</h2>
+<ol class="cc-grid-4" style="margin: var(--space-8) 0 0; padding: 0; list-style: none">
+
+<li class="ep-plate ep-plate--pad"><h3 class="h4"><span class="ep-no">01</span> Download</h3><p class="ep-note">Get claude-cockpit-setup.exe from the latest release. Check it against SHA256SUMS.txt with Get-FileHash.</p></li>
+
+<li class="ep-plate ep-plate--pad"><h3 class="h4"><span class="ep-no">02</span> Run it</h3><p class="ep-note">The installer is not signed yet: on SmartScreen, choose More info, then Run anyway.</p></li>
+
+<li class="ep-plate ep-plate--pad"><h3 class="h4"><span class="ep-no">03</span> Allow the mod</h3><p class="ep-note">The wizard shows the line it adds to the env block of settings.json (CLAUDE_CODE_PLUGIN_DIRS) and writes it after your click.</p></li>
+
+<li class="ep-plate ep-plate--pad"><h3 class="h4"><span class="ep-no">04</span> Restart Claude Desktop</h3><p class="ep-note">Each conversation loads the mod when it starts.</p></li>
+
+</ol>
+<div class="ep-plate ep-plate--pad" style="margin-top: var(--space-6)">
+<div class="ep-plate__head"><h3 class="ep-plate__title">Privacy</h3><span class="ep-tag ep-tag--success">Local first</span></div>
+<dl class="ep-dl">
+<div class="ep-dl__row"><dt>Reads</dt><dd>Your Claude Code sessions on this computer</dd></div>
+<div class="ep-dl__row"><dt>Writes</dt><dd>One line in ~/.claude/settings.json, only after your click</dd></div>
+<div class="ep-dl__row"><dt>Sends</dt><dd>The last answer of a conversation to Claude Haiku, to write the plain summary</dd></div>
+<div class="ep-dl__row"><dt>Nothing else</dt><dd>No account, no analytics, no server of ours</dd></div>
+<div class="ep-dl__row"><dt>Uninstall</dt><dd>Remove the line from settings.json, then uninstall from Windows Settings</dd></div>
+</dl>
+</div>
+</section>
+
+<section id="cards" class="cc-section" aria-labelledby="h-cards">
+<h2 id="h-cards" class="h2">One holographic card per conversation</h2>
+<p class="ep-lede">The engraving and finish come from the conversation, so it always keeps its card. The state follows the live status. The rarity is earned.</p>
+
+<h3 class="h3" style="margin-top: var(--space-12)">Rarity is earned in the cockpit</h3>
+<div class="cc-grid-4" style="margin-top: var(--space-6)">
+
+<figure style="margin: 0">
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Common card, press to turn over">
+<sg-card system="guilloche" fit="fill" seed="rarity-common" finish="gold" rarity="common" state="rest" heading="Quick fix" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag">Common</span>
+<p>Score under 0.25</p>
+<p class="ep-note">A short conversation: a few messages, little active time.</p>
+</div></div>
+</sg-flip>
+<figcaption class="ep-cap"><b>Common</b><span class="ep-tag">under 0.25</span></figcaption>
+</figure>
+
+<figure style="margin: 0">
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Uncommon card, press to turn over">
+<sg-card system="guilloche" fit="fill" seed="rarity-uncommon" finish="gold" rarity="uncommon" state="rest" heading="Contact form" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag">Uncommon</span>
+<p>Score from 0.25</p>
+<p class="ep-note">Real work done: about an hour, or many messages and tools.</p>
+</div></div>
+</sg-flip>
+<figcaption class="ep-cap"><b>Uncommon</b><span class="ep-tag">from 0.25</span></figcaption>
+</figure>
+
+<figure style="margin: 0">
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Rare card, press to turn over">
+<sg-card system="guilloche" fit="fill" seed="rarity-rare" finish="gold" rarity="rare" state="rest" heading="Theme tokens" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag">Rare</span>
+<p>Score from 0.5</p>
+<p class="ep-note">A long session: hours of work, dozens of files, quick replies.</p>
+</div></div>
+</sg-flip>
+<figcaption class="ep-cap"><b>Rare</b><span class="ep-tag">from 0.5</span></figcaption>
+</figure>
+
+<figure style="margin: 0">
+<sg-flip class="cc-flip" tabindex="0" role="button" aria-label="Mythic card, press to turn over">
+<sg-card system="guilloche" fit="fill" seed="rarity-mythic" finish="gold" rarity="mythic" state="rest" heading="Island e2e|tests" subtitle="claude-cockpit"></sg-card>
+<div data-front=""><div class="sg-flip__body cc-front" data-body="">
+<span class="ep-tag">Mythic</span>
+<p>Score from 0.8</p>
+<p class="ep-note">Near every cap: 4 hours, 60 messages, 200 tools, 40 files, a 10 reply combo.</p>
+</div></div>
+</sg-flip>
+<figcaption class="ep-cap"><b>Mythic</b><span class="ep-tag">from 0.8</span></figcaption>
+</figure>
+
+</div>
+<div class="ep-plate ep-plate--pad" style="margin-top: var(--space-6)">
+<div class="ep-plate__head"><h3 class="ep-plate__title">How rarity is scored</h3><span class="ep-tag ep-tag--info">Cockpit rule</span></div>
+<p class="ep-note">Each conversation gets a score from 0 to 1. Each part counts up to its cap, then stops growing.</p>
+<dl class="ep-dl">
+<div class="ep-dl__row"><dt>Active time</dt><dd>40 %, full at 4 hours of work</dd></div>
+<div class="ep-dl__row"><dt>Messages</dt><dd>25 %, full at 60 messages</dd></div>
+<div class="ep-dl__row"><dt>Tools run</dt><dd>15 %, full at 200 tool calls</dd></div>
+<div class="ep-dl__row"><dt>Files changed</dt><dd>10 %, full at 40 files</dd></div>
+<div class="ep-dl__row"><dt>Reply combo</dt><dd>10 %, full at 10 quick replies in a row</dd></div>
+</dl>
+<p class="ep-note">Uncommon from 0.25, rare from 0.5, mythic from 0.8.</p>
+</div>
+
+<h3 class="h3" style="margin-top: var(--space-12)">The state follows the conversation</h3>
+<div class="cc-state" style="margin-top: var(--space-6)">
+<sg-card system="voronoi" fit="fill" seed="state-demo" finish="emerald" rarity="uncommon" state="waiting" top-left="Waiting" heading="Repo graph" subtitle="code-graph" style="max-width: calc(var(--space-24) * 3); width: 100%; justify-self: center"></sg-card>
+<div class="ep-stack" style="gap: var(--space-4)">
+<div class="ep-toggle" aria-label="Card state">
+<button type="button" aria-pressed="false">Working</button><button type="button" aria-pressed="true">Waiting</button><button type="button" aria-pressed="false">Permission</button><button type="button" aria-pressed="false">Delivered</button><button type="button" aria-pressed="false">Blocked</button><button type="button" aria-pressed="false">Later</button><button type="button" aria-pressed="false">Rest</button>
+</div>
+<p class="h4" style="margin: 0">Waiting</p>
+<p class="ep-note" style="margin: 0">Claude asked a question or finished: it waits for your answer.</p>
+</div>
+</div>
+
+<h3 class="h3" style="margin-top: var(--space-12)">Seven engravings</h3>
+<div class="cc-band" style="margin-top: var(--space-6)" role="list">
+
+<figure role="listitem">
+<sg-card system="triangle" fit="fill" seed="sys-triangle" finish="rainbow" rarity="rare" state="working" heading="Triangle" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Triangle</b><span class="ep-tag">Rainbow</span></figcaption>
+</figure>
+
+<figure role="listitem">
+<sg-card system="metaballs" fit="fill" seed="sys-metaballs" finish="gold" rarity="rare" state="working" heading="Metaballs" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Metaballs</b><span class="ep-tag">Gold</span></figcaption>
+</figure>
+
+<figure role="listitem">
+<sg-card system="voronoi" fit="fill" seed="sys-voronoi" finish="emerald" rarity="rare" state="working" heading="Voronoi" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Voronoi</b><span class="ep-tag">Emerald</span></figcaption>
+</figure>
+
+<figure role="listitem">
+<sg-card system="guilloche" fit="fill" seed="sys-guilloche" finish="silver" rarity="rare" state="working" heading="Guilloche" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Guilloche</b><span class="ep-tag">Silver</span></figcaption>
+</figure>
+
+<figure role="listitem">
+<sg-card system="moire" fit="fill" seed="sys-moire" finish="sapphire" rarity="rare" state="working" heading="Moire" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Moire</b><span class="ep-tag">Sapphire</span></figcaption>
+</figure>
+
+<figure role="listitem">
+<sg-card system="halftone" fit="fill" seed="sys-halftone" finish="copper" rarity="rare" state="working" heading="Halftone" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Halftone</b><span class="ep-tag">Copper</span></figcaption>
+</figure>
+
+<figure role="listitem">
+<sg-card system="rings" fit="fill" seed="sys-rings" finish="amethyst" rarity="rare" state="working" heading="Noise rings" fps="12"></sg-card>
+<figcaption class="ep-cap"><b>Noise rings</b><span class="ep-tag">Amethyst</span></figcaption>
+</figure>
+
+</div>
+</section>
+
+<section id="roadmap" class="cc-section" aria-labelledby="h-roadmap">
+<h2 id="h-roadmap" class="h2">Where it comes from, where it goes</h2>
+<p class="ep-lede">Three stages shipped, three ahead. The page is rebuilt from the repository, so the plan never drifts from the work.</p>
+<ol class="cc-track" aria-label="Roadmap">
+
+<li class="cc-stage" data-done="">
+<span class="ep-tag ep-tag--success">Shipped</span>
+<h3 class="h4">Foundations</h3>
+<p class="ep-note">Versions 0.1 to 0.2. The mod, the cockpit page and the island, then a Windows installer with automatic updates.</p>
+
+</li>
+
+<li class="cc-stage" data-done="">
+<span class="ep-tag ep-tag--success">Shipped</span>
+<h3 class="h4">Cards</h3>
+<p class="ep-note">Version 0.3. Every conversation becomes a holographic card with an earned rarity.</p>
+
+</li>
+
+<li class="cc-stage" data-done="">
+<span class="ep-tag ep-tag--success">Shipped</span>
+<h3 class="h4">Reliability</h3>
+<p class="ep-note">Versions 0.3.2 to 0.4. A calmer island, truthful status, and real end-to-end tests of the app.</p>
+
+</li>
+
+<li class="cc-stage">
+<span class="ep-tag ep-tag--info">Next</span>
+<h3 class="h4">Sharper cards</h3>
+<p class="ep-note">Planned improvements to the cards and the app menu.</p>
+<ul><li><a href="https://github.com/code-my-life/claude-cockpit/issues/16">A minimal card front</a></li><li><a href="https://github.com/code-my-life/claude-cockpit/issues/17">Same pictos on both faces</a></li><li><a href="https://github.com/code-my-life/claude-cockpit/issues/2">A new taskbar menu</a></li></ul>
+</li>
+
+<li class="cc-stage">
+<span class="ep-tag">Later</span>
+<h3 class="h4">Faster answers</h3>
+<p class="ep-note">Considered: quicker search and summaries without the cloud.</p>
+<ul><li><a href="https://github.com/code-my-life/claude-cockpit/issues/20">Search bar in the island</a></li><li><a href="https://github.com/code-my-life/claude-cockpit/issues/4">Summaries with a local model</a></li></ul>
+</li>
+
+<li class="cc-stage">
+<span class="ep-tag ep-tag--accent">Vision</span>
+<h3 class="h4">Every agent</h3>
+<p class="ep-note">One cockpit for all your coding agents, not only Claude Code.</p>
+<ul><li><a href="https://github.com/code-my-life/claude-cockpit/issues/6">Hermes Agent</a></li><li><a href="https://github.com/code-my-life/claude-cockpit/issues/5">OpenCode</a></li></ul>
+</li>
+
+</ol>
+</section>
+
+<section id="developers" class="cc-section" aria-labelledby="h-dev">
+<h2 id="h-dev" class="h2">Three pieces, one repository</h2>
+<div class="cc-grid-3" style="margin-top: var(--space-8)">
+<div class="ep-plate ep-plate--pad"><h3 class="h4">The mod</h3><p class="ep-note">Loaded by every Claude Code conversation in <code>mod/</code>. It publishes the real status and runs a small local server.</p></div>
+<div class="ep-plate ep-plate--pad"><h3 class="h4">The cockpit</h3><p class="ep-note">The page that server shows: list and team views, one holographic card per conversation.</p></div>
+<div class="ep-plate ep-plate--pad"><h3 class="h4">The island</h3><p class="ep-note">An Electron app in <code>desktop/</code>: a glass shape at the top of the screen, always above your windows.</p></div>
+</div>
+<div class="ep-cluster" style="margin-top: var(--space-6)">
+<a class="ep-btn" href="https://github.com/code-my-life/claude-cockpit">Source on GitHub</a>
+<a class="ep-btn ep-btn--ghost" href="https://github.com/code-my-life/claude-cockpit/issues">Report an issue</a>
+</div>
+</section>
+
+<section class="cc-section ep-plate ep-plate--pad cc-cta" aria-labelledby="h-cta">
+<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Never miss a conversation that waits for you</h2><p class="ep-note">Windows 10 and 11, free, about two minutes to install.</p></div>
+<a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Download for Windows</a>
+</section>
+
+<ep-flow-type max-size="150" seed="31" wrap="none" style="margin-top: var(--space-16)" aria-hidden="true">Claude|Cockpit</ep-flow-type>
+<footer class="ep-foot ep-cluster" style="justify-content: space-between"><span>Claude Cockpit, MIT licence · <a href="#developers">Developers</a></span><span>Design: Liquid Paper, © Code My Life, all rights reserved</span></footer>
+</div>
+</main>
+</div>
+
+<script>addEventListener('DOMContentLoaded',()=>{const still=matchMedia('(prefers-reduced-motion: reduce)').matches;const h=document.getElementById('cc-bg');if(h&&window.BgGen)BgGen.mount(h,{type:'metaballs-page',seed:'cockpit',intensity:1,live:!still});if(still)document.querySelectorAll('ep-flow-type').forEach(e=>e.setAttribute('animate','none'));document.querySelectorAll('sg-flip[tabindex]').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.flip(!el.flipped);}}));});</script>
+</body>
+</html>
