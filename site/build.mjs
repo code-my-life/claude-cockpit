@@ -16,12 +16,12 @@ mkdirSync(join(OUTPUT_DIR, 'ds'), { recursive: true });
 mkdirSync(join(OUTPUT_DIR, 'vendor'), { recursive: true });
 mkdirSync(join(OUTPUT_DIR, 'fr'), { recursive: true });
 
-// Copy site/ to dist/ but exclude the dist/ directory itself
+// Copy site/ to dist/ but exclude the dist/ and test/ directories
 function copySiteDir(src, dest) {
   const items = readdirSync(src);
   for (const item of items) {
-    // Skip the dist directory to prevent infinite recursion
-    if (item === 'dist') {
+    // Skip the dist and test directories
+    if (item === 'dist' || item === 'test') {
       continue;
     }
     
