@@ -189,8 +189,10 @@ Monte `version` dans `desktop/package.json`, commite, puis pousse le tag corresp
 
 <a id="écarts-au-modèle-liquid-paper"></a>
 
+## Écarts au modèle Liquid Paper
+
 <details>
-<summary>Écarts au modèle Liquid Paper</summary>
+<summary>Afficher le détail</summary>
 Écarts assumés de l'île au modèle du dépôt liquid-paper, qui n'est pas modifié :
 
 - **Mouvement de la forme** : ressort de 300 ms à l'ouverture et 260 ms au repli (règle Mouvement du modèle : ressort de 260 à 300 ms pour le verre), contenu en 150 ms (apparition retardée de 110 ms, sortie 100 ms). Pas d'`opacity` sur le bloc de verre, seulement sur les couches de contenu. Le ressort vit dans `island-ui.js` (`springEase`, testé), le seul jeton local est `--motion-ui`.
