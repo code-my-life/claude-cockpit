@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -94,7 +94,7 @@ async function generateRoadmap() {
     const roadmapData = milestones.map(m => ({
       title: m.title,
       description: m.description || '',
-      items: m.labels ? m.labels.map(l => l.name) : [],
+      labels: Array.isArray(m.labels) ? m.labels : [],
       closedIssues: m.closed_issues,
       state: m.state
     }));
@@ -110,11 +110,47 @@ async function generateRoadmap() {
 // If roadmap is generated, update the HTML files
 const roadmapData = await generateRoadmap();
 
+const escapeHtml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function renderRoadmapTrack(milestones) {
+  const stages = milestones.map(m => {
+    const done = m.state === 'closed';
+    const tag = done
+      ? '<span class="ep-tag ep-tag--success">Shipped</span>'
+      : '<span class="ep-tag ep-tag--info">Next</span>';
+    const links = (m.labels || [])
+      .map(l => (typeof l === 'string' ? l : l && l.name))
+      .filter(name => name && /^\d/.test(name))
+      .map(name => `<li><a href="https://github.com/code-my-life/claude-cockpit/issues/${parseInt(name, 10)}">${escapeHtml(name)}</a></li>`);
+    return [
+      `<li class="cc-stage"${done ? ' data-done=""' : ''}>`,
+      tag,
+      `<h3 class="h4">${escapeHtml(m.title)}</h3>`,
+      `<p class="ep-note">${escapeHtml(m.description)}</p>`,
+      links.length ? `<ul>${links.join('')}</ul>` : '',
+      '</li>'
+    ].filter(Boolean).join('\n');
+  });
+  return '\n' + stages.join('\n\n') + '\n';
+}
+
+// Replace the content of the roadmap <ol class="cc-track"> in a built file
+function injectRoadmap(file, track) {
+  const html = readFileSync(file, 'utf8');
+  const sectionStart = html.indexOf('<section id="roadmap"');
+  if (sectionStart === -1) throw new Error(`No roadmap section in ${file}`);
+  const olRe = /(<ol class="cc-track"[^>]*>)[\s\S]*?(<\/ol>)/g;
+  olRe.lastIndex = sectionStart;
+  const match = olRe.exec(html);
+  if (!match) throw new Error(`No cc-track list in ${file}`);
+  writeFileSync(file, html.slice(0, match.index) + match[1] + track + match[2] + html.slice(match.index + match[0].length));
+}
+
 if (roadmapData) {
   console.log('Roadmap generated from GitHub milestones');
-  // Here we would update the HTML files with the generated roadmap
-  // For now, we just log it
-  console.log('Roadmap data:', JSON.stringify(roadmapData, null, 2));
+  const track = renderRoadmapTrack(roadmapData);
+  injectRoadmap(join(OUTPUT_DIR, 'index.html'), track);
+  injectRoadmap(join(OUTPUT_DIR, 'fr', 'index.html'), track);
 } else {
   console.log('Using fallback roadmap from mockup');
 }
