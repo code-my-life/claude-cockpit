@@ -18,7 +18,8 @@ Cockpit pour suivre toutes les conversations Claude Code : Desktop (electron) + 
 - `cd desktop && npm install && npm run dist` — build de l'installeur Windows (release uniquement).
 - `npm run test:mod` — `claude plugin test mod` (validation du plugin).
 - E2E : `cd desktop && npm run test:e2e` (Playwright `_electron`, specs dans `desktop/test/*.spec.ts`, harnais `desktop/test/harness.ts`). Lance la vraie app avec `COCKPIT_E2E=1` : dossiers de données, HOME et port isolés, ni raccourcis globaux, ni sons, ni mise à jour, sonde `globalThis.cockpitE2E` dans le processus principal.
-- E2E, où il tourne : le job `e2e` (`.github/workflows/e2e.yml`, `windows-latest`) fait foi, avec vidéo, captures et traces en artefacts. Il ne tourne pas dans WSL (bibliothèques système de Playwright absentes) : un agent lit le résultat du job de la PR, il ne le déclare pas « non vérifié ».
+- E2E en local (Linux, WSL) : `cd desktop && xvfb-run -a npm run test:e2e` (écran virtuel ; prérequis `libnss3 libnspr4 libasound2t64 xvfb`). Environ 3 s pour la suite de la PR 1 : c'est la boucle rapide pour écrire un scénario et rejouer un sabotage.
+- E2E, référence : le job `e2e` (`.github/workflows/e2e.yml`, `windows-latest`) fait foi, avec vidéo, captures et traces en artefacts. L'app vise Windows : acrylique, fenêtres toujours au premier plan, focus et placement peuvent différer sous Linux. Un scénario vert en local et rouge sur la CI est rouge. Un agent lit le résultat du job de la PR, il ne le déclare jamais « non vérifié ».
 - E2E, règles : une PR qui ajoute des tests ne change pas le comportement de l'app (seuls `data-testid`, sondes et coutures actives sous `COCKPIT_E2E`). Les effets de bord réels (lancer un terminal, `shell.openExternal`, envoyer un message à une vraie session Claude) sont bouchonnés.
 - Aucun serveur local : le cockpit est une app Desktop + un mod, pas un service web a deployer.
 
