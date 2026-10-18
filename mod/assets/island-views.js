@@ -108,7 +108,8 @@
         target.innerHTML = '<h2 class="h4">Personne au travail</h2><p class="body-s">Aucune conversation ne bouge pour l\'instant. Lance-en une depuis l\'onglet « Nouvelle conversation ».</p>';
         return;
       }
-      const toggle = `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="details" aria-expanded="${S.details}" aria-controls="details">Détails</button>`;
+      const isPermissionOrExternal = row.status === 'permission' || row.status === 'external';
+      const toggle = isPermissionOrExternal ? '' : `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="details" aria-expanded="${S.details}" aria-controls="details">Détails</button>`;
       target.innerHTML = `<h2 class="h4">${esc(row.title)}</h2><div class="is-meta">${tagHtml(row)}${metaLine(row)}</div>${bodyOf(row)}<div class="is-acts">${primaryOf(row)}${toggle}</div>`;
     };
 
