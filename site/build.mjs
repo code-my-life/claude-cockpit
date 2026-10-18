@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SOURCE_DIR = join(process.cwd(), 'docs/design/site');
@@ -37,7 +37,7 @@ function copySiteDir(src, dest) {
   }
 }
 
-copySiteDir(SOURCE_DIR, OUTPUT_DIR);
+copySiteDir(SITE_DIR, OUTPUT_DIR);
 copyAssets(join(SOURCE_DIR, 'ds'), join(OUTPUT_DIR, 'ds'));
 copyAssets(join(SOURCE_DIR, 'vendor'), join(OUTPUT_DIR, 'vendor'));
 
