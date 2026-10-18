@@ -30,7 +30,7 @@ const waitForPort = (child, settings, onError, onPermissions) =>
 // `onExit` runs when the server dies while the app still runs; the link is
 // removed first so no conversation keeps sending its secret to a dead port.
 // `preferredPort` 0 takes any free port (test runs); left out, the server tries 48123 first.
-const startEmbeddedServer = async ({ appVersion, pageToken, preferredPort, onError, onExit = () => {}, onPermissions = () => {} }) => {
+const startEmbeddedServer = async ({ appVersion, pageToken, preferredPort, onError, onExit = () => {}, onPermissions = () => {}, isE2E = false, homeDir }) => {
   const { createLink, createSecret, dataDirOf, linkFileOf, removeLink, writeLink } = await loadDiscovery()
   const linkFile = linkFileOf(process.platform, process.env, os.homedir())
   const dataDir = dataDirOf(linkFile)
@@ -38,7 +38,7 @@ const startEmbeddedServer = async ({ appVersion, pageToken, preferredPort, onErr
   const proof = createSecret()
   const child = utilityProcess.fork(path.join(__dirname, 'app-server.cjs'), [], { serviceName: 'Serveur du cockpit', stdio: 'ignore' })
   try {
-    const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret, proof, pageToken, preferredPort }, onError, onPermissions)
+    const port = await waitForPort(child, { rootDir: ROOT_DIR, dataDir, secret, proof, pageToken, preferredPort, isE2E, homeDir }, onError, onPermissions)
     writeLink(linkFile, createLink({ port, appVersion, pid: process.pid, dataDir, secret, proof }))
     let isStopping = false
     child.once('exit', code => {

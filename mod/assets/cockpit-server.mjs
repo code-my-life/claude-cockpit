@@ -66,7 +66,7 @@ const msixPackageNames = (homeDir, env) => {
 // Everything one cockpit server needs: the fixed assets (`rootDir`), where it
 // reads and writes the page, index and pasted images (`dataDir`), its port,
 // its session token, and where the orders for the mod go (`sink`).
-const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env }) => ({
+const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env, isE2E = false }) => ({
   rootDir,
   dataDir,
   port,
@@ -74,6 +74,7 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
   bridge,
   homeDir,
   token,
+  isE2E,
   session: createPageSession({ mode: pageAuth, token }),
   inbox: path.join(dataDir, 'inbox'),
   indexFile: path.join(dataDir, 'session-index.json'),
@@ -264,11 +265,35 @@ const refreshSessionIndex = async ctx => {
     saveIndex(ctx.cacheFile, state.sessionIndex)
     saveSessionList(ctx.indexFile, state.sessionIndex, live, state.remoteRepos)
     state.savedLiveKey = liveKey
+    // In E2E mode, write conversations-data.js from the index so the island has data
+    if (ctx.isE2E) await writeConversationsData(ctx)
   } catch (error) {
     reportError(ctx, 'relevé des sessions', error)
   } finally {
     state.isIndexing = false
   }
+}
+
+// Build conversation rows from the session index and write conversations-data.js
+// Used in E2E mode to give the island data when the mod isn't running.
+const writeConversationsData = async ctx => {
+  const sessions = sessionsOf(ctx.state.sessionIndex)
+  const rows = sessions.map(session => ({
+    engineId: session.engineId,
+    title: session.title,
+    cwd: session.cwd,
+    status: 'done', // Default status for indexed sessions; mod would provide live status
+    updatedAt: session.lastActivityAt || Date.now(),
+    isArchived: session.isArchived,
+    hostId: session.hostId,
+    summary: null,
+    stats: null,
+    isCurrent: false,
+    tool: null,
+  })).filter(row => !row.isArchived)
+  const folders = [...new Set(rows.map(row => row.cwd).filter(Boolean))]
+  const payload = { generatedAt: Date.now(), rows, folders }
+  await fs.promises.writeFile(path.join(ctx.dataDir, 'conversations-data.js'), `window.__CONVERSATIONS__ = ${JSON.stringify(payload)};`)
 }
 
 const handleSearch = async (ctx, url, response) => {

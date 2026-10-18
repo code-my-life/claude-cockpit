@@ -122,7 +122,7 @@ const announcePermissions = count => {
 
 const startServer = async () => {
   try {
-    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, preferredPort: IS_E2E ? ANY_FREE_PORT : undefined, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions })
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, preferredPort: IS_E2E ? ANY_FREE_PORT : undefined, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions, isE2E: IS_E2E, homeDir: IS_E2E ? process.env.HOME : undefined })
     serverPort = embeddedServer.port
     await setSessionCookie()
   } catch (error) {
@@ -502,7 +502,16 @@ onTrusted('launcher-height', (event, height) => {
   if (launcherWin !== null) {
     const doPlace = () => {
       if (!launcherWin.isVisible()) launcherWin.show()
-      placeLauncher()
+      // Apply bounds with retries for Windows CI reliability
+      const applyBounds = () => {
+        placeLauncher()
+        // Verify bounds were applied; if not, retry once after a short delay
+        const bounds = launcherWin.getBounds()
+        if (Math.abs(bounds.height - launcherHeight) > 20) {
+          setTimeout(() => placeLauncher(), 100)
+        }
+      }
+      applyBounds()
     }
     // Wait for the window's content to be ready before resizing (fixes Windows CI resize)
     if (launcherReady) {
