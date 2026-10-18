@@ -489,6 +489,8 @@ onTrusted('launcher-height', (event, height) => {
 
 onTrusted('launcher-hide', hideLauncher)
 
+onTrusted('show-launcher', () => showLauncher())
+
 handleTrusted('launcher-shortcut', () => activeShortcut)
 handleTrusted('sound-setting', () => areSoundsOn())
 onTrusted('set-sound', (event, value) => {

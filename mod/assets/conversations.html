@@ -948,7 +948,7 @@
     const isExactOpen = state.exactThreads.has(row.engineId);
     const showExact = isBig || isExactOpen;
     const toggleLabel = isExactOpen ? 'Masquer la réponse exacte' : 'Voir la réponse exacte';
-    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-action="exact" aria-expanded="${isExactOpen}">${toggleLabel}</button>` : '';
+    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-action="exact" data-testid="card-exact-answer" aria-expanded="${isExactOpen}">${toggleLabel}</button>` : '';
     if (!showExact || thread.length === 0) return toggle;
     const bubbles = thread.map(message => {
       const role = message.role === 'user' ? 'user' : 'assistant';
@@ -983,12 +983,12 @@
         <div class="card-actions">
           <div class="group">
             ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
-            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
+            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal" data-testid="card-terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
             ${feedbackHtml}
           </div>
           <div class="group">
-            ${canCollapse ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle">Replier</button>` : ''}
+            ${canCollapse ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle" data-testid="card-collapse">Replier</button>` : ''}
             ${canOrder ? `<button type="button" class="ep-btn ep-btn--primary" data-action="send">${sendLabel}</button>` : ''}
           </div>
         </div>
