@@ -80,6 +80,12 @@
       fillMinis();
       const pile = $('#pile');
       if (!pile || !cards() || !cards().isReady()) return;
+      // Configure cards before filling the stack (must happen in this order)
+      const finishes = root.__CONVERSATIONS__ && root.__CONVERSATIONS__.cardFinishes;
+      if (finishes !== undefined) cards().configure({ finishes });
+      // If server is stale, don't render empty deck — home view shows update notice
+      const stale = root.CockpitIsland && root.CockpitIsland.staleNoticeOf ? root.CockpitIsland.staleNoticeOf() : null;
+      if (stale) return;
       const stack = stackOf();
       const seen = new Set();
       const stackEls = [];
