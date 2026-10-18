@@ -499,26 +499,25 @@ onTrusted('open-link', (event, url) => openOutside(String(url)))
 
 onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
-  if (launcherWin !== null) {
-    const doPlace = () => {
-      if (!launcherWin.isVisible()) launcherWin.show()
-      // Apply bounds with retries for Windows CI reliability
-      const applyBounds = () => {
-        placeLauncher()
-        // Verify bounds were applied; if not, retry once after a short delay
-        const bounds = launcherWin.getBounds()
-        if (Math.abs(bounds.height - launcherHeight) > 20) {
-          setTimeout(() => placeLauncher(), 100)
-        }
+  if (launcherWin === null) return
+  const doPlace = () => {
+    if (!launcherWin.isVisible()) launcherWin.show()
+    // Apply bounds with multiple retries for Windows CI reliability
+    const applyBoundsWithRetry = (attempt = 0) => {
+      placeLauncher()
+      // Verify bounds were applied; if not, retry with increasing delays
+      const bounds = launcherWin.getBounds()
+      if (Math.abs(bounds.height - launcherHeight) > 20 && attempt < 5) {
+        setTimeout(() => applyBoundsWithRetry(attempt + 1), 50 * (attempt + 1))
       }
-      applyBounds()
     }
-    // Wait for the window's content to be ready before resizing (fixes Windows CI resize)
-    if (launcherReady) {
-      doPlace()
-    } else {
-      launcherWin.once('ready-to-show', doPlace)
-    }
+    applyBoundsWithRetry()
+  }
+  // Wait for the window's content to be ready before resizing (fixes Windows CI resize)
+  if (launcherReady) {
+    doPlace()
+  } else {
+    launcherWin.once('ready-to-show', doPlace)
   }
 })
 
