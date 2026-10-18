@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
 
 const SOURCE_DIR = join(process.cwd(), 'docs/design/site');
 const SITE_DIR = join(process.cwd(), 'site');
 const OUTPUT_DIR = join(process.cwd(), 'site/dist');
 
-// Clean output directory
-if (existsSync(OUTPUT_DIR)) {
-  execSync(`rm -rf "${OUTPUT_DIR}"`, { shell: true });
-}
+// Ensure output directory exists
 mkdirSync(OUTPUT_DIR, { recursive: true });
 mkdirSync(join(OUTPUT_DIR, 'ds'), { recursive: true });
 mkdirSync(join(OUTPUT_DIR, 'vendor'), { recursive: true });
@@ -18,60 +14,56 @@ mkdirSync(join(OUTPUT_DIR, 'fr'), { recursive: true });
 
 // Copy site/ to dist/ but exclude the dist/ and test/ directories
 function copySiteDir(src, dest) {
-  const items = readdirSync(src);
-  for (const item of items) {
+  if (!existsSync(src)) return;
+  const entries = readdirSync(src, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+    
     // Skip the dist and test directories
-    if (item === 'dist' || item === 'test') {
+    if (entry.name === 'dist' || entry.name === 'test') {
       continue;
     }
     
-    const srcPath = join(src, item);
-    const destPath = join(dest, item);
-    const stat = statSync(srcPath);
-    
-    if (stat.isDirectory()) {
-      mkdirSync(destPath, { recursive: true });
+    if (entry.isDirectory()) {
+      if (!existsSync(destPath)) {
+        mkdirSync(destPath, { recursive: true });
+      }
       copySiteDir(srcPath, destPath);
     } else {
-      // Skip reference/*.webp files
-      if (item.endsWith('.webp')) {
-        continue;
-      }
-      // Ensure destination directory exists
-      mkdirSync(dest.substring(0, dest.lastIndexOf('/')), { recursive: true });
       copyFileSync(srcPath, destPath);
     }
   }
 }
 
-console.log('Copying site directory to dist...');
-copySiteDir(SITE_DIR, OUTPUT_DIR);
-
-// Copy ds/ and vendor/ from docs/design/site/ to dist/
-function copyAssets(srcDir, destDir) {
-  console.log(`Copying ${srcDir} to ${destDir}...`);
-  mkdirSync(destDir, { recursive: true });
-  const items = readdirSync(srcDir);
-  for (const item of items) {
-    const srcPath = join(srcDir, item);
-    const destPath = join(destDir, item);
-    const stat = statSync(srcPath);
-    
-    if (stat.isDirectory()) {
-      copyAssets(srcPath, destPath);
-    } else {
-      // Ensure destination directory exists
-      mkdirSync(destPath.substring(0, destPath.lastIndexOf('/')), { recursive: true });
-      copyFileSync(srcPath, destPath);
-    }
-  }
-}
-
+copySiteDir(SOURCE_DIR, OUTPUT_DIR);
 copyAssets(join(SOURCE_DIR, 'ds'), join(OUTPUT_DIR, 'ds'));
 copyAssets(join(SOURCE_DIR, 'vendor'), join(OUTPUT_DIR, 'vendor'));
 
-// Generate roadmap from GitHub milestones if token is available
-async function generateRoadmap() {
+// Helper to copy assets directory
+function copyAssets(src, dest) {
+  if (!existsSync(src)) return;
+  mkdirSync(dest, { recursive: true });
+  const entries = readdirSync(src, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+    
+    if (entry.isDirectory()) {
+      if (!existsSync(destPath)) {
+        mkdirSync(destPath, { recursive: true });
+      }
+      copyAssets(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// Generate roadmap HTML from GitHub milestones and issues
+async function generateRoadmapHtml() {
   const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     console.log('No GITHUB_TOKEN, using fallback roadmap from mockup');
@@ -79,50 +71,166 @@ async function generateRoadmap() {
   }
   
   try {
-    const response = await fetch('https://api.github.com/repos/code-my-life/claude-cockpit/milestones?state=all&per_page=100', {
+    // Fetch all milestones
+    const milestonesResponse = await fetch('https://api.github.com/repos/code-my-life/claude-cockpit/milestones?state=all&per_page=100', {
       headers: {
         'Authorization': `token ${githubToken}`,
         'Accept': 'application/vnd.github.v3+json'
       }
     });
     
-    if (!response.ok) {
-      throw new Error(`GitHub API returned ${response.status}`);
+    if (!milestonesResponse.ok) {
+      throw new Error(`GitHub API milestones returned ${milestonesResponse.status}`);
     }
     
-    const milestones = await response.json();
-    const roadmapData = milestones.map(m => ({
-      title: m.title,
-      description: m.description || '',
-      items: m.labels ? m.labels.map(l => l.name) : [],
-      closedIssues: m.closed_issues,
-      state: m.state
-    }));
+    const milestones = await milestonesResponse.json();
     
-    return roadmapData;
+    // Fetch all issues (we'll filter by milestone)
+    const issuesResponse = await fetch('https://api.github.com/repos/code-my-life/claude-cockpit/issues?state=all&per_page=100', {
+      headers: {
+        'Authorization': `token ${githubToken}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (!issuesResponse.ok) {
+      throw new Error(`GitHub API issues returned ${issuesResponse.status}`);
+    }
+    
+    const allIssues = await issuesResponse.json();
+    
+    // Group issues by milestone number
+    const issuesByMilestone = new Map();
+    for (const issue of allIssues) {
+      if (issue.milestone !== null) {
+        const milestoneNumber = issue.milestone.number;
+        if (!issuesByMilestone.has(milestoneNumber)) {
+          issuesByMilestone.set(milestoneNumber, []);
+        }
+        issuesByMilestone.get(milestoneNumber).push(issue);
+      }
+    }
+    
+    // Generate HTML for each milestone
+    const stageItems = [];
+    
+    for (const milestone of milestones) {
+      const milestoneIssues = issuesByMilestone.get(milestone.number) || [];
+      
+      // Determine if this is a shipped or future milestone based on state
+      const isShipped = milestone.state === 'closed';
+      
+      let stageHtml = `
+        <li class="cc-stage" data-done="${isShipped ? '' : 'future'}">
+          <span class="ep-tag ep-tag--${isShipped ? 'success' : milestone.state === 'open' ? 'info' : 'later'}">${isShipped ? 'Shipped' : milestone.state === 'open' ? 'Next' : 'Vision'}</span>
+          <h3 class="h4">${escapeHtml(milestone.title)}</h3>
+          <p class="ep-note">${escapeHtml(milestone.description || '')}</p>`;
+      
+      // Only show issue list for open milestones (future work)
+      if (milestone.state === 'open' && milestoneIssues.length > 0) {
+        stageHtml += `
+          <ul>`;
+        for (const issue of milestoneIssues) {
+          stageHtml += `
+            <li><a href="https://github.com/code-my-life/claude-cockpit/issues/${issue.number}">${escapeHtml(issue.title)}</a></li>`;
+        }
+        stageHtml += `
+          </ul>`;
+      }
+      
+      stageHtml += `
+        </li>`;
+      
+      stageItems.push(stageHtml.trim());
+    }
+    
+    if (stageItems.length === 0) {
+      console.log('No milestones found, using fallback roadmap from mockup');
+      return null;
+    }
+    
+    return `
+      <ol class="cc-track" aria-label="Roadmap">
+        ${stageItems.join('\n\n')}
+      </ol>`;
   } catch (error) {
-    console.error('Error fetching milestones:', error.message);
+    console.error('Error generating roadmap:', error.message);
     console.log('Using fallback roadmap from mockup');
     return null;
   }
 }
 
-// If roadmap is generated, update the HTML files
-const roadmapData = await generateRoadmap();
-
-if (roadmapData) {
-  console.log('Roadmap generated from GitHub milestones');
-  // Here we would update the HTML files with the generated roadmap
-  // For now, we just log it
-  console.log('Roadmap data:', JSON.stringify(roadmapData, null, 2));
-} else {
-  console.log('Using fallback roadmap from mockup');
+// Escape HTML special characters
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-console.log('\nBuild complete! Output in site/dist/');
-console.log('Files copied:');
-console.log('  - site/ (EN pages)');
-console.log('  - site/fr/ (FR pages)');
-console.log('  - ds/ (Liquid Paper assets)');
-console.log('  - vendor/ (Systems Generator assets)');
-console.log('\nNote: reference/*.webp files are excluded from the build');
+// Update HTML files with generated roadmap
+async function updateHtmlWithRoadmap() {
+  const roadmapHtml = await generateRoadmapHtml();
+  if (!roadmapHtml) {
+    return false;
+  }
+  
+  const htmlFiles = [
+    join(OUTPUT_DIR, 'index.html'),
+    join(OUTPUT_DIR, 'fr', 'index.html')
+  ];
+  
+  let updated = false;
+  for (const htmlFile of htmlFiles) {
+    if (existsSync(htmlFile)) {
+      let content = readFileSync(htmlFile, 'utf8');
+      const oldRoadmapRegex = /<section id="roadmap" class="cc-section" aria-labelledby="h-roadmap">[\s\S]*?<\/section>/;
+      const match = content.match(oldRoadmapRegex);
+      
+      if (match) {
+        const newSection = `<section id="roadmap" class="cc-section" aria-labelledby="h-roadmap">
+<h2 id="h-roadmap" class="h2">Where it comes from, where it goes</h2>
+<p class="ep-lede">Three stages shipped, three ahead. The page is rebuilt from the repository, so the plan never drifts from the work.</p>
+${roadmapHtml}
+</section>`;
+        content = content.replace(oldRoadmapRegex, newSection);
+        writeFileSync(htmlFile, content, 'utf8');
+        updated = true;
+        console.log(`Updated roadmap in ${htmlFile}`);
+      }
+    }
+  }
+  
+  return updated;
+}
+
+// Main build process
+async function main() {
+  console.log('Starting build...');
+  
+  // Try to generate and inject roadmap
+  const roadmapUpdated = await updateHtmlWithRoadmap();
+  
+  if (roadmapUpdated) {
+    console.log('Roadmap successfully generated and injected from GitHub milestones');
+  } else {
+    console.log('Using fallback roadmap from mockup');
+  }
+  
+  console.log('\nBuild complete! Output in site/dist/');
+  console.log('Files copied:');
+  console.log('  - site/ (EN pages)');
+  console.log('  - site/fr/ (FR pages)');
+  console.log('  - ds/ (Liquid Paper assets)');
+  console.log('  - vendor/ (Systems Generator assets)');
+  console.log('\nNote: reference/*.webp files are excluded from the build');
+}
+
+main().catch(error => {
+  console.error('Build failed:', error);
+  process.exit(1);
+});
