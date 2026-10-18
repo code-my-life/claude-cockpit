@@ -257,6 +257,8 @@ const hideLauncher = () => {
   if (launcherWin !== null && launcherWin.isVisible()) launcherWin.hide()
 }
 
+let launcherReady = false
+
 const createLauncherWindow = () => {
   launcherWin = new BrowserWindow({
     width: LAUNCHER_WIDTH,
@@ -278,8 +280,12 @@ const createLauncherWindow = () => {
   launcherWin.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
     if (isMainFrame && code !== ERR_ABORTED) isLauncherBroken = true
   })
+  // Mark launcher as ready when the page has finished loading, so setBounds works reliably on Windows CI
+  launcherWin.webContents.on('did-finish-load', () => {
+    launcherReady = true
+  })
   launcherWin.on('blur', hideLauncher)
-  launcherWin.on('closed', () => { launcherWin = null })
+  launcherWin.on('closed', () => { launcherWin = null; launcherReady = false })
   launcherWin.loadURL(launcherUrl()).catch(() => {})
 }
 
@@ -289,10 +295,18 @@ const showLauncher = () => {
     isLauncherBroken = false
     launcherWin.loadURL(launcherUrl()).catch(() => {})
   }
-  placeLauncher()
-  launcherWin.show()
-  launcherWin.focus()
-  launcherWin.webContents.send('launcher-shown')
+  const doPlaceAndShow = () => {
+    placeLauncher()
+    launcherWin.show()
+    launcherWin.focus()
+    launcherWin.webContents.send('launcher-shown')
+  }
+  // Wait for the window's content to be ready before placing and showing (fixes Windows CI resize)
+  if (launcherReady) {
+    doPlaceAndShow()
+  } else {
+    launcherWin.once('ready-to-show', doPlaceAndShow)
+  }
 }
 
 const toggleLauncher = () => {
@@ -486,9 +500,16 @@ onTrusted('open-link', (event, url) => openOutside(String(url)))
 onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
   if (launcherWin !== null) {
-    // Ensure window is shown before positioning; setBounds works on hidden windows too
-    if (!launcherWin.isVisible()) launcherWin.show()
-    placeLauncher()
+    const doPlace = () => {
+      if (!launcherWin.isVisible()) launcherWin.show()
+      placeLauncher()
+    }
+    // Wait for the window's content to be ready before resizing (fixes Windows CI resize)
+    if (launcherReady) {
+      doPlace()
+    } else {
+      launcherWin.once('ready-to-show', doPlace)
+    }
   }
 })
 
