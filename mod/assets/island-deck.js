@@ -14,36 +14,11 @@
     const cards = () => root.CockpitCards;
     let peekTimer = 0;
 
-    // État local du deck : carte agrandie (big) et threads exacts ouverts
-    let bigId = null;
-    const exactThreads = new Set();
-
     // Ce que le dos dit d'une conversation : mot d'état, âge, dossier, état de l'entité à graver.
     const infoOf = row => {
       const kind = model.kindOf(row);
       const states = root.CharacterCore ? root.CharacterCore.STATUS_TO_STATE : {};
       return { isWaiting: kind === model.KIND_WAIT, word: model.signalOf(row).word, age: helpers.ageOf(row.updatedAt, Date.now()), folder: helpers.folderOf(row.cwd), entityState: states[row.status] || 'idle' };
-    };
-
-    // Rendu de la face avant d'une carte d'île : boutons d'action (data-act pour l'île, data-testid pour E2E)
-    const islandCardFrontHtml = row => {
-      const isBig = bigId === row.engineId;
-      const isExactOpen = exactThreads.has(row.engineId);
-      const canCollapse = true; // en île, on peut toujours replier la carte du dessus
-      const toggleLabel = isExactOpen ? 'Réduire la réponse' : 'Réponse exacte';
-      const hasTerminal = ctx.desktop && row.cwd;
-      return `<div class="card-body">
-        <div class="card-actions">
-          <div class="group">
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="big" data-testid="card-enlarge">${isBig ? 'Réduire' : 'Agrandir'}</button>
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-act="exact" data-testid="card-exact-answer" aria-expanded="${isExactOpen}">${toggleLabel}</button>
-            ${hasTerminal ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="terminal" data-testid="card-terminal">Terminal</button>` : ''}
-          </div>
-          <div class="group">
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="toggle" data-testid="card-collapse">Replier</button>
-          </div>
-        </div>
-      </div>`;
     };
 
     // La pile : la conversation visée d'abord, puis les autres par urgence.
@@ -101,11 +76,6 @@
 
     const flash = (engineId, kind = 'wait') => { if (cards()) cards().react(engineId, kind); };
 
-    // Actions sur les cartes du deck
-    const setBig = engineId => { bigId = bigId === engineId ? null : engineId; };
-    const toggleExact = engineId => { if (exactThreads.has(engineId)) exactThreads.delete(engineId); else exactThreads.add(engineId); };
-    const collapseCard = engineId => { if (bigId === engineId) bigId = null; };
-
     const render = () => {
       fillMinis();
       const pile = $('#pile');
@@ -120,10 +90,10 @@
       const seen = new Set();
       const stackEls = [];
       stack.forEach((row, i) => {
-        const el = cards().cardIn(pile, row, infoOf(row), islandCardFrontHtml);
+        const el = cards().cardIn(pile, row, infoOf(row));
         if (!el.dataset.wired) wire(el);
         seen.add(row.engineId);
-        el.className = `conv-card${i > 0 ? ' is-below' : ''}${bigId === row.engineId ? ' big' : ''}`;
+        el.className = `conv-card${i > 0 ? ' is-below' : ''}`;
         el.dataset.engine = row.engineId;
         el.style.setProperty('--y', `${i * STEP}px`);
         el.style.setProperty('--s', String(1 - i * 0.02));
@@ -143,7 +113,7 @@
       islandEl.classList.add('cards');
     };
 
-    return { render, fillMinis, flash, stackOf, infoOf, setBig, toggleExact, collapseCard };
+    return { render, fillMinis, flash, stackOf, infoOf };
   };
 
   const api = { createDeck, SHOWN, STEP, PEEK };

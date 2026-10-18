@@ -1289,14 +1289,6 @@
     </section>`;
   };
 
-  const renderTeamEmpty = () => {
-    const stats = readStats();
-    const line = stats.relaunched > 0 && stats.relaunched >= stats.record
-      ? `Nouveau record : ${stats.relaunched} relances`
-      : `${stats.relaunched} relances aujourd'hui`;
-    return `<div class="t-empty"><span class="empty-mark" aria-hidden="true">${iconOf('check')}</span><span class="t-empty-text"><span class="empty-title">Personne ne t'attend</span><span class="empty-line">${escapeHtml(line)}</span></span></div>`;
-  };
-
   const renderTeamCardZone = (zone, title, color, rows, now, empty = '') => {
     const lane = document.createElement('div');
     lane.className = 'lane cards';
@@ -1306,6 +1298,14 @@
       <div class="t-zone-head"><span class="t-dot" style="background: ${color}"></span><span class="t-zone-title">${escapeHtml(title)}</span><span class="t-zone-count">${rows.length}</span></div>
       ${content}
     </section>`;
+  };
+
+  const renderTeamEmpty = () => {
+    const stats = readStats();
+    const line = stats.relaunched > 0 && stats.relaunched >= stats.record
+      ? `Nouveau record : ${stats.relaunched} relances`
+      : `${stats.relaunched} relances aujourd'hui`;
+    return `<div class="t-empty"><span class="empty-mark" aria-hidden="true">${iconOf('check')}</span><span class="t-empty-text"><span class="empty-title">Personne ne t'attend</span><span class="empty-line">${escapeHtml(line)}</span></span></div>`;
   };
 
   const renderTeamRest = (rows, now) => {

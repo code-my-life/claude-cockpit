@@ -5,6 +5,7 @@ import { _electron as electron, type ElectronApplication, type Page, type TestIn
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { createFakeMod, type FakeMod } from './fake-mod'
 
 const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
@@ -12,7 +13,7 @@ const SCREENSHOT_TIMEOUT_MS = 5000
 const WINDOW_TIMEOUT_MS = 30_000
 const WINDOW_POLL_MS = 100
 
-export type Cockpit = { app: ElectronApplication, root: string, close: () => Promise<void> }
+export type Cockpit = { app: ElectronApplication, root: string, close: () => Promise<void>, fakeMod?: FakeMod }
 
 const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
   ...process.env,
@@ -40,7 +41,13 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   app.process().stdout?.on('data', chunk => output.push(String(chunk)))
   app.process().stderr?.on('data', chunk => output.push(String(chunk)))
   await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
+  
+  // Start fake mod
+  const fakeMod = createFakeMod({ testDir: root })
+  await fakeMod.start()
+  
   const close = async () => {
+    await fakeMod.stop()
     await app.context().tracing.stop({ path: testInfo.outputPath('trace.zip') }).catch(() => {})
     await app.close().catch(() => {})
     await testInfo.attach('electron-output', { body: output.join(''), contentType: 'text/plain' })
@@ -48,7 +55,7 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     if (fs.existsSync(log)) await testInfo.attach('cockpit.log', { body: fs.readFileSync(log), contentType: 'text/plain' })
     removeRoot()
   }
-  return { app, root, close }
+  return { app, root, close, fakeMod }
 }
 
 // The first window whose address matches, waiting for it when it is not open yet. A window
@@ -78,7 +85,7 @@ export const cockpitWindow = async (app: ElectronApplication): Promise<Page> => 
   return page
 }
 
-type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void, islandHasCards: () => Promise<boolean> }
+type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void, islandHasCards: () => Promise<boolean>, dataDir: () => string | null, terminalLaunches: () => Array<{ cwd: string, timestamp: number }> }
 
 // Reads one value of the main process through the probe main.js exposes in test mode.
 export const probe = <K extends keyof Probe>(app: ElectronApplication, key: K): Promise<ReturnType<Probe[K]>> =>

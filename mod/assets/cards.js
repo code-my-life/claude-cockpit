@@ -110,19 +110,11 @@
     return el;
   };
 
-  const syncCard = (el, row, info, frontHtmlOf) => {
-    setAttrs(el.querySelector('sg-card'), backAttrsOf(row, info));
-    if (frontHtmlOf) {
-      const body = el.querySelector('[data-body]');
-      const html = frontHtmlOf(row);
-      if (body.dataset.html !== html) { body.innerHTML = html; body.dataset.html = html; }
-    }
-    return el;
-  };
+  const syncCard = (el, row, info) => { setAttrs(el.querySelector('sg-card'), backAttrsOf(row, info)); return el; };
 
-  const cardIn = (container, row, info, frontHtmlOf) => {
+  const cardIn = (container, row, info) => {
     const known = container.querySelector(`:scope > sg-flip[data-engine="${CSS.escape(row.engineId)}"]`);
-    return syncCard(known || createCard(row, backAttrsOf(row, info)), row, info, frontHtmlOf);
+    return syncCard(known || createCard(row, backAttrsOf(row, info)), row, info);
   };
 
   // Réconcilie les cartes d'une section : dans l'ordre des lignes, en gardant chaque carte existante (et son retournement).

@@ -41,7 +41,7 @@ const purgeOldImages = (dataDir, now = Date.now()) => {
   }
 }
 
-export const startAppServer = async ({ rootDir, dataDir, secret, proof, pageToken, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {}, onPermissions = () => {}, isE2E = false }) => {
+export const startAppServer = async ({ rootDir, dataDir, secret, proof, pageToken, preferredPort = PREFERRED_PORT, homeDir, env, onError = () => {}, onPermissions = () => {} }) => {
   ensureStarterPage(rootDir, dataDir)
   purgeOldImages(dataDir)
   const hub = createBridgeHub({ onHubChange: engineId => onError(`hub du pont : ${engineId ?? 'aucune conversation'}`) })
@@ -51,7 +51,7 @@ export const startAppServer = async ({ rootDir, dataDir, secret, proof, pageToke
     if (order.type === 'error') return onError(order.message)
     return hub.dispatch(order)
   }
-  const build = port => createCockpitServer({ rootDir, dataDir, port, sink, bridge: { hub, desk, secret, proof }, pageAuth: 'cookie', token: pageToken, homeDir, env, isE2E })
+  const build = port => createCockpitServer({ rootDir, dataDir, port, sink, bridge: { hub, desk, secret, proof }, pageAuth: 'cookie', token: pageToken, homeDir, env })
   let cockpit = build(preferredPort)
   let port
   try {

@@ -122,7 +122,7 @@ const announcePermissions = count => {
 
 const startServer = async () => {
   try {
-    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, preferredPort: IS_E2E ? ANY_FREE_PORT : undefined, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions, isE2E: IS_E2E, homeDir: IS_E2E ? process.env.HOME : undefined })
+    embeddedServer = await startEmbeddedServer({ appVersion: app.getVersion(), pageToken: PAGE_TOKEN, preferredPort: IS_E2E ? ANY_FREE_PORT : undefined, onError: message => logLine(`serveur : ${message}`), onExit: restartServer, onPermissions: announcePermissions })
     serverPort = embeddedServer.port
     await setSessionCookie()
   } catch (error) {
@@ -246,18 +246,15 @@ const openCockpitWindow = section => {
 }
 
 const placeLauncher = () => {
-  if (launcherWin === null) return
-  // Use the display nearest to the cursor for correct multi-screen positioning
-  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const cursor = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(cursor)
   const bounds = launcherBoundsOf(display.workArea, launcherHeight)
-  launcherWin.setBounds(bounds, false)
+  launcherWin.setBounds(bounds)
 }
 
 const hideLauncher = () => {
   if (launcherWin !== null && launcherWin.isVisible()) launcherWin.hide()
 }
-
-let launcherReady = false
 
 const createLauncherWindow = () => {
   launcherWin = new BrowserWindow({
@@ -280,12 +277,8 @@ const createLauncherWindow = () => {
   launcherWin.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
     if (isMainFrame && code !== ERR_ABORTED) isLauncherBroken = true
   })
-  // Mark launcher as ready when the page has finished loading, so setBounds works reliably on Windows CI
-  launcherWin.webContents.on('did-finish-load', () => {
-    launcherReady = true
-  })
   launcherWin.on('blur', hideLauncher)
-  launcherWin.on('closed', () => { launcherWin = null; launcherReady = false })
+  launcherWin.on('closed', () => { launcherWin = null })
   launcherWin.loadURL(launcherUrl()).catch(() => {})
 }
 
@@ -293,23 +286,12 @@ const showLauncher = () => {
   if (launcherWin === null) createLauncherWindow()
   if (isLauncherBroken) {
     isLauncherBroken = false
-    launcherReady = false
     launcherWin.loadURL(launcherUrl()).catch(() => {})
   }
-  const doPlaceAndShow = () => {
-    placeLauncher()
-    launcherWin.show()
-    launcherWin.focus()
-    launcherWin.webContents.send('launcher-shown')
-  }
-  if (launcherReady) {
-    doPlaceAndShow()
-  } else {
-    // Use a one-time handler that cleans itself up; ready-to-show fires once per window creation
-    launcherWin.once('ready-to-show', doPlaceAndShow)
-    // Fallback: if ready-to-show already fired (e.g., window recreated), launch immediately
-    if (launcherWin.isVisible()) doPlaceAndShow()
-  }
+  placeLauncher()
+  launcherWin.show()
+  launcherWin.focus()
+  launcherWin.webContents.send('launcher-shown')
 }
 
 const toggleLauncher = () => {
@@ -502,23 +484,10 @@ onTrusted('open-link', (event, url) => openOutside(String(url)))
 
 onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
-  if (launcherWin === null) return
-  if (!launcherWin.isVisible()) return
-  // Apply bounds with retries for Windows CI reliability
-  const applyBoundsWithRetry = (attempt = 0) => {
-    placeLauncher()
-    // Verify bounds were applied; if not, retry with increasing delays
-    const bounds = launcherWin.getBounds()
-    if (Math.abs(bounds.height - launcherHeight) > 20 && attempt < 5) {
-      setTimeout(() => applyBoundsWithRetry(attempt + 1), 50 * (attempt + 1))
-    }
-  }
-  applyBoundsWithRetry()
+  if (launcherWin !== null && launcherWin.isVisible()) placeLauncher()
 })
 
 onTrusted('launcher-hide', hideLauncher)
-
-onTrusted('show-launcher', () => showLauncher())
 
 handleTrusted('launcher-shortcut', () => activeShortcut)
 handleTrusted('sound-setting', () => areSoundsOn())
@@ -556,26 +525,8 @@ const exposeTestProbe = () => {
     areSoundsOn: () => areSoundsOn(),
     hasGlobalShortcuts: () => activeShortcut !== null || globalShortcut.isRegistered('Control+Alt+I'),
     hasUpdater: () => updater !== null,
-    showLauncher: () => showLauncher(),
-    // Check if island window has rendered cards with action buttons
-    islandHasCards: async () => {
-      const { BrowserWindow } = require('electron')
-      const islandWin = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('island=1'))
-      if (!islandWin) return false
-      try {
-        const result = await islandWin.webContents.executeJavaScript(`
-          (() => {
-            const card = document.querySelector('sg-flip[data-engine]')
-            if (!card) return false
-            const btn = card.querySelector('[data-testid="card-enlarge"]')
-            return !!btn
-          })()
-        `)
-        return result
-      } catch {
-        return false
-      }
-    },
+    dataDir: () => embeddedServer?.dataDir ?? null,
+    terminalLaunches: () => globalThis.cockpitE2ETerminalLaunches ?? [],
   }
 }
 

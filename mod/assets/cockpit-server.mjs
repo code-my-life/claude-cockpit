@@ -66,7 +66,7 @@ const msixPackageNames = (homeDir, env) => {
 // Everything one cockpit server needs: the fixed assets (`rootDir`), where it
 // reads and writes the page, index and pasted images (`dataDir`), its port,
 // its session token, and where the orders for the mod go (`sink`).
-const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env, isE2E = false }) => ({
+const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env }) => ({
   rootDir,
   dataDir,
   port,
@@ -74,7 +74,6 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
   bridge,
   homeDir,
   token,
-  isE2E,
   session: createPageSession({ mode: pageAuth, token }),
   inbox: path.join(dataDir, 'inbox'),
   indexFile: path.join(dataDir, 'session-index.json'),
@@ -179,26 +178,37 @@ const deliver = (ctx, order) => {
   if (ctx.sink(order) === false) throw new HttpError(503, NO_BRIDGE_MESSAGE)
 }
 
-const postRoutesOf = ctx => ({
-  '/reply': body => {
-    const engineId = engineIdOf(body)
-    const images = saveImages(ctx, Array.isArray(body.images) ? body.images : [])
-    deliver(ctx, { type: 'reply', engineId, text: String(body.text || ''), images })
-  },
-  '/terminal': body => openTerminal(ctx, typeof body.cwd === 'string' ? body.cwd : ''),
-  '/park': body => {
-    const engineId = engineIdOf(body)
-    if (!PARK_KINDS.has(body.kind)) throw new HttpError(400, 'type de mise de côté invalide')
-    deliver(ctx, { type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
-  },
-  '/unpark': body => deliver(ctx, { type: 'unpark', engineId: engineIdOf(body) }),
-  '/ack': body => deliver(ctx, { type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
-  '/summarize': body => deliver(ctx, { type: 'summarize', engineId: engineIdOf(body) }),
-  '/permission': body => {
-    const desk = deskOf(ctx)
-    if (!desk.decide(String(body.requestId ?? ''), body.decision)) throw new HttpError(409, 'demande de permission déjà traitée ou inconnue')
-  },
-})
+const postRoutesOf = ctx => {
+  const isE2E = process.env.COCKPIT_E2E === '1'
+  const terminalLaunches = isE2E ? (globalThis.cockpitE2ETerminalLaunches ??= []) : null
+  return {
+    '/reply': body => {
+      const engineId = engineIdOf(body)
+      const images = saveImages(ctx, Array.isArray(body.images) ? body.images : [])
+      deliver(ctx, { type: 'reply', engineId, text: String(body.text || ''), images })
+    },
+    '/terminal': body => {
+      const cwd = typeof body.cwd === 'string' ? body.cwd : ''
+      if (isE2E && terminalLaunches !== null) {
+        terminalLaunches.push({ cwd, timestamp: Date.now() })
+        return
+      }
+      openTerminal(ctx, cwd)
+    },
+    '/park': body => {
+      const engineId = engineIdOf(body)
+      if (!PARK_KINDS.has(body.kind)) throw new HttpError(400, 'type de mise de côté invalide')
+      deliver(ctx, { type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
+    },
+    '/unpark': body => deliver(ctx, { type: 'unpark', engineId: engineIdOf(body) }),
+    '/ack': body => deliver(ctx, { type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
+    '/summarize': body => deliver(ctx, { type: 'summarize', engineId: engineIdOf(body) }),
+    '/permission': body => {
+      const desk = deskOf(ctx)
+      if (!desk.decide(String(body.requestId ?? ''), body.decision)) throw new HttpError(409, 'demande de permission déjà traitée ou inconnue')
+    },
+  }
+}
 
 const deskOf = ctx => {
   const desk = ctx.bridge?.desk
@@ -265,35 +275,11 @@ const refreshSessionIndex = async ctx => {
     saveIndex(ctx.cacheFile, state.sessionIndex)
     saveSessionList(ctx.indexFile, state.sessionIndex, live, state.remoteRepos)
     state.savedLiveKey = liveKey
-    // In E2E mode, write conversations-data.js from the index so the island has data
-    if (ctx.isE2E) await writeConversationsData(ctx)
   } catch (error) {
     reportError(ctx, 'relevé des sessions', error)
   } finally {
     state.isIndexing = false
   }
-}
-
-// Build conversation rows from the session index and write conversations-data.js
-// Used in E2E mode to give the island data when the mod isn't running.
-const writeConversationsData = async ctx => {
-  const sessions = sessionsOf(ctx.state.sessionIndex)
-  const rows = sessions.map(session => ({
-    engineId: session.engineId,
-    title: session.title,
-    cwd: session.cwd,
-    status: 'done', // Default status for indexed sessions; mod would provide live status
-    updatedAt: session.lastActivityAt || Date.now(),
-    isArchived: session.isArchived,
-    hostId: session.hostId,
-    summary: null,
-    stats: null,
-    isCurrent: false,
-    tool: null,
-  })).filter(row => !row.isArchived)
-  const folders = [...new Set(rows.map(row => row.cwd).filter(Boolean))]
-  const payload = { generatedAt: Date.now(), rows, folders }
-  await fs.promises.writeFile(path.join(ctx.dataDir, 'conversations-data.js'), `window.__CONVERSATIONS__ = ${JSON.stringify(payload)};`)
 }
 
 const handleSearch = async (ctx, url, response) => {
