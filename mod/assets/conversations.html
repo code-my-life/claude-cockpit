@@ -982,14 +982,14 @@
         ${composer}
         <div class="card-actions">
           <div class="group">
-            ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize" onclick="event.stopPropagation()">${iconOf('refresh')} Rafraîchir</button>` : ''}
-            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal" data-testid="card-terminal" onclick="event.stopPropagation()">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge" onclick="event.stopPropagation()">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
+            ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
+            ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal" data-testid="card-terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
             ${feedbackHtml}
           </div>
           <div class="group">
-            ${canCollapse ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle" data-testid="card-collapse" onclick="event.stopPropagation()">Replier</button>` : ''}
-            ${canOrder ? `<button type="button" class="ep-btn ep-btn--primary" data-action="send" onclick="event.stopPropagation()">${sendLabel}</button>` : ''}
+            ${canCollapse ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="toggle" data-testid="card-collapse">Replier</button>` : ''}
+            ${canOrder ? `<button type="button" class="ep-btn ep-btn--primary" data-action="send">${sendLabel}</button>` : ''}
           </div>
         </div>
       </div>`;

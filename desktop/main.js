@@ -247,8 +247,8 @@ const openCockpitWindow = section => {
 
 const placeLauncher = () => {
   if (launcherWin === null) return
-  // Use primary display workArea for reliable positioning in CI; avoid animated setBounds which can fail on Windows CI
-  const display = screen.getPrimaryDisplay()
+  // Use the display nearest to the cursor for correct multi-screen positioning
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   const bounds = launcherBoundsOf(display.workArea, launcherHeight)
   launcherWin.setBounds(bounds, false)
 }
@@ -265,7 +265,7 @@ const createLauncherWindow = () => {
     height: LAUNCHER_MIN_HEIGHT,
     show: false,
     frame: false,
-    resizable: true,
+    resizable: false,
     maximizable: false,
     minimizable: false,
     fullscreenable: false,
@@ -301,11 +301,13 @@ const showLauncher = () => {
     launcherWin.focus()
     launcherWin.webContents.send('launcher-shown')
   }
-  // Wait for the window's content to be ready before placing and showing (fixes Windows CI resize)
   if (launcherReady) {
     doPlaceAndShow()
   } else {
+    // Use a one-time handler that cleans itself up; ready-to-show fires once per window creation
     launcherWin.once('ready-to-show', doPlaceAndShow)
+    // Fallback: if ready-to-show already fired (e.g., window recreated), launch immediately
+    if (launcherWin.isVisible()) doPlaceAndShow()
   }
 }
 
@@ -500,25 +502,8 @@ onTrusted('open-link', (event, url) => openOutside(String(url)))
 onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
   if (launcherWin === null) return
-  const doPlace = () => {
-    if (!launcherWin.isVisible()) launcherWin.show()
-    // Apply bounds with multiple retries for Windows CI reliability
-    const applyBoundsWithRetry = (attempt = 0) => {
-      placeLauncher()
-      // Verify bounds were applied; if not, retry with increasing delays
-      const bounds = launcherWin.getBounds()
-      if (Math.abs(bounds.height - launcherHeight) > 20 && attempt < 5) {
-        setTimeout(() => applyBoundsWithRetry(attempt + 1), 50 * (attempt + 1))
-      }
-    }
-    applyBoundsWithRetry()
-  }
-  // Wait for the window's content to be ready before resizing (fixes Windows CI resize)
-  if (launcherReady) {
-    doPlace()
-  } else {
-    launcherWin.once('ready-to-show', doPlace)
-  }
+  if (!launcherWin.isVisible()) return
+  placeLauncher()
 })
 
 onTrusted('launcher-hide', hideLauncher)

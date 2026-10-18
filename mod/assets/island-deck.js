@@ -35,12 +35,12 @@
       return `<div class="card-body">
         <div class="card-actions">
           <div class="group">
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="big" data-testid="card-enlarge" onclick="event.stopPropagation()">${isBig ? 'Réduire' : 'Agrandir'}</button>
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-act="exact" data-testid="card-exact-answer" aria-expanded="${isExactOpen}" onclick="event.stopPropagation()">${toggleLabel}</button>
-            ${hasTerminal ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="terminal" data-testid="card-terminal" onclick="event.stopPropagation()">Terminal</button>` : ''}
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="big" data-testid="card-enlarge">${isBig ? 'Réduire' : 'Agrandir'}</button>
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-act="exact" data-testid="card-exact-answer" aria-expanded="${isExactOpen}">${toggleLabel}</button>
+            ${hasTerminal ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="terminal" data-testid="card-terminal">Terminal</button>` : ''}
           </div>
           <div class="group">
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="toggle" data-testid="card-collapse" onclick="event.stopPropagation()">Replier</button>
+            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="toggle" data-testid="card-collapse">Replier</button>
           </div>
         </div>
       </div>`;
