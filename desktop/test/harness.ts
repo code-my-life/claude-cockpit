@@ -72,6 +72,12 @@ export const islandWindow = async (app: ElectronApplication): Promise<Page> => {
   return page
 }
 
+export const cockpitWindow = async (app: ElectronApplication): Promise<Page> => {
+  const page = await windowWhere(app, url => url.includes('cockpit') || (!url.includes('island=1') && !url.includes('launcher=1') && url.startsWith('http')))
+  await page.waitForLoadState('domcontentloaded')
+  return page
+}
+
 type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean }
 
 // Reads one value of the main process through the probe main.js exposes in test mode.
