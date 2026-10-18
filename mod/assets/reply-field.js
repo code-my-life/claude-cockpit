@@ -5,15 +5,15 @@
  */
 
 function renderReplyField() {
-  return `<label class="reply">
-  <input class="ep-input" type="text" placeholder="Répondre…" />
+  return `<form class="reply" id="replyForm" autocomplete="off">
+  <input class="ep-input" id="replyInput" type="text" placeholder="Répondre…" />
   <button class="send" type="submit" aria-label="Envoyer">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M5 12h13" />
       <path d="M13 6l6 6-6 6" />
     </svg>
   </button>
-</label>`;
+</form>`;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

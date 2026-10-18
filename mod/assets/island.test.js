@@ -81,8 +81,8 @@ test('reply field markup contains arrow SVG paths and correct attributes', () =>
   // The markup should match the mockup exactly
   const { renderReplyField } = require('./reply-field');
   const html = renderReplyField();
-  assert.match(html, /<label class="reply">/, 'should have label.reply');
-  assert.match(html, /<input class="ep-input" type="text" placeholder="R[eé]pondre.?" \/>/, 'should have input.ep-input with placeholder');
+  assert.match(html, /<form class="reply"[^>]*id="replyForm"/, 'should have form.reply with id=replyForm');
+  assert.match(html, /<input class="ep-input" id="replyInput" type="text" placeholder="R[eé]pondre.?" \/>/, 'should have input.ep-input with id=replyInput and placeholder');
   assert.match(html, /<button class="send" type="submit" aria-label="Envoyer">/, 'should have button.send with correct attributes');
   assert.match(html, /<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">/, 'should have SVG with correct attributes');
   assert.match(html, /<path d="M5 12h13" \/>/, 'should have first arrow path');

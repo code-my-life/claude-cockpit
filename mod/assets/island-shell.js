@@ -7,15 +7,15 @@
     ({ renderReplyField } = require('./reply-field'));
   } catch (_) {
     // Fallback for browser where require is not available
-    renderReplyField = () => `<label class="reply">
-  <input class="ep-input" type="text" placeholder="Répondre…" />
-  <button class="send" type="submit" aria-label="Envoyer">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M5 12h13" />
-      <path d="M13 6l6 6-6 6" />
-    </svg>
-  </button>
-</label>`;
+      renderReplyField = () => `<form class="reply" id="replyForm" autocomplete="off">
+      <input class="ep-input" id="replyInput" type="text" placeholder="Répondre…" />
+      <button class="send" type="submit" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h13" />
+          <path d="M13 6l6 6-6 6" />
+        </svg>
+      </button>
+    </form>`;
   }
 
   // La structure fixe de l'île (HTML), sans donnée : onglets, couches de vues, formulaires, grande entité.
