@@ -20,10 +20,8 @@ test('launcher : opens at correct position and size', async ({}, testInfo) => {
   const { app } = cockpit!
   await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
 
-  // Afficher le lanceur via l'IPC show-launcher (comme l'utilisateur le ferait via le raccourci)
-  await app.evaluate(({ ipcMain }: any) => {
-    ipcMain.emit('show-launcher')
-  })
+  // Afficher le lanceur via la sonde de test (showLauncher)
+  await probe(app, 'showLauncher')
 
   // Attendre la fenêtre du lanceur
   const launcherWin = await app.waitForEvent('window', { predicate: w => w.url().includes('launcher=1'), timeout: 10000 })
@@ -42,7 +40,7 @@ test('launcher : opens at correct position and size', async ({}, testInfo) => {
   expect(bounds.width).toBeLessThanOrEqual(740)
   expect(bounds.height).toBeGreaterThanOrEqual(64)
   expect(bounds.x).toBeGreaterThanOrEqual(0)
-  
+
   await attachScreenshot(testInfo, launcherWin, 'launcher-opened')
 })
 
@@ -50,10 +48,8 @@ test('launcher : resizes and persists bounds', async ({}, testInfo) => {
   const { app } = cockpit!
   await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
 
-  // Ouvrir le lanceur via l'IPC show-launcher
-  await app.evaluate(({ ipcMain }: any) => {
-    ipcMain.emit('show-launcher')
-  })
+  // Ouvrir le lanceur via la sonde de test
+  await probe(app, 'showLauncher')
   const launcherWin = await app.waitForEvent('window', { predicate: (w: any) => w.url().includes('launcher=1'), timeout: 10000 })
   await launcherWin.waitForLoadState('domcontentloaded')
 
@@ -63,9 +59,9 @@ test('launcher : resizes and persists bounds', async ({}, testInfo) => {
     height: window.outerHeight,
   }))
 
-  // Redimensionner via l'IPC launcher-height
+  // Redimensionner via l'IPC launcher-height (exposé via preload)
   await launcherWin.evaluate(() => {
-    window.cockpitDesktop.setLauncherHeight(400)
+    (window as any).cockpitDesktop.setLauncherHeight(400)
   })
 
   // Attendre que le redimensionnement soit appliqué
@@ -79,14 +75,12 @@ test('launcher : resizes and persists bounds', async ({}, testInfo) => {
   // La hauteur doit avoir changé (avec tolérance pour les bordures Windows)
   expect(resizedBounds.height).toBeGreaterThanOrEqual(380)
   expect(resizedBounds.height).toBeLessThanOrEqual(420)
-  
+
   // Fermer et rouvrir pour vérifier la persistance
   await launcherWin.close()
-  
-  // Rouvrir via show-launcher IPC
-  await app.evaluate(({ ipcMain }) => {
-    ipcMain.emit('show-launcher')
-  })
+
+  // Rouvrir via showLauncher probe
+  await probe(app, 'showLauncher')
   const launcherWin2 = await app.waitForEvent('window', { predicate: w => w.url().includes('launcher=1'), timeout: 10000 })
   await launcherWin2.waitForLoadState('domcontentloaded')
 
@@ -97,6 +91,6 @@ test('launcher : resizes and persists bounds', async ({}, testInfo) => {
 
   expect(persistedBounds.height).toBeGreaterThanOrEqual(380)
   expect(persistedBounds.height).toBeLessThanOrEqual(420)
-  
+
   await attachScreenshot(testInfo, launcherWin2, 'launcher-resized')
 })
