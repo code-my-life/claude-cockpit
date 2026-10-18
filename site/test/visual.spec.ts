@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 
 const DIST_DIR = join(process.cwd(), 'site/dist');
 const MOCKUP_DIR = join(process.cwd(), 'docs/design/site');
+const REFERENCE_DIR = join(MOCKUP_DIR, 'reference');
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -108,6 +109,12 @@ test.describe('Site structure visual comparison', () => {
           const siteIds = await sectionIds(siteView.page);
           expect(mockupIds.length).toBeGreaterThan(0);
           expect(siteIds).toEqual(mockupIds);
+
+          // Verify screenshot sizes are comparable (within 2x factor)
+          // This catches major layout differences even without pixel comparison
+          const sizeRatio = siteShot.length / mockupShot.length;
+          expect(sizeRatio).toBeGreaterThan(0.5);
+          expect(sizeRatio).toBeLessThan(2.0);
         } finally {
           await mockupView.context.close();
           await siteView.context.close();
@@ -155,6 +162,48 @@ test.describe('Site structure visual comparison', () => {
       const enLink = frPage.locator('a[hreflang="en"]');
       await expect(enLink).toBeVisible();
       await expect(enLink).toHaveAttribute('href', '../');
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('roadmap section is present in built output', async ({ browser }) => {
+    const { context, page } = await openPage(browser, 1440, 900);
+    try {
+      await page.goto(`${dist.origin}/`, { waitUntil: 'domcontentloaded' });
+      
+      // Verify roadmap section exists
+      const roadmap = page.locator('section#roadmap');
+      await expect(roadmap).toBeVisible();
+      
+      // Verify roadmap <ol> exists inside the section
+      const roadmapOl = page.locator('section#roadmap ol.cc-track');
+      await expect(roadmapOl).toBeVisible();
+      
+      // Verify at least one stage is present
+      const stageItems = page.locator('section#roadmap li.cc-stage');
+      await expect(stageItems.count()).toBeGreaterThan(0);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('FR page preserves French language in roadmap section', async ({ browser }) => {
+    const { context, page } = await openPage(browser, 1440, 900);
+    try {
+      await page.goto(`${dist.origin}/fr/index.html`, { waitUntil: 'domcontentloaded' });
+      
+      // Verify roadmap h2 is in French
+      const roadmapH2 = page.locator('section#roadmap h2');
+      await expect(roadmapH2).toBeVisible();
+      const h2Text = await roadmapH2.textContent();
+      expect(h2Text).toContain('D\'où ça vient');
+      
+      // Verify roadmap <ol> aria-label is in French
+      const roadmapOl = page.locator('section#roadmap ol.cc-track');
+      await expect(roadmapOl).toBeVisible();
+      const olLabel = await roadmapOl.getAttribute('aria-label');
+      expect(olLabel).toContain('Feuille de route');
     } finally {
       await context.close();
     }
