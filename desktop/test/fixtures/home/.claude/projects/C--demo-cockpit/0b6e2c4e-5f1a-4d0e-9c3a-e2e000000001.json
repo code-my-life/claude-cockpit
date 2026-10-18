@@ -1,0 +1,24 @@
+{
+  "sessionId": "e2e-host-session-1",
+  "cliSessionId": "0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001",
+  "title": "Build feature X",
+  "cwd": "C:\\demo\\cockpit",
+  "lastActivityAt": 1792340405000,
+  "isArchived": false,
+  "gitAnchors": [
+    {
+      "commonDir": "C:\\demo\\cockpit\\.git"
+    }
+  ],
+  "branch": "feature/x",
+  "prs": [
+    {
+      "prNumber": 42,
+      "repo": "demo/cockpit",
+      "url": "https://github.com/demo/cockpit/pull/42",
+      "state": "OPEN",
+      "branch": "feature/x"
+    }
+  ],
+  "priorCliSessionIds": []
+}
