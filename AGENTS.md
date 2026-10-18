@@ -17,7 +17,9 @@ Cockpit pour suivre toutes les conversations Claude Code : Desktop (electron) + 
 - Tests d'un seul fichier : `node --test mod/assets/server.test.mjs`.
 - `cd desktop && npm install && npm run dist` — build de l'installeur Windows (release uniquement).
 - `npm run test:mod` — `claude plugin test mod` (validation du plugin).
-- E2E : Playwright disponible (`playwright` sur le PATH), aucun script e2e dans le repo pour l'instant.
+- E2E : `cd desktop && npm run test:e2e` (Playwright `_electron`, specs dans `desktop/test/*.spec.ts`, harnais `desktop/test/harness.ts`). Lance la vraie app avec `COCKPIT_E2E=1` : dossiers de données, HOME et port isolés, ni raccourcis globaux, ni sons, ni mise à jour, sonde `globalThis.cockpitE2E` dans le processus principal.
+- E2E, où il tourne : le job `e2e` (`.github/workflows/e2e.yml`, `windows-latest`) fait foi, avec vidéo, captures et traces en artefacts. Il ne tourne pas dans WSL (bibliothèques système de Playwright absentes) : un agent lit le résultat du job de la PR, il ne le déclare pas « non vérifié ».
+- E2E, règles : une PR qui ajoute des tests ne change pas le comportement de l'app (seuls `data-testid`, sondes et coutures actives sous `COCKPIT_E2E`). Les effets de bord réels (lancer un terminal, `shell.openExternal`, envoyer un message à une vraie session Claude) sont bouchonnés.
 - Aucun serveur local : le cockpit est une app Desktop + un mod, pas un service web a deployer.
 
 ## Conventions
@@ -34,7 +36,7 @@ Cockpit pour suivre toutes les conversations Claude Code : Desktop (electron) + 
 ## Interdits du repo
 
 - ne pas commit de secrets, tokens, cle API ou `.env`.
-- ne pas modifier `conversations.html` / `conversations-data.js` a la main (generés par le build).
+- `mod/assets/conversations.html` est une **source** suivie : on la modifie normalement (c'est l'interface du cockpit, de l'île et du lanceur). L'interdit vise les **copies générées** au lancement dans le dossier de données de l'app (`conversations.html` à partir de la source, `conversations-data.js` écrit par le mod) : ne jamais les éditer à la main ni les commit.
 - ne pas checker `node_modules/`, `desktop/dist/`, `graphify-out/`, ni les fichiers de données runtime.
 - ne pas deployer le serveur : le cockpit tourne localement uniquement.
 
@@ -42,4 +44,4 @@ Cockpit pour suivre toutes les conversations Claude Code : Desktop (electron) + 
 
 - `hermes verify --detect-only <path> --json` puis `hermes verify --save <path>` ecrit `.hermes/environment.json`.
 - `graphify extract <path> --code-only --out <path>/graphify-out --no-gitignore` puis `graphify cluster-only <path>/graphify-out --no-label`.
-- contrat PR : repo prives -> `local-only`. Public -> branch protection avec job de test requis (`Tests` workflow).
+- contrat PR : repo public, `main` protégée. Checks requis : `test` (6 combinaisons OS × Node du workflow `Tests`), `e2e` et `build-and-deploy` ; une approbation de @cddev (CODEOWNERS).
