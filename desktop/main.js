@@ -262,7 +262,7 @@ const createLauncherWindow = () => {
     height: LAUNCHER_MIN_HEIGHT,
     show: false,
     frame: false,
-    resizable: false,
+    resizable: true,
     maximizable: false,
     minimizable: false,
     fullscreenable: false,

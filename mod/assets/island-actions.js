@@ -96,7 +96,7 @@
       diff: el => { const at = Number(el.dataset.at); S.diff = S.diff && S.diff.at === at ? null : { at }; S.details = false; ui().refresh(); },
       'diff-close': () => { S.diff = null; ui().refresh(); },
       details: () => { S.diff = null; S.details = !S.details; if (S.details) actions.ensureSummary(ctx.focus()); ui().refresh(); },
-      exact: () => { S.exact = !S.exact; ui().refresh(); },
+      exact: () => { const row = ctx.focus(); if (row) { ctx.deck.toggleExact(row.engineId); ui().refresh(); } },
       summarize: onFocused(row => actions.summarize(row.engineId)),
       terminal: onFocused(row => actions.terminal(row.engineId)),
       seen: onFocused(row => { actions.seen(row.engineId); S.details = false; ui().refresh(); }),
@@ -111,6 +111,8 @@
       cockpit: () => actions.openCockpit(null),
       sounds: () => actions.setSounds(!S.sounds),
       quit: () => actions.quit(),
+      big: () => { const row = ctx.focus(); if (row) { ctx.deck.setBig(row.engineId); ui().refresh(); } },
+      toggle: () => { const row = ctx.focus(); if (row) { ctx.deck.collapseCard(row.engineId); ui().refresh(); } },
     };
 
     const onClick = event => {
