@@ -527,6 +527,7 @@ const exposeTestProbe = () => {
     areSoundsOn: () => areSoundsOn(),
     hasGlobalShortcuts: () => activeShortcut !== null || globalShortcut.isRegistered('Control+Alt+I'),
     hasUpdater: () => updater !== null,
+    showLauncher: () => showLauncher(),
   }
 }
 
