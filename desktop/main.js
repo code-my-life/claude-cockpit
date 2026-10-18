@@ -293,6 +293,7 @@ const showLauncher = () => {
   if (launcherWin === null) createLauncherWindow()
   if (isLauncherBroken) {
     isLauncherBroken = false
+    launcherReady = false
     launcherWin.loadURL(launcherUrl()).catch(() => {})
   }
   const doPlaceAndShow = () => {
@@ -503,7 +504,16 @@ onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
   if (launcherWin === null) return
   if (!launcherWin.isVisible()) return
-  placeLauncher()
+  // Apply bounds with retries for Windows CI reliability
+  const applyBoundsWithRetry = (attempt = 0) => {
+    placeLauncher()
+    // Verify bounds were applied; if not, retry with increasing delays
+    const bounds = launcherWin.getBounds()
+    if (Math.abs(bounds.height - launcherHeight) > 20 && attempt < 5) {
+      setTimeout(() => applyBoundsWithRetry(attempt + 1), 50 * (attempt + 1))
+    }
+  }
+  applyBoundsWithRetry()
 })
 
 onTrusted('launcher-hide', hideLauncher)
