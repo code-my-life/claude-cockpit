@@ -1299,6 +1299,17 @@
     </section>`;
   };
 
+  const renderTeamCardZone = (zone, title, color, rows, now, empty = '') => {
+    const lane = document.createElement('div');
+    lane.className = 'lane cards';
+    renderCardLane(lane, rows, now);
+    const content = rows.length === 0 && empty ? empty : lane.outerHTML;
+    return `<section class="t-zone ep-plate ${zone}" aria-label="${escapeHtml(title)}">
+      <div class="t-zone-head"><span class="t-dot" style="background: ${color}"></span><span class="t-zone-title">${escapeHtml(title)}</span><span class="t-zone-count">${rows.length}</span></div>
+      ${content}
+    </section>`;
+  };
+
   const renderTeamEmpty = () => {
     const stats = readStats();
     const line = stats.relaunched > 0 && stats.relaunched >= stats.record
@@ -1394,12 +1405,22 @@
 
   const renderTeam = now => {
     const groups = teamGroups();
-    const board = `<div class="t-board">
-      ${renderTeamZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
-      ${renderTeamZone('working', 'En mission', 'var(--accent)', groups.working, now)}
-      ${renderTeamZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
-      ${renderTeamZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
-    </div>`;
+    let board;
+    if (useCards) {
+      board = `<div class="t-board">
+        ${renderTeamCardZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
+        ${renderTeamCardZone('working', 'En mission', 'var(--accent)', groups.working, now)}
+        ${renderTeamCardZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
+        ${renderTeamCardZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
+      </div>`;
+    } else {
+      board = `<div class="t-board">
+        ${renderTeamZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
+        ${renderTeamZone('working', 'En mission', 'var(--accent)', groups.working, now)}
+        ${renderTeamZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
+        ${renderTeamZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
+      </div>`;
+    }
     const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
     if (state.teamPopId && !popRow) state.teamPopId = null;
     const popup = popRow ? renderTeamPopup(popRow, now) : '';
