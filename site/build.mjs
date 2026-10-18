@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SOURCE_DIR = join(process.cwd(), 'docs/design/site');
 const SITE_DIR = join(process.cwd(), 'site');
 const OUTPUT_DIR = join(process.cwd(), 'site/dist');
 
+// Clean output directory to prevent stale files
+rmSync(OUTPUT_DIR, { recursive: true, force: true });
 // Ensure output directory exists
 mkdirSync(OUTPUT_DIR, { recursive: true });
 mkdirSync(join(OUTPUT_DIR, 'ds'), { recursive: true });
@@ -188,16 +190,13 @@ async function updateHtmlWithRoadmap() {
   for (const htmlFile of htmlFiles) {
     if (existsSync(htmlFile)) {
       let content = readFileSync(htmlFile, 'utf8');
-      const oldRoadmapRegex = /<section id="roadmap" class="cc-section" aria-labelledby="h-roadmap">[\s\S]*?<\/section>/;
-      const match = content.match(oldRoadmapRegex);
-      
+      // Only replace the <ol> content, preserving the existing h2 and lede (which are language-specific)
+      const olRegex = /<ol class="cc-track"[^>]*>[\s\S]*?<\/ol>/;
+      const match = content.match(olRegex);
+
       if (match) {
-        const newSection = `<section id="roadmap" class="cc-section" aria-labelledby="h-roadmap">
-<h2 id="h-roadmap" class="h2">Where it comes from, where it goes</h2>
-<p class="ep-lede">Three stages shipped, three ahead. The page is rebuilt from the repository, so the plan never drifts from the work.</p>
-${roadmapHtml}
-</section>`;
-        content = content.replace(oldRoadmapRegex, newSection);
+        const newOl = `<ol class="cc-track" aria-label="Roadmap">\n${roadmapHtml}\n</ol>`;
+        content = content.replace(olRegex, newOl);
         writeFileSync(htmlFile, content, 'utf8');
         updated = true;
         console.log(`Updated roadmap in ${htmlFile}`);
@@ -227,7 +226,6 @@ async function main() {
   console.log('  - site/fr/ (FR pages)');
   console.log('  - ds/ (Liquid Paper assets)');
   console.log('  - vendor/ (Systems Generator assets)');
-  console.log('\nNote: reference/*.webp files are excluded from the build');
 }
 
 main().catch(error => {
