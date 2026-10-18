@@ -39,6 +39,7 @@ jobs:
       - name: Run tests
         run: |
           TMPDIR=/tmp node --test site/test/structure.test.mjs
+          TMPDIR=/tmp node --test site/test/roadmap.test.mjs
           npx playwright install chromium
           npx playwright install-deps chromium
           ./node_modules/.bin/playwright test site/test/visual.spec.ts
