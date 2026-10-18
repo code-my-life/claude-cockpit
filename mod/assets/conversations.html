@@ -948,7 +948,7 @@
     const isExactOpen = state.exactThreads.has(row.engineId);
     const showExact = isBig || isExactOpen;
     const toggleLabel = isExactOpen ? 'Masquer la réponse exacte' : 'Voir la réponse exacte';
-    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-action="exact" data-testid="card-exact-answer" aria-expanded="${isExactOpen}" onclick="event.stopPropagation()">${toggleLabel}</button>` : '';
+    const toggle = !isBig && thread.length > 0 ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm link-btn" data-action="exact" data-testid="card-exact-answer" aria-expanded="${isExactOpen}">${toggleLabel}</button>` : '';
     if (!showExact || thread.length === 0) return toggle;
     const bubbles = thread.map(message => {
       const role = message.role === 'user' ? 'user' : 'assistant';
