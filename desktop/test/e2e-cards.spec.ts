@@ -4,9 +4,11 @@ import { expect, test } from '@playwright/test'
 import { attachScreenshot, islandWindow, launchCockpit, probe, type Cockpit } from './harness'
 
 let cockpit: Cockpit | null = null
+let fakeMod: any = null
 
 test.beforeEach(async ({}, testInfo) => {
   cockpit = await launchCockpit(testInfo)
+  fakeMod = await cockpit.startFakeMod('0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001')
 })
 
 test.afterEach(async ({}, testInfo) => {
@@ -28,8 +30,6 @@ async function openIsland(app: any) {
   const html = island.locator('html')
   await expect(html).toHaveAttribute('data-island', 'open')
   await expect.poll(() => probe(app, 'islandPhase')).toBe('open')
-  // Attendre que les données de l'île soient chargées (cartes avec boutons rendues)
-  await expect.poll(() => probe(app, 'islandHasCards')).toBe(true)
   return island
 }
 

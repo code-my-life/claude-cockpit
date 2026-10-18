@@ -2,12 +2,25 @@
 // collects GET /bridge/v1/orders, acks. No Origin header nor Sec-Fetch-Site.
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import os from 'node:os'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+declare const __dirname: string
+const ROOT_DIR = path.join(__dirname, '..', '..')
+const APP_FOLDER = 'claude-cockpit'
+const LINK_NAME = 'link.json'
+
+const linkFileOf = (platform: NodeJS.Platform, env: NodeJS.ProcessEnv, homeDir: string) => {
+  if (platform === 'win32') {
+    const localAppData = env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local')
+    return path.join(localAppData, APP_FOLDER, LINK_NAME)
+  }
+  const stateDir = env.XDG_RUNTIME_DIR || path.join(homeDir, '.local', 'state')
+  return path.join(stateDir, APP_FOLDER, LINK_NAME)
+}
 
 export interface FakeModConfig {
   testDir: string
+  engineId?: string
   onOrder?: (order: any) => void
   onAck?: (engineId: string) => void
 }
@@ -24,10 +37,26 @@ export class FakeMod {
     this.config = config
   }
 
+  private getLinkFile(): string {
+    const env = process.env
+    const homeDir = env.HOME || env.USERPROFILE || os.homedir()
+    return linkFileOf(process.platform, env, homeDir)
+  }
+
+  private getEngineId(): string {
+    return this.config.engineId || 'test-engine-id'
+  }
+
   async start(): Promise<void> {
-    const linkFile = path.join(this.config.testDir, 'link.json')
+    const linkFile = this.getLinkFile()
+    // Poll for link.json to appear (embedded server writes it after starting)
+    let attempts = 0
+    while (!fs.existsSync(linkFile) && attempts < 100) {
+      await new Promise(r => setTimeout(r, 100))
+      attempts++
+    }
     if (!fs.existsSync(linkFile)) {
-      throw new Error(`link.json not found at ${linkFile}`)
+      throw new Error(`link.json not found at ${linkFile} after 10 seconds`)
     }
     const link = JSON.parse(fs.readFileSync(linkFile, 'utf8'))
     this.secret = link.secret
@@ -50,9 +79,9 @@ export class FakeMod {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Cockpit-Secret': this.secret,
+        'Authorization': `Bearer ${this.secret}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ protocol: 1, engineId: this.getEngineId() }),
     })
     if (!res.ok) {
       throw new Error(`hello failed: ${res.status} ${await res.text()}`)
@@ -65,7 +94,7 @@ export class FakeMod {
       try {
         const res = await fetch(`http://127.0.0.1:${this.port}/bridge/v1/orders`, {
           headers: {
-            'X-Cockpit-Secret': this.secret,
+            'Authorization': `Bearer ${this.secret}`,
           },
         })
         if (!res.ok) return
@@ -90,7 +119,7 @@ export class FakeMod {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Cockpit-Secret': this.secret,
+          'Authorization': `Bearer ${this.secret}`,
         },
         body: JSON.stringify({ orderId }),
       })

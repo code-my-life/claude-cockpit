@@ -6,7 +6,7 @@
   "author": "Code My Life",
   "license": "MIT",
   "private": true,
-  "main": "main.js",
+  "main": "main.cjs",
   "engines": {
     "node": ">=20"
   },

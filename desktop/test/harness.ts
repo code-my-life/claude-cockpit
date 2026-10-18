@@ -1,19 +1,21 @@
 // Test harness for the Electron app: every launch gets its own data folder,
 // home folder (with a fake Claude Code conversation) and app folders, so a
 // run never reads nor writes the real cockpit, and runs beside an installed one.
-import { _electron as electron, type ElectronApplication, type Page, type TestInfo } from '@playwright/test'
+import { _electron as electron, type ElectronApplication, type Page, type TestInfo, expect } from '@playwright/test'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createFakeMod, type FakeMod } from './fake-mod'
+import { mockConversations } from './fixtures/structured-data'
 
+declare const __dirname: string
 const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
 const SCREENSHOT_TIMEOUT_MS = 5000
 const WINDOW_TIMEOUT_MS = 30_000
 const WINDOW_POLL_MS = 100
 
-export type Cockpit = { app: ElectronApplication, root: string, close: () => Promise<void>, fakeMod?: FakeMod }
+export type Cockpit = { app: ElectronApplication, root: string, close: () => Promise<void>, fakeMod?: FakeMod, startFakeMod: (engineId?: string) => Promise<FakeMod> }
 
 const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
   ...process.env,
@@ -26,28 +28,63 @@ const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
   COCKPIT_SETTINGS_FILE: path.join(home, '.claude', 'settings.json'),
 })
 
+// Write conversations-data.js from mock data for E2E tests
+const writeMockConversationsData = (dataDir: string) => {
+  const conversations: Record<string, any> = {}
+  for (const conv of mockConversations) {
+    conversations[conv.engineId] = {
+      engineId: conv.engineId,
+      title: conv.title,
+      summary: conv.summary,
+      messages: conv.messages,
+      status: conv.status,
+      lastActivity: conv.lastActivity,
+      cwd: conv.cwd,
+      isCurrent: conv.isCurrent,
+      hostId: conv.hostId,
+      updatedAt: conv.lastActivity,
+    }
+  }
+  const content = `window.__CONVERSATIONS__ = ${JSON.stringify(conversations)};`
+  fs.writeFileSync(path.join(dataDir, 'conversations-data.js'), content)
+  fs.writeFileSync(path.join(dataDir, 'conversations.html'), '<!doctype html><html><head><title>Cockpit</title></head><body></body></html>')
+}
+
 export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-e2e-'))
   const home = path.join(root, 'home')
   fs.cpSync(FIXTURE_HOME, home, { recursive: true })
   for (const dir of ['AppData/Roaming', 'AppData/Local', 'run']) fs.mkdirSync(path.join(root, dir), { recursive: true, mode: 0o700 })
+  
+  // Set environment for the test process so fake-mod finds link.json
+  const env = isolatedEnv(root, home)
+  process.env.HOME = env.HOME
+  process.env.USERPROFILE = env.USERPROFILE
+  process.env.APPDATA = env.APPDATA
+  process.env.LOCALAPPDATA = env.LOCALAPPDATA
+  process.env.XDG_RUNTIME_DIR = env.XDG_RUNTIME_DIR
+  process.env.COCKPIT_E2E = env.COCKPIT_E2E
+  process.env.COCKPIT_SETTINGS_FILE = env.COCKPIT_SETTINGS_FILE
+  
   const removeRoot = () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   const app = await electron.launch({
     args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
     cwd: DESKTOP_DIR,
-    env: isolatedEnv(root, home) as Record<string, string>,
+    env: env as Record<string, string>,
   }).catch(error => { removeRoot(); throw error })
   const output: string[] = []
   app.process().stdout?.on('data', chunk => output.push(String(chunk)))
   app.process().stderr?.on('data', chunk => output.push(String(chunk)))
   await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
   
-  // Start fake mod
-  const fakeMod = createFakeMod({ testDir: root })
-  await fakeMod.start()
+  // Wait for the embedded server to be ready and get dataDir
+  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
+  const dataDir = await probe(app, 'dataDir')
+  if (dataDir) {
+    writeMockConversationsData(dataDir)
+  }
   
   const close = async () => {
-    await fakeMod.stop()
     await app.context().tracing.stop({ path: testInfo.outputPath('trace.zip') }).catch(() => {})
     await app.close().catch(() => {})
     await testInfo.attach('electron-output', { body: output.join(''), contentType: 'text/plain' })
@@ -55,7 +92,12 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     if (fs.existsSync(log)) await testInfo.attach('cockpit.log', { body: fs.readFileSync(log), contentType: 'text/plain' })
     removeRoot()
   }
-  return { app, root, close, fakeMod }
+  const startFakeMod = async (engineId?: string) => {
+    const fakeMod = createFakeMod({ testDir: root, engineId })
+    await fakeMod.start()
+    return fakeMod
+  }
+  return { app, root, close, startFakeMod }
 }
 
 // The first window whose address matches, waiting for it when it is not open yet. A window
