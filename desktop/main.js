@@ -485,7 +485,11 @@ onTrusted('open-link', (event, url) => openOutside(String(url)))
 
 onTrusted('launcher-height', (event, height) => {
   launcherHeight = Math.round(Number(height) || LAUNCHER_MIN_HEIGHT)
-  if (launcherWin !== null && launcherWin.isVisible()) placeLauncher()
+  if (launcherWin !== null) {
+    // Ensure window is shown before positioning; setBounds works on hidden windows too
+    if (!launcherWin.isVisible()) launcherWin.show()
+    placeLauncher()
+  }
 })
 
 onTrusted('launcher-hide', hideLauncher)
@@ -529,6 +533,25 @@ const exposeTestProbe = () => {
     hasGlobalShortcuts: () => activeShortcut !== null || globalShortcut.isRegistered('Control+Alt+I'),
     hasUpdater: () => updater !== null,
     showLauncher: () => showLauncher(),
+    // Check if island window has rendered cards with action buttons
+    islandHasCards: async () => {
+      const { BrowserWindow } = require('electron')
+      const islandWin = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('island=1'))
+      if (!islandWin) return false
+      try {
+        const result = await islandWin.webContents.executeJavaScript(`
+          (() => {
+            const card = document.querySelector('sg-flip[data-engine]')
+            if (!card) return false
+            const btn = card.querySelector('[data-testid="card-enlarge"]')
+            return !!btn
+          })()
+        `)
+        return result
+      } catch {
+        return false
+      }
+    },
   }
 }
 
