@@ -100,8 +100,8 @@ test.describe('Site structure visual comparison', () => {
 
           const mockupShot = await mockupView.page.screenshot({ fullPage: true });
           const siteShot = await siteView.page.screenshot({ fullPage: true });
-          expect(mockupShot.length).toBeGreaterThan(0);
-          expect(siteShot.length).toBeGreaterThan(0);
+          expect(mockupShot.length).toBeGreaterThan(1000);
+          expect(siteShot.length).toBeGreaterThan(1000);
 
           // Section order must match the mockup
           const mockupIds = await sectionIds(mockupView.page);
