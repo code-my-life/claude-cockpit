@@ -28,6 +28,8 @@ async function openIsland(app: any) {
   const html = island.locator('html')
   await expect(html).toHaveAttribute('data-island', 'open')
   await expect.poll(() => probe(app, 'islandPhase')).toBe('open')
+  // Attendre que les données de l'île soient chargées (cartes avec boutons rendues)
+  await expect.poll(() => probe(app, 'islandHasCards')).toBe(true)
   return island
 }
 

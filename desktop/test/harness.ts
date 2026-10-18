@@ -78,7 +78,7 @@ export const cockpitWindow = async (app: ElectronApplication): Promise<Page> => 
   return page
 }
 
-type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void }
+type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void, islandHasCards: () => Promise<boolean> }
 
 // Reads one value of the main process through the probe main.js exposes in test mode.
 export const probe = <K extends keyof Probe>(app: ElectronApplication, key: K): Promise<ReturnType<Probe[K]>> =>
