@@ -64,8 +64,14 @@ test('launcher : resizes and persists bounds', async ({}, testInfo) => {
     (window as any).cockpitDesktop.setLauncherHeight(400)
   })
 
-  // Attendre que le redimensionnement soit appliqué
-  await launcherWin.waitForTimeout(500)
+  // Attendre que le redimensionnement soit appliqué (polling pour robustesse CI)
+  await expect.poll(async () => {
+    const bounds = await launcherWin.evaluate(() => ({
+      width: window.outerWidth,
+      height: window.outerHeight,
+    }))
+    return bounds.height
+  }).toBeGreaterThanOrEqual(380)
 
   const resizedBounds = await launcherWin.evaluate(() => ({
     width: window.outerWidth,

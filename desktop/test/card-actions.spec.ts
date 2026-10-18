@@ -33,7 +33,12 @@ async function openIsland(app: any) {
 
 // Trouver une carte par son engineId (première conversation mock)
 async function findCard(island: any, engineId: string) {
-  return island.locator(`sg-flip[data-engine="${engineId}"]`)
+  const card = island.locator(`sg-flip[data-engine="${engineId}"]`)
+  // Attendre que la carte soit rendue avec ses boutons d'action
+  await expect(card).toBeVisible({ timeout: 10000 })
+  // Attendre que le bouton enlarge soit présent (signe que frontHtmlOf a injecté les boutons)
+  await expect(card.locator('[data-testid="card-enlarge"]')).toBeVisible({ timeout: 10000 })
+  return card
 }
 
 test('card actions : enlarge opens full conversation view', async ({}, testInfo) => {

@@ -247,11 +247,10 @@ const openCockpitWindow = section => {
 
 const placeLauncher = () => {
   if (launcherWin === null) return
-  // Use the window's current display instead of cursor for reliability in CI
-  const winBounds = launcherWin.getBounds()
-  const display = screen.getDisplayNearestPoint({ x: winBounds.x + winBounds.width / 2, y: winBounds.y + winBounds.height / 2 })
+  // Use primary display workArea for reliable positioning in CI; avoid animated setBounds which can fail on Windows CI
+  const display = screen.getPrimaryDisplay()
   const bounds = launcherBoundsOf(display.workArea, launcherHeight)
-  launcherWin.setBounds(bounds, true)
+  launcherWin.setBounds(bounds, false)
 }
 
 const hideLauncher = () => {
