@@ -1,426 +1,251 @@
-// E2E scenarios for card actions and island (claude-cockpit #42 PR 2a)
-// Scenarios A1-A4 (island) and B1-B9 (cockpit card actions)
-import { expect, test } from '@playwright/test'
-import {
-  attachScreenshot,
-  islandWindow,
-  launchCockpit,
-  openCockpitFromIsland,
-  probe,
-  readTerminalLog,
-  type Cockpit,
-} from './harness'
+// The cards of the cockpit page and of the island, driven in the real Electron app (#42, PR 2a):
+// sections, card backs and deck (A1 to A4), card actions and the orders they send (B1 to B9).
+// The data are fake conversations (fixtures/structured-data.ts); the orders reach a fake mod.
+import path from 'node:path'
+import fs from 'node:fs'
+import { expect, test, type Page } from '@playwright/test'
+import { attachScreenshot, launchCockpit, openCockpit, openIsland, type Cockpit } from './harness'
+import { LAST_MESSAGE } from './fixtures/structured-data'
 
-let cockpit: Cockpit | null = null
-let fakeMod: any = null
+const DATA_REFRESH_MS = 10_000
+// A 1×1 transparent PNG, pasted as an image into a reply field.
+const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+let cockpit: Cockpit
 
 test.beforeEach(async ({}, testInfo) => {
   cockpit = await launchCockpit(testInfo)
-  fakeMod = await cockpit.startFakeMod('0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001')
 })
 
 test.afterEach(async ({}, testInfo) => {
-  if (cockpit === null) return
-  const island = cockpit.app.windows().find(page => page.url().includes('island=1'))
-  if (island !== undefined) await attachScreenshot(testInfo, island, 'e2e-cards-fin')
+  for (const page of cockpit.app.windows()) {
+    if (page.url().includes('launcher=1')) continue
+    await attachScreenshot(testInfo, page, page.url().includes('island=1') ? 'ile-fin' : 'cockpit-fin')
+  }
   await cockpit.close()
-  cockpit = null
 })
 
-// Helper: open island and wait for it to be in 'open' phase
-async function openIsland(app: any): Promise<any> {
-  const island = await islandWindow(app)
-  await island.locator('#compactBtn').click()
-  const html = island.locator('html')
-  await expect(html).toHaveAttribute('data-island', 'open')
-  await expect.poll(() => probe(app, 'islandPhase')).toBe('open')
-  return island
-}
+const cardOf = (page: Page, engineId: string) => page.locator(`sg-flip[data-engine="${engineId}"]`)
 
-// Helper: find a card by engineId on the island
-async function findIslandCard(island: any, engineId: string, options?: { waitForFlip?: boolean }): Promise<any> {
-  const card = island.locator(`sg-flip[data-engine="${engineId}"]`)
-  await expect(card).toBeVisible({ timeout: 10_000 })
-  if (options?.waitForFlip !== false) {
-    // On island, only the top card is flipped. Wait for flip if requested.
-    await expect(card).toHaveAttribute('flipped', '')
-  }
-  // Wait for front to be populated (if flipped)
-  if (options?.waitForFlip !== false) {
-    await expect(card.locator('[data-testid="card-enlarge"]')).toBeVisible({ timeout: 10_000 })
-  }
-  return card
-}
-
-// Helper: find a card on the cockpit page
-async function findCockpitCard(cockpitPage: any, engineId: string): Promise<any> {
-  const card = cockpitPage.locator(`sg-flip[data-engine="${engineId}"]`)
-  await expect(card).toBeVisible({ timeout: 10_000 })
-  // Flip the card first (back is shown initially)
+// A card shows its back first: turn it over, as a user does, to reach the buttons of the front.
+const turnOver = async (page: Page, engineId: string) => {
+  const card = cardOf(page, engineId)
+  await expect(card).toBeVisible({ timeout: DATA_REFRESH_MS })
   await card.locator('sg-card').click()
   await expect(card).toHaveAttribute('flipped', '')
-  // Wait for card front to be populated with buttons
-  await expect.poll(async () => {
-    const body = await card.locator('[data-body]').elementHandle()
-    if (!body) return false
-    const html = await body.innerHTML()
-    return html.includes('card-enlarge')
-  }, { timeout: 15_000 })
   return card
 }
 
-// --- Scenarios A: Island ---
-
-test('A1: chaque rangée fictive est dans la bonne section (t attendent, en mission, bloqués et plus tard, au repos)', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-
-  // Verify island has cards in the stack
-  const pile = island.locator('#pile')
-  await expect(pile).toBeVisible()
-  const firstCard = pile.locator('sg-flip[data-engine]').first()
-  await expect(firstCard).toBeVisible()
-  await expect(firstCard).toHaveAttribute('flipped', '')
-  const cardFront = firstCard.locator('[data-body]')
-  await expect(cardFront).toBeVisible()
-
-  await attachScreenshot(testInfo, island, 'A1-sections')
-})
-
-test('A2: le dos d\'une carte affiche le titre de la session, pas le dernier message, sur deux lignes au plus', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-  const engineId = 'conv-heading-test'
-  // Don't wait for flip - we want to check the back (unflipped)
-  const card = await findIslandCard(island, engineId, { waitForFlip: false })
-
-  // The back of the card (sg-card) has a heading attribute with the title
-  const back = card.locator('sg-card')
-  await expect(back).toBeVisible()
-  const heading = await back.getAttribute('heading')
-  expect(heading).toBeTruthy()
-  // Heading should not contain more than 2 lines (split by |)
-  const lines = (heading || '').split('|')
-  expect(lines.length).toBeLessThanOrEqual(2)
-  // Heading should be the title, not the last message
-  expect(heading).not.toContain('Build complete')
-
-  await attachScreenshot(testInfo, island, 'A2-card-back-heading')
-})
-
-test('A3: l\'île ouverte montre le paquet, carte du dessus face visible ; jamais un bloc vide', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-
-  // The island must have a visible pile with at least one card
-  const pile = island.locator('#pile')
-  await expect(pile).toBeVisible()
-  const firstCard = pile.locator('sg-flip[data-engine]').first()
-  await expect(firstCard).toBeVisible()
-  // Top card should be flipped to show front
-  await expect(firstCard).toHaveAttribute('flipped', '')
-  // Front of the card (data-body) should be visible and not empty
-  const body = firstCard.locator('[data-body]')
-  await expect(body).toBeVisible()
-  // Island card front should have content (homeText or alert)
+const settledBox = async (locator: ReturnType<Page['locator']>) => {
+  const seen: string[] = []
   await expect.poll(async () => {
-    const html = await body.innerHTML()
-    return html.length > 0
-  }, { timeout: 10_000 })
+    seen.push(JSON.stringify(await locator.boundingBox()))
+    return seen.length >= 3 && seen.slice(-3).every(box => box === seen[seen.length - 1])
+  }, { intervals: [150] }).toBe(true)
+  return JSON.parse(seen[seen.length - 1]) as { x: number, y: number, width: number, height: number }
+}
 
-  await attachScreenshot(testInfo, island, 'A3-island-open')
-})
+const toast = (page: Page, title: string) => page.locator('.ep-toast').filter({ has: page.locator('.ep-toast__title', { hasText: title }) })
 
-test('A4: avec un pageVersion différent, l\'île affiche l\'avis "Le cockpit a été mis à jour"', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
+const pasteImage = (page: Page, engineId: string) =>
+  cardOf(page, engineId).locator('textarea[data-role="draft"]').evaluate((field, base64) => {
+    const bytes = Uint8Array.from(atob(base64), char => char.charCodeAt(0))
+    const data = new DataTransfer()
+    data.items.add(new File([bytes], 'capture.png', { type: 'image/png' }))
+    field.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  }, PNG_BASE64)
 
-  const island = await openIsland(app)
-
-  // Inject a different pageVersion via evaluate to trigger the update banner
-  await island.evaluate(() => {
-    const banner = document.querySelector('.ds-banner')
-    if (banner) {
-      banner.classList.add('show')
-      banner.textContent = 'Le cockpit a été mis à jour'
+test('A1: each fake conversation sits in its section of the cockpit page', async ({}, testInfo) => {
+  const page = await openCockpit(cockpit.app)
+  await expect(page.locator('#s-waiting [data-engine]').first()).toBeAttached({ timeout: DATA_REFRESH_MS })
+  // The conversations at rest are listed once their toggle is opened, as a user does.
+  await page.locator('#rest-toggle').click()
+  const expected: Record<string, string[]> = {
+    's-waiting': ['e2e-perm', 'e2e-question', 'e2e-delivered'],
+    's-working': ['e2e-working'],
+    's-parked': ['e2e-blocked', 'e2e-later'],
+    's-others': ['e2e-seen'],
+  }
+  for (const [section, engineIds] of Object.entries(expected)) {
+    for (const engineId of engineIds) {
+      await expect(page.locator(`#${section} [data-engine="${engineId}"]`).first(), `${engineId} in #${section}`).toBeAttached({ timeout: DATA_REFRESH_MS })
     }
-  })
-
-  const banner = island.locator('.ds-banner.show')
-  await expect(banner).toBeVisible()
-  await expect(banner).toContainText('Le cockpit a été mis à jour')
-
-  await attachScreenshot(testInfo, island, 'A4-page-version-banner')
+  }
+  await expect(page.locator('#s-waiting [data-engine="e2e-working"]')).toHaveCount(0)
+  await attachScreenshot(testInfo, page, 'A1-sections')
 })
 
-// --- Scenarios B: Cockpit card actions ---
-
-test('B1: "Agrandir" met la carte en grand ; le fond et Échap la referment ; libellé "Réduire"', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
-
-  const engineId = '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001'
-  const card = await findCockpitCard(cockpitPage, engineId)
-
-  const enlargeBtn = card.locator('[data-testid="card-enlarge"]')
-  await expect(enlargeBtn).toBeVisible()
-  await enlargeBtn.click()
-
-  // Card should have 'big' class
-  await expect(card).toHaveClass(/big/)
-  // Button label should change to "Réduire"
-  await expect(enlargeBtn).toHaveText(/Réduire/)
-
-  // Escape should collapse
-  await cockpitPage.keyboard.press('Escape')
-  await expect(card).not.toHaveClass(/big/)
-  await expect(enlargeBtn).toHaveText(/Agrandir/)
-
-  await attachScreenshot(testInfo, cockpitPage, 'B1-enlarge')
+test('A2: a card back shows the session title, not the last message, on two lines at most', async () => {
+  const page = await openCockpit(cockpit.app)
+  const back = cardOf(page, 'e2e-perm').locator('sg-card')
+  await expect(back).toHaveAttribute('heading', /.+/, { timeout: DATA_REFRESH_MS })
+  const heading = (await back.getAttribute('heading'))!
+  expect(heading.split('|').length).toBeLessThanOrEqual(2)
+  expect(heading.replace(/\|/g, ' ')).toBe('Migration de la base clients')
+  expect(heading).not.toContain(LAST_MESSAGE)
 })
 
-test('B2: "Voir la réponse exacte" déplie le fil, aria-expanded suit', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
-
-  const engineId = '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001'
-  const card = await findCockpitCard(cockpitPage, engineId)
-
-  const exactBtn = card.locator('[data-testid="card-exact-answer"]')
-  await expect(exactBtn).toBeVisible()
-  // Initially aria-expanded = false
-  await expect(exactBtn).toHaveAttribute('aria-expanded', 'false')
-  await exactBtn.click()
-  // After click, aria-expanded = true
-  await expect(exactBtn).toHaveAttribute('aria-expanded', 'true')
-  // Re-click closes
-  await exactBtn.click()
-  await expect(exactBtn).toHaveAttribute('aria-expanded', 'false')
-
-  await attachScreenshot(testInfo, cockpitPage, 'B2-exact-answer')
+test('A3: the open island shows the deck, top card face up, never an empty block', async ({}, testInfo) => {
+  const island = await openIsland(cockpit.app)
+  const pile = island.locator('#pile sg-flip[data-engine]')
+  await expect(pile.first()).toBeVisible({ timeout: DATA_REFRESH_MS })
+  await expect(pile.first()).toHaveAttribute('flipped', '')
+  await expect(island.locator('#homeText')).not.toBeEmpty()
+  await attachScreenshot(testInfo, island, 'A3-paquet')
 })
 
-test('B3: "Replier" quitte le grand format et le fil sans retourner la carte', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
+test('A4: with another page version, the island shows the update notice', async ({}, testInfo) => {
+  const island = await openIsland(cockpit.app)
+  await expect(island.locator('#pile sg-flip[data-engine]').first()).toBeVisible({ timeout: DATA_REFRESH_MS })
+  // The mod stamps both the page it writes and the data: here the page says one version, the data another.
+  await island.addInitScript(() => { (window as unknown as { __PAGE_VERSION__: string }).__PAGE_VERSION__ = 'e2e-installed' })
+  cockpit.writeData(undefined, { pageVersion: 'e2e-served' })
+  await island.reload()
+  await expect(island.locator('#homeText')).toContainText('Le cockpit a été mis à jour', { timeout: DATA_REFRESH_MS })
+  await attachScreenshot(testInfo, island, 'A4-avis')
+})
 
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
+test('B1: "Agrandir" enlarges the card; Escape and the backdrop close it; the label reads "Réduire"', async () => {
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  const enlarge = card.locator('[data-testid="card-enlarge"]')
+  await enlarge.click()
+  await expect(card).toHaveClass(/\bbig\b/)
+  await expect(enlarge).toContainText('Réduire')
+  await page.keyboard.press('Escape')
+  await expect(card).not.toHaveClass(/\bbig\b/)
+  await enlarge.click()
+  await expect(card).toHaveClass(/\bbig\b/)
+  await page.locator('.backdrop').click({ position: { x: 5, y: 5 } })
+  await expect(card).not.toHaveClass(/\bbig\b/)
+})
 
-  const engineId = '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001'
-  const card = await findCockpitCard(cockpitPage, engineId)
+test('B2: "Voir la réponse exacte" opens the thread, aria-expanded follows', async () => {
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  const exact = card.locator('[data-testid="card-exact-answer"]')
+  const thread = card.locator('[data-engine-thread="e2e-perm"]')
+  await expect(exact).toHaveAttribute('aria-expanded', 'false')
+  await exact.click()
+  await expect(exact).toHaveAttribute('aria-expanded', 'true')
+  await expect(thread).toContainText(LAST_MESSAGE)
+  await exact.click()
+  await expect(exact).toHaveAttribute('aria-expanded', 'false')
+  await expect(thread).toHaveCount(0)
+})
 
-  // First enlarge the card - thread is automatically shown when big
-  const enlargeBtn = card.locator('[data-testid="card-enlarge"]')
-  await enlargeBtn.click()
-  await expect(card).toHaveClass(/big/)
-
-  // Thread should be visible (no exact button when big)
-  const thread = card.locator(`[data-engine-thread="${engineId}"]`)
-  await expect(thread).toBeVisible()
-
-  // Click Replier (collapse)
-  const collapseBtn = card.locator('[data-testid="card-collapse"]')
-  await expect(collapseBtn).toBeVisible()
-  await collapseBtn.click()
-
-  // Verify: card no longer big, thread is closed, NO flip (card should remain flipped, showing front)
-  await expect(card).not.toHaveClass(/big/)
-  await expect(thread).not.toBeVisible()
-  // CRITICAL: card should remain flipped (showing front), not unflip
+test('B3: "Replier" leaves the big format and the thread without turning the card over', async () => {
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  await card.locator('[data-testid="card-enlarge"]').click()
+  await expect(card).toHaveClass(/\bbig\b/)
+  await expect(card.locator('[data-engine-thread="e2e-perm"]')).toBeVisible()
+  await card.locator('[data-testid="card-collapse"]').click()
+  await expect(card).not.toHaveClass(/\bbig\b/)
+  await expect(card.locator('[data-engine-thread="e2e-perm"]')).toHaveCount(0)
   await expect(card).toHaveAttribute('flipped', '')
-  await attachScreenshot(testInfo, cockpitPage, 'B3-collapse')
 })
 
-test('B4: un clic sur un bouton de la face avant ne retourne pas la carte ; le picto de retournement, si', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
-
-  const engineId = '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001'
-  const card = await findCockpitCard(cockpitPage, engineId)
-
-  // Click each action button - none should flip the card
-  const buttons = [
-    card.locator('[data-testid="card-enlarge"]'),
-    card.locator('[data-testid="card-terminal"]'),
-    card.locator('[data-testid="card-collapse"]'),
-  ]
-
-  for (const btn of buttons) {
-    await expect(btn).toBeVisible()
-    await btn.click()
-    // Verify card did not flip (flipped attribute should remain)
-    await expect(card).toHaveAttribute('flipped', '')
-  }
-
-  // But clicking the flip picto (top-right) SHOULD flip
-  const flipPicto = card.locator('.sg-flip__picto')
-  if (await flipPicto.isVisible({ timeout: 1000 })) {
-    // Force click should toggle the flip
-    await card.evaluate((el: any) => el.click())
-    await expect(card).not.toHaveAttribute('flipped', '')
-  }
-
-  await attachScreenshot(testInfo, cockpitPage, 'B4-no-flip-on-buttons')
+test('B4: a click on a front button never turns the card over; the flip picto does', async () => {
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  await card.locator('[data-testid="card-exact-answer"]').click()
+  await expect(card).toHaveAttribute('flipped', '')
+  await card.locator('[data-testid="card-enlarge"]').click()
+  await expect(card).toHaveAttribute('flipped', '')
+  await page.keyboard.press('Escape')
+  await expect(card).not.toHaveClass(/\bbig\b/)
+  // The picto lets the pointer through (pointer-events: none): a click there lands on the front, outside its body.
+  const picto = card.locator('.sg-flip__picto')
+  await picto.scrollIntoViewIfNeeded()
+  // Wait until the page has stopped scrolling and the card has settled (three equal positions in a row),
+  // then click where the picto is drawn.
+  const box = await settledBox(picto)
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(card).not.toHaveAttribute('flipped', '')
 })
 
-test('B5: terminal : un dépôt, le dossier est enregistré dans e2e-terminal.jsonl ; deux dépôts, menu de choix ; dossier inconnu, toast d\'échec', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
+test('B5: terminal: one repository opens it; two show a menu; an unknown folder fails with a toast', async () => {
+  const page = await openCockpit(cockpit.app)
+  const work = cockpit.fixtures.folders.work
+  const launched = () => cockpit.terminalLaunches().map(launch => launch.cwd)
 
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
+  await (await turnOver(page, 'e2e-term-one')).locator('[data-testid="card-terminal"]').click()
+  await expect.poll(launched, { timeout: DATA_REFRESH_MS }).toContain(path.join(work, 'e2e-term-one', 'src'))
+  await expect(toast(page, 'Terminal').first()).toBeVisible()
 
-  const engineId = 'conv-terminal'
-  const card = await findCockpitCard(cockpitPage, engineId)
+  await (await turnOver(page, 'e2e-term-two')).locator('[data-testid="card-terminal"]').click()
+  const items = page.locator('.repo-menu .repo-item')
+  await expect(items).toHaveCount(3)
+  await page.locator(`.repo-menu .repo-item[data-folder="${path.join(work, 'e2e-term-two', 'lib')}"]`).click()
+  await expect.poll(launched).toContain(path.join(work, 'e2e-term-two', 'lib'))
 
-  const terminalBtn = card.locator('[data-testid="card-terminal"]')
-  await expect(terminalBtn).toBeVisible()
-  await terminalBtn.click()
-
-  // Read the terminal log file
-  const launches = readTerminalLog(cockpit!.terminalLogPath)
-  expect(launches.length).toBeGreaterThan(0)
-  const lastLaunch = launches[launches.length - 1]
-  expect(lastLaunch.cwd).toBeTruthy()
-  expect(lastLaunch.cwd).toContain('terminal-demo')
-
-  await attachScreenshot(testInfo, cockpitPage, 'B5-terminal')
+  const before = launched().length
+  await (await turnOver(page, 'e2e-term-unknown')).locator('[data-testid="card-terminal"]').click()
+  await expect(toast(page, 'Terminal non ouvert')).toBeVisible()
+  expect(launched()).toHaveLength(before)
 })
 
-test('B6: réponse rapide et champ de réponse : le faux mod reçoit reply avec le bon engineId et le bon texte ; la carte passe en mission ; le brouillon se vide', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
+test('B6: quick reply and reply field: the mod gets "reply" with the right engineId and text; the card goes on mission; the draft empties', async () => {
+  const mod = await cockpit.startFakeMod()
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  const draft = card.locator('textarea[data-role="draft"]')
+  await draft.fill('Vas-y, lance les tests')
+  await card.locator('[data-action="send"]').click()
+  const order = await mod.waitForOrder(o => o.type === 'reply' && o.engineId === 'e2e-perm')
+  expect(order.text).toBe('Vas-y, lance les tests')
+  await expect(page.locator('#s-working [data-engine="e2e-perm"]').first()).toBeAttached()
+  await expect(cardOf(page, 'e2e-perm').locator('textarea[data-role="draft"]')).toHaveValue('')
 
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
-
-  // Use the same engineId as the fake mod started in beforeEach
-  const engineId = '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001'
-  const card = await findCockpitCard(cockpitPage, engineId)
-
-  // Find the quick reply textarea
-  const replyInput = card.locator('textarea[data-role="draft"]')
-  await expect(replyInput).toBeVisible()
-  await replyInput.fill('Test reply from E2E')
-
-  // Click the send button
-  const sendBtn = card.locator('[data-action="send"]')
-  await expect(sendBtn).toBeVisible()
-  await sendBtn.click()
-
-  // Verify draft is cleared
-  await expect(replyInput).toHaveValue('')
-
-  // The fake mod would have received the order with correct engineId and text (internal verification)
-  await attachScreenshot(testInfo, cockpitPage, 'B6-reply')
+  await (await turnOver(page, 'e2e-question')).locator('[data-action="quick"][data-text="OK"]').click()
+  expect((await mod.waitForOrder(o => o.type === 'reply' && o.engineId === 'e2e-question')).text).toBe('OK')
 })
 
-test('B8: bloquer avec raison, reprendre, mettre au repos : ordres park, unpark, ack reçus avec les bons champs, toasts affichés', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
-
-  const engineId = 'conv-4' // blocked status
-  const card = await findCockpitCard(cockpitPage, engineId)
-
-  // Block (park) with reason
-  const parkBtn = card.locator('[data-action="park"][data-kind="blocked"]')
-  if (await parkBtn.isVisible({ timeout: 1000 })) {
-    await parkBtn.click()
-    const parkInput = cockpitPage.locator('.park-input')
-    await expect(parkInput).toBeVisible()
-    await parkInput.fill('Raison de test')
-    const parkOk = cockpitPage.locator('.park-ok')
-    await parkOk.click()
-
-    // Toast confirmation
-    const toast = cockpitPage.locator('.ep-toast__title:has-text("bloquée")')
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  }
-
-  // Resume (unpark)
-  const unparkBtn = card.locator('[data-action="unpark"]')
-  if (await unparkBtn.isVisible({ timeout: 1000 })) {
-    await unparkBtn.click()
-    const toast = cockpitPage.locator('.ep-toast__title:has-text("Reprise")')
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  }
-
-  // Put to rest (seen/ack) - use conv-3 (done status)
-  const seenBtn = card.locator('[data-action="seen"]')
-  if (await seenBtn.isVisible({ timeout: 1000 })) {
-    await seenBtn.click()
-    const toast = cockpitPage.locator('.ep-toast__title:has-text("Au repos")')
-    await expect(toast).toBeVisible({ timeout: 5000 })
-  }
-
-  await attachScreenshot(testInfo, cockpitPage, 'B8-park-unpark-seen')
+test('B7: with no mod connected, sending shows "Non envoyé" and keeps the draft', async () => {
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  await card.locator('textarea[data-role="draft"]').fill('Réponse qui ne partira pas')
+  await card.locator('[data-action="send"]').click()
+  await expect(toast(page, 'Non envoyé')).toBeVisible()
+  await expect(card.locator('.feedback.error')).toContainText('Non envoyé')
+  await expect(card.locator('textarea[data-role="draft"]')).toHaveValue('Réponse qui ne partira pas')
 })
 
-test('B9: coller une image : vignette affichée, suppression possible ; à l\'envoi, l\'ordre contient le chemin de l\'image', async ({}, testInfo) => {
-  const { app } = cockpit!
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
+test('B8: block with a reason, resume, put to rest: the mod gets park, unpark and ack with the right fields; toasts show', async () => {
+  const mod = await cockpit.startFakeMod()
+  const page = await openCockpit(cockpit.app)
 
-  const island = await openIsland(app)
-  const cockpitPage = await openCockpitFromIsland(app, island)
+  await (await turnOver(page, 'e2e-question')).locator('[data-action="park"][data-kind="blocked"]').click()
+  await page.locator('.park-menu .park-input').fill('Attente du client')
+  await page.locator('.park-menu .park-ok').click()
+  const park = await mod.waitForOrder(o => o.type === 'park' && o.engineId === 'e2e-question')
+  expect([park.kind, park.reason]).toEqual(['blocked', 'Attente du client'])
+  await expect(toast(page, 'Bloquée')).toBeVisible()
 
-  const engineId = '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001'
-  const card = await findCockpitCard(cockpitPage, engineId)
+  await (await turnOver(page, 'e2e-blocked')).locator('[data-action="unpark"]').click()
+  await mod.waitForOrder(o => o.type === 'unpark' && o.engineId === 'e2e-blocked')
+  await expect(toast(page, 'Reprise')).toBeVisible()
 
-  // Simulate image paste via file input (paste not trivial in Playwright)
-  const fileInput = card.locator('input[type="file"]')
-  if (await fileInput.isVisible({ timeout: 1000 })) {
-    const fs = require('fs')
-    const path = require('path')
-    const os = require('os')
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-img-'))
-    const imgPath = path.join(tmpDir, 'test.png')
-    // 1x1 PNG transparent
-    fs.writeFileSync(imgPath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'))
+  await (await turnOver(page, 'e2e-delivered')).locator('[data-action="seen"]').click()
+  expect((await mod.waitForOrder(o => o.type === 'ack' && o.engineId === 'e2e-delivered')).seen).toBe(true)
+  await expect(toast(page, 'Au repos')).toBeVisible()
+})
 
-    await fileInput.setInputFiles(imgPath)
-
-    // Thumbnail should appear
-    const thumb = card.locator('.thumb img')
-    await expect(thumb).toBeVisible({ timeout: 5000 })
-
-    // Remove thumbnail
-    const removeBtn = card.locator('.thumb button[data-action="remove-image"]')
-    await expect(removeBtn).toBeVisible()
-    await removeBtn.click()
-    await expect(thumb).not.toBeVisible({ timeout: 2000 })
-
-    // Re-add and send
-    await fileInput.setInputFiles(imgPath)
-    await expect(thumb).toBeVisible()
-
-    const replyInput = card.locator('textarea[data-role="draft"]')
-    await replyInput.fill('With image')
-    const sendBtn = card.locator('[data-action="send"]')
-    await sendBtn.click()
-
-    // The fake mod would have received the order with images (internal verification)
-
-    fs.rmSync(tmpDir, { recursive: true, force: true })
-  }
-
-  await attachScreenshot(testInfo, cockpitPage, 'B9-image-paste')
+test('B9: a pasted image shows a thumbnail that can be removed; once sent, the order carries the saved image', async () => {
+  const mod = await cockpit.startFakeMod()
+  const page = await openCockpit(cockpit.app)
+  const card = await turnOver(page, 'e2e-perm')
+  await pasteImage(page, 'e2e-perm')
+  await expect(card.locator('.thumb img')).toHaveCount(1)
+  await card.locator('.thumb [data-action="remove-image"]').click()
+  await expect(card.locator('.thumb img')).toHaveCount(0)
+  await pasteImage(page, 'e2e-perm')
+  await expect(card.locator('.thumb img')).toHaveCount(1)
+  await card.locator('textarea[data-role="draft"]').fill('Avec la capture')
+  await card.locator('[data-action="send"]').click()
+  const order = await mod.waitForOrder(o => o.type === 'reply' && o.engineId === 'e2e-perm')
+  expect(order.images).toHaveLength(1)
+  expect(order.images![0]).toMatch(/\.png$/)
+  expect(fs.existsSync(order.images![0])).toBe(true)
 })

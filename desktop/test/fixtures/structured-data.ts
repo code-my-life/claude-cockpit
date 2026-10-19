@@ -1,127 +1,62 @@
-// Mock conversations data for E2E tests — exact format expected by the app
-// Each row must match the format: window.__CONVERSATIONS__ = { generatedAt, rows, folders: [] }
-// Row fields: engineId, hostId, title, cwd, status, updatedAt (ms), isLive, summary, park
+// Fake conversations for the e2e tests, in the exact format the pages read from
+// <dataDir>/conversations-data.js: window.__CONVERSATIONS__ = { generatedAt, rows, folders }.
+// Built per launch: the working folders are real folders inside the test root, and the terminal ones
+// are declared as Claude Desktop sessions, so the server knows them (mod/assets/known-folders.mjs).
+import fs from 'node:fs'
+import path from 'node:path'
 
-const now = Date.now();
-const day = 24 * 60 * 60 * 1000;
+const MINUTE = 60_000
+// The last message of every thread: a card back must never show it in place of the title.
+export const LAST_MESSAGE = 'Dernier message du fil, jamais sur le dos de la carte'
 
-function makeSummary(row: { status: string; awaiting: string; kind: 'question' | 'delivered' | 'external' }): {
-  updatedAt: number;
-  text: string;
-  plain: string;
-  awaiting: string;
-  kind: 'question' | 'delivered' | 'external';
-  isLoading: boolean;
-  thread: { role: 'user' | 'assistant'; text: string }[];
-  repos: [];
-} {
-  return {
-    updatedAt: now - 2 * day,
-    text: 'Summary with **markdown**',
-    plain: 'Summary with markdown',
-    awaiting: row.awaiting,
-    kind: row.kind,
-    isLoading: false,
-    thread: [
-      { role: 'user', text: 'Start the task' },
-      { role: 'assistant', text: 'Working on it...' },
-    ],
-    repos: [],
-  };
+export type Row = {
+  engineId: string, hostId: string | null, title: string, cwd: string, status: string, tool?: string,
+  updatedAt: number, isLive: boolean, summary?: Record<string, unknown>, park?: Record<string, unknown>,
 }
 
-export const mockConversations = [
-  // A1: waiting — permission (t'attendent)
-  {
-    engineId: '0b6e2c4e-5f1a-4d0e-9c3a-e2e000000001',
-    hostId: 'e2e-host-1',
-    title: 'Build feature X',
-    cwd: '/home/user/cockpit-e2e/demo-cockpit',
-    status: 'permission',
-    updatedAt: now - day,
-    isLive: false,
-    summary: makeSummary({ status: 'permission', awaiting: 'Permission to write .env', kind: 'question' }),
-    park: undefined,
-  },
-  // A1: working — thinking (en mission)
-  {
-    engineId: 'conv-2',
-    hostId: 'e2e-host-2',
-    title: 'Fix bug in payment',
-    cwd: '/home/user/payment-service',
-    status: 'thinking',
-    updatedAt: now - 2 * day,
-    isLive: true,
-    summary: makeSummary({ status: 'thinking', awaiting: '', kind: 'delivered' }),
-    park: undefined,
-  },
-  // A1: done — delivered (au repos)
-  {
-    engineId: 'conv-3',
-    hostId: 'e2e-host-3',
-    title: 'Refactor database layer',
-    cwd: '/home/user/database-layer',
-    status: 'done',
-    updatedAt: now - 3 * day,
-    isLive: false,
-    summary: makeSummary({ status: 'done', awaiting: '', kind: 'delivered' }),
-    park: undefined,
-  },
-  // A1: blocked (bloqués et plus tard)
-  {
-    engineId: 'conv-4',
-    hostId: 'e2e-host-4',
-    title: 'Investigate flaky test',
-    cwd: '/home/user/flaky-tests',
-    status: 'blocked',
-    updatedAt: now - 4 * day,
-    isLive: false,
-    summary: makeSummary({ status: 'blocked', awaiting: 'Waiting for CI fix', kind: 'external' }),
-    park: { kind: 'blocked', reason: 'Attente client', at: now - 4 * day, updatedAt: now - 4 * day, hasMoved: false },
-  },
-  // A1: later (bloqués et plus tard)
-  {
-    engineId: 'conv-5',
-    hostId: 'e2e-host-5',
-    title: 'Update documentation',
-    cwd: '/home/user/docs',
-    status: 'later',
-    updatedAt: now - 5 * day,
-    isLive: false,
-    summary: makeSummary({ status: 'later', awaiting: '', kind: 'external' }),
-    park: { kind: 'later', reason: 'Pas prioritaire', at: now - 5 * day, updatedAt: now - 5 * day, hasMoved: false },
-  },
-  // A2: card back heading test (title should appear, not last message)
-  {
-    engineId: 'conv-heading-test',
-    hostId: 'e2e-host-6',
-    title: 'Session with long title that should appear on card back',
-    cwd: '/home/user/heading-test',
-    status: 'permission',
-    updatedAt: now - 6 * day,
-    isLive: false,
-    summary: makeSummary({ status: 'permission', awaiting: 'Permission needed', kind: 'question' }),
-    park: undefined,
-  },
-  // B5/B6: terminal and reply tests
-  {
-    engineId: 'conv-terminal',
-    hostId: 'e2e-host-7',
-    title: 'Terminal test session',
-    cwd: '/home/user/terminal-demo',
-    status: 'permission',
-    updatedAt: now - 7 * day,
-    isLive: false,
-    summary: makeSummary({ status: 'permission', awaiting: 'Permission for terminal', kind: 'question' }),
-    park: undefined,
-  },
-];
+export type Fixtures = { rows: Row[], folders: { work: string, unknown: string } }
 
-export function buildConversationsData(): string {
-  const data = {
-    generatedAt: Date.now(),
-    rows: mockConversations,
-    folders: [],
-  };
-  return `window.__CONVERSATIONS__ = ${JSON.stringify(data)};`;
+const summaryOf = (updatedAt: number, kind: string | undefined, awaiting: string, repos: string[] = []) => ({
+  updatedAt, text: `Résumé : ${awaiting || 'travail en cours'}`, plain: `Résumé : ${awaiting || 'travail en cours'}`,
+  awaiting, kind, isLoading: false, repos,
+  thread: [{ role: 'user', text: 'Lance la tâche' }, { role: 'assistant', text: LAST_MESSAGE }],
+})
+
+const parkOf = (kind: string, reason: string, at: number) => ({ kind, reason, at, updatedAt: at, hasMoved: false })
+
+// Creates the folders and the Desktop sessions under `root`, returns the rows.
+export const buildFixtures = (root: string, configBase: string, now = Date.now()): Fixtures => {
+  const work = path.join(root, 'work')
+  const unknown = path.join(root, 'elsewhere', 'unknown-folder')
+  const dir = (...parts: string[]) => { const folder = path.join(work, ...parts); fs.mkdirSync(folder, { recursive: true }); return folder }
+  fs.mkdirSync(unknown, { recursive: true })
+  const at = (minutesAgo: number) => now - minutesAgo * MINUTE
+  const row = (engineId: string, title: string, status: string, minutesAgo: number, extra: Partial<Row> = {}, kind?: string, awaiting = '', repos: string[] = []): Row => {
+    const updatedAt = at(minutesAgo)
+    return { engineId, hostId: `host-${engineId}`, title, cwd: dir(engineId), status, updatedAt, isLive: true, summary: summaryOf(updatedAt, kind, awaiting, repos), ...extra }
+  }
+  const termOne = dir('e2e-term-one')
+  const termTwo = dir('e2e-term-two')
+  const rows: Row[] = [
+    row('e2e-perm', 'Migration de la base clients', 'permission', 2, {}, undefined, 'Autoriser npm test ?'),
+    row('e2e-question', 'Choix de la mise en page', 'done', 3, {}, 'question', 'Plein écran ou île seule ?'),
+    row('e2e-delivered', 'Jetons du thème', 'done', 4, {}, 'delivered', ''),
+    row('e2e-working', 'Graphe des dépôts', 'tool', 1, { tool: 'Bash' }),
+    row('e2e-blocked', 'Test instable', 'blocked', 50, { park: parkOf('blocked', 'Attente client', at(50)) }),
+    row('e2e-later', 'Documentation', 'later', 60, { park: parkOf('later', 'Pas prioritaire', at(60)) }),
+    row('e2e-seen', 'Revue des PR', 'seen', 90),
+    row('e2e-term-one', 'Terminal sur un dépôt', 'permission', 5, {}, undefined, 'Ouvrir le terminal ?', [dir('e2e-term-one', 'src')]),
+    row('e2e-term-two', 'Terminal sur deux dépôts', 'permission', 6, {}, undefined, 'Ouvrir le terminal ?', [dir('e2e-term-two', 'lib'), dir('e2e-term-two', 'src')]),
+    row('e2e-term-unknown', 'Terminal hors des dossiers connus', 'permission', 7, { cwd: unknown }, undefined, 'Ouvrir le terminal ?'),
+  ]
+  // Desktop sessions: their folders are the ones the server lets a terminal open.
+  const sessions = path.join(configBase, 'Claude', 'claude-code-sessions', 'e2e-account', 'e2e-org')
+  fs.mkdirSync(sessions, { recursive: true })
+  for (const [engineId, cwd] of [['e2e-term-one', termOne], ['e2e-term-two', termTwo]]) {
+    fs.writeFileSync(path.join(sessions, `${engineId}.json`), JSON.stringify({ sessionId: `host-${engineId}`, cliSessionId: engineId, title: engineId, cwd, lastActivityAt: now, isArchived: false }))
+  }
+  return { rows, folders: { work, unknown } }
 }
+
+export const conversationsDataOf = (rows: Row[], extra: Record<string, unknown> = {}): string =>
+  `window.__CONVERSATIONS__ = ${JSON.stringify({ generatedAt: Date.now(), rows, folders: [], ...extra })};`

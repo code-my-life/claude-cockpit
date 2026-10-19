@@ -5,24 +5,23 @@ import { _electron as electron, type ElectronApplication, type Page, type TestIn
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createFakeMod, type FakeMod } from './fake-mod'
-import { buildConversationsData } from './fixtures/structured-data'
+import { FakeMod, linkFileOf, readLink } from './fake-mod'
+import { buildFixtures, conversationsDataOf, type Fixtures, type Row } from './fixtures/structured-data'
 
-declare const __dirname: string
 const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
 const SCREENSHOT_TIMEOUT_MS = 5000
 const WINDOW_TIMEOUT_MS = 30_000
 const WINDOW_POLL_MS = 100
+const LINK_TIMEOUT_MS = 30_000
 
 export type Cockpit = {
-  app: ElectronApplication,
-  root: string,
-  close: () => Promise<void>,
-  fakeMod?: FakeMod,
-  startFakeMod: (engineId?: string) => Promise<FakeMod>,
-  dataDir: string,
-  terminalLogPath: string,
+  app: ElectronApplication, root: string, close: () => Promise<void>,
+  fixtures: Fixtures, dataDir: string,
+  // Rewrites conversations-data.js; the pages reload it every 3 s.
+  writeData: (rows?: Row[], extra?: Record<string, unknown>) => void,
+  startFakeMod: () => Promise<FakeMod>,
+  terminalLaunches: () => Array<{ cwd: string, at: number }>,
 }
 
 const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
@@ -33,39 +32,22 @@ const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
   APPDATA: path.join(root, 'AppData', 'Roaming'),
   LOCALAPPDATA: path.join(root, 'AppData', 'Local'),
   XDG_RUNTIME_DIR: path.join(root, 'run'),
+  // Else the machine's real Claude Desktop sessions leak in on Linux.
   XDG_CONFIG_HOME: path.join(home, '.config'),
   COCKPIT_SETTINGS_FILE: path.join(home, '.claude', 'settings.json'),
 })
 
-// Wait for link.json to appear and read dataDir from it (no probe needed).
-const waitForDataDir = async (root: string): Promise<string> => {
-  const linkFile = path.join(root, 'run', 'claude-cockpit', 'link.json')
-  await expect.poll(() => fs.existsSync(linkFile), { timeout: 30_000 })
-  const link = JSON.parse(fs.readFileSync(linkFile, 'utf8'))
-  if (!link.dataDir) throw new Error('link.json missing dataDir')
-  return link.dataDir
-}
+// Where the app reads Claude Desktop sessions (mod/assets/terminal.mjs, hostSessionsDirsOf).
+const configBaseOf = (env: NodeJS.ProcessEnv) => (process.platform === 'win32' ? env.APPDATA! : env.XDG_CONFIG_HOME!)
 
 export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-e2e-'))
   const home = path.join(root, 'home')
   fs.cpSync(FIXTURE_HOME, home, { recursive: true })
-  for (const dir of ['AppData/Roaming', 'AppData/Local', 'run']) fs.mkdirSync(path.join(root, dir), { recursive: true, mode: 0o700 })
-  // Create XDG_CONFIG_HOME dir
-  fs.mkdirSync(path.join(home, '.config'), { recursive: true, mode: 0o700 })
-
-  const removeRoot = () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
-  // Set environment for the test process so fake-mod finds link.json
+  for (const dir of ['AppData/Roaming', 'AppData/Local', 'run', 'home/.config']) fs.mkdirSync(path.join(root, dir), { recursive: true, mode: 0o700 })
   const env = isolatedEnv(root, home)
-  process.env.HOME = env.HOME
-  process.env.USERPROFILE = env.USERPROFILE
-  process.env.APPDATA = env.APPDATA
-  process.env.LOCALAPPDATA = env.LOCALAPPDATA
-  process.env.XDG_RUNTIME_DIR = env.XDG_RUNTIME_DIR
-  process.env.XDG_CONFIG_HOME = env.XDG_CONFIG_HOME
-  process.env.COCKPIT_E2E = env.COCKPIT_E2E
-  process.env.COCKPIT_SETTINGS_FILE = env.COCKPIT_SETTINGS_FILE
-
+  const fixtures = buildFixtures(root, configBaseOf(env))
+  const removeRoot = () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   const app = await electron.launch({
     args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
     cwd: DESKTOP_DIR,
@@ -76,13 +58,25 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   app.process().stderr?.on('data', chunk => output.push(String(chunk)))
   await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
 
-  // Wait for embedded server and write mock conversations data
-  await expect.poll(() => probe(app, 'serverPort')).not.toBeNull()
-  const dataDir = await waitForDataDir(root)
-  const terminalLogPath = path.join(dataDir, 'e2e-terminal.jsonl')
-  fs.writeFileSync(path.join(dataDir, 'conversations-data.js'), buildConversationsData())
+  // The app writes link.json (port, secret, data folder) once its server listens: no probe needed.
+  const linkFile = linkFileOf(process.platform, env, home)
+  await expect.poll(() => fs.existsSync(linkFile), { timeout: LINK_TIMEOUT_MS }).toBe(true)
+  const link = readLink(linkFile)
+  const writeData = (rows = fixtures.rows, extra: Record<string, unknown> = {}) =>
+    fs.writeFileSync(path.join(link.dataDir, 'conversations-data.js'), conversationsDataOf(rows, extra))
+  writeData()
+  const mods: FakeMod[] = []
+  const startFakeMod = async () => {
+    const mod = new FakeMod(link, 'e2e-fake-mod')
+    await mod.start()
+    mods.push(mod)
+    return mod
+  }
+  const terminalLog = path.join(link.dataDir, 'e2e-terminal.jsonl')
+  const terminalLaunches = () => (fs.existsSync(terminalLog) ? fs.readFileSync(terminalLog, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)) : [])
 
   const close = async () => {
+    await Promise.all(mods.map(mod => mod.stop()))
     await app.context().tracing.stop({ path: testInfo.outputPath('trace.zip') }).catch(() => {})
     await app.close().catch(() => {})
     await testInfo.attach('electron-output', { body: output.join(''), contentType: 'text/plain' })
@@ -90,12 +84,7 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     if (fs.existsSync(log)) await testInfo.attach('cockpit.log', { body: fs.readFileSync(log), contentType: 'text/plain' })
     removeRoot()
   }
-  const startFakeMod = async (engineId?: string) => {
-    const fakeMod = createFakeMod({ testDir: root, engineId })
-    await fakeMod.start()
-    return fakeMod
-  }
-  return { app, root, close, startFakeMod, dataDir, terminalLogPath }
+  return { app, root, close, fixtures, dataDir: link.dataDir, writeData, startFakeMod, terminalLaunches }
 }
 
 // The first window whose address matches, waiting for it when it is not open yet. A window
@@ -119,9 +108,18 @@ export const islandWindow = async (app: ElectronApplication): Promise<Page> => {
   return page
 }
 
-// Open the cockpit page from the island: click [data-act="cockpit"], then find the cockpit window
-export const openCockpitFromIsland = async (app: ElectronApplication, island: Page): Promise<Page> => {
-  await island.locator('[data-act="cockpit"]').click()
+// The island opened on a click, as a user does.
+export const openIsland = async (app: ElectronApplication): Promise<Page> => {
+  const island = await islandWindow(app)
+  await island.locator('#compactBtn').click()
+  await expect(island.locator('html')).toHaveAttribute('data-island', 'open')
+  return island
+}
+
+// The cockpit window does not exist at launch: the island's cockpit button opens it.
+export const openCockpit = async (app: ElectronApplication): Promise<Page> => {
+  const island = await openIsland(app)
+  await island.locator('[data-act="cockpit"]').first().click()
   const page = await windowWhere(app, url => !url.includes('island=1') && !url.includes('launcher=1') && url.startsWith('http'))
   await page.waitForLoadState('domcontentloaded')
   return page
@@ -132,13 +130,6 @@ type Probe = { serverPort: () => number | null, islandPhase: () => string | null
 // Reads one value of the main process through the probe main.js exposes in test mode.
 export const probe = <K extends keyof Probe>(app: ElectronApplication, key: K): Promise<ReturnType<Probe[K]>> =>
   app.evaluate((_electron, name) => (globalThis as unknown as { cockpitE2E: Probe }).cockpitE2E[name as keyof Probe]() as never, key)
-
-// Read the terminal log file written by the server under COCKPIT_E2E=1
-export const readTerminalLog = (terminalLogPath: string): Array<{ cwd: string, at: number }> => {
-  if (!fs.existsSync(terminalLogPath)) return []
-  const content = fs.readFileSync(terminalLogPath, 'utf8')
-  return content.trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
-}
 
 export const attachScreenshot = async (testInfo: TestInfo, page: Page, name: string) => {
   const file = testInfo.outputPath(`${name}.png`)

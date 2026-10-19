@@ -168,6 +168,8 @@ const openTerminal = (ctx, cwd) => {
   if (!isKnownFolder(knownRootsOf(sessionsOf(ctx.state.sessionIndex), ctx.state.searchIndex), cwd, ctx.homeDir)) throw new HttpError(403, 'dossier inconnu du cockpit')
   const isFolder = fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
   if (!isFolder) throw new HttpError(404, 'dossier introuvable')
+  // COCKPIT_E2E: the e2e tests read the checked folder here instead of a real terminal window.
+  if (process.env.COCKPIT_E2E === '1') return fs.appendFileSync(path.join(ctx.dataDir, 'e2e-terminal.jsonl'), `${JSON.stringify({ cwd, at: Date.now() })}\n`)
   launchFirstWorking(ctx, terminalCandidatesOf(process.platform, cwd))
 }
 
@@ -178,38 +180,26 @@ const deliver = (ctx, order) => {
   if (ctx.sink(order) === false) throw new HttpError(503, NO_BRIDGE_MESSAGE)
 }
 
-const isE2E = process.env.COCKPIT_E2E === '1'
-
-const postRoutesOf = ctx => {
-  const terminalLogFile = isE2E ? path.join(ctx.dataDir, 'e2e-terminal.jsonl') : null
-  return {
-    '/reply': body => {
-      const engineId = engineIdOf(body)
-      const images = saveImages(ctx, Array.isArray(body.images) ? body.images : [])
-      deliver(ctx, { type: 'reply', engineId, text: String(body.text || ''), images })
-    },
-    '/terminal': body => {
-      const cwd = typeof body.cwd === 'string' ? body.cwd : ''
-      if (isE2E && terminalLogFile !== null) {
-        fs.appendFileSync(terminalLogFile, JSON.stringify({ cwd, at: Date.now() }) + '\n')
-        return
-      }
-      openTerminal(ctx, cwd)
-    },
-    '/park': body => {
-      const engineId = engineIdOf(body)
-      if (!PARK_KINDS.has(body.kind)) throw new HttpError(400, 'type de mise de côté invalide')
-      deliver(ctx, { type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
-    },
-    '/unpark': body => deliver(ctx, { type: 'unpark', engineId: engineIdOf(body) }),
-    '/ack': body => deliver(ctx, { type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
-    '/summarize': body => deliver(ctx, { type: 'summarize', engineId: engineIdOf(body) }),
-    '/permission': body => {
-      const desk = deskOf(ctx)
-      if (!desk.decide(String(body.requestId ?? ''), body.decision)) throw new HttpError(409, 'demande de permission déjà traitée ou inconnue')
-    },
-  }
-}
+const postRoutesOf = ctx => ({
+  '/reply': body => {
+    const engineId = engineIdOf(body)
+    const images = saveImages(ctx, Array.isArray(body.images) ? body.images : [])
+    deliver(ctx, { type: 'reply', engineId, text: String(body.text || ''), images })
+  },
+  '/terminal': body => openTerminal(ctx, typeof body.cwd === 'string' ? body.cwd : ''),
+  '/park': body => {
+    const engineId = engineIdOf(body)
+    if (!PARK_KINDS.has(body.kind)) throw new HttpError(400, 'type de mise de côté invalide')
+    deliver(ctx, { type: 'park', engineId, kind: body.kind, reason: String(body.reason || '').slice(0, MAX_REASON_LENGTH) })
+  },
+  '/unpark': body => deliver(ctx, { type: 'unpark', engineId: engineIdOf(body) }),
+  '/ack': body => deliver(ctx, { type: 'ack', engineId: engineIdOf(body), seen: body.seen === true }),
+  '/summarize': body => deliver(ctx, { type: 'summarize', engineId: engineIdOf(body) }),
+  '/permission': body => {
+    const desk = deskOf(ctx)
+    if (!desk.decide(String(body.requestId ?? ''), body.decision)) throw new HttpError(409, 'demande de permission déjà traitée ou inconnue')
+  },
+})
 
 const deskOf = ctx => {
   const desk = ctx.bridge?.desk

@@ -1,137 +1,76 @@
-// Fake mod for E2E tests: reads secret and port from link.json, POST /bridge/v1/hello,
-// collects GET /bridge/v1/orders, acks. No Origin header nor Sec-Fetch-Site.
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+// A fake Claude Code mod for the e2e tests: it joins the app's bridge the way the real mod does
+// (mod/assets/bridge-routes.mjs) and records the orders the pages send, so a test can check them.
+// Secret and port come from link.json. No Origin nor Sec-Fetch-Site header: the bridge refuses them.
+import fs from 'node:fs'
+import path from 'node:path'
 
-declare const __dirname: string;
+const LINK_PROTOCOL = 1
+const POLL_WAIT_MS = 2000
+const ORDER_TIMEOUT_MS = 10_000
 
-const LINK_PROTOCOL = 1;
-const APP_FOLDER = 'claude-cockpit';
-const LINK_NAME = 'link.json';
+export type Order = { orderId: string, type: string, engineId: string, text?: string, images?: string[], kind?: string, reason?: string, seen?: boolean }
 
-const linkFileOf = (platform: NodeJS.Platform, env: NodeJS.ProcessEnv, homeDir: string) => {
-  if (platform === 'win32') {
-    const localAppData = env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
-    return path.join(localAppData, APP_FOLDER, LINK_NAME);
-  }
-  const stateDir = env.XDG_RUNTIME_DIR || path.join(homeDir, '.local', 'state');
-  return path.join(stateDir, APP_FOLDER, LINK_NAME);
-};
-
-export interface FakeModConfig {
-  testDir: string;
-  engineId?: string;
-  onOrder?: (order: any) => void;
-  onAck?: (engineId: string) => void;
+// Same rule as linkFileOf in mod/assets/discovery.mjs.
+export const linkFileOf = (platform: NodeJS.Platform, env: NodeJS.ProcessEnv, homeDir: string): string => {
+  if (platform === 'win32') return path.join(env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), 'claude-cockpit', 'link.json')
+  return path.join(env.XDG_RUNTIME_DIR || path.join(homeDir, '.local', 'state'), 'claude-cockpit', 'link.json')
 }
 
 export class FakeMod {
-  private config: FakeModConfig;
-  private secret = '';
-  private port = 0;
-  private running = false;
-  private pollInterval: NodeJS.Timeout | null = null;
-  private seenOrderIds = new Set<string>();
-  private bridgeId = '';
+  readonly orders: Order[] = []
+  private bridgeId = ''
+  private running = false
+  private loop: Promise<void> | null = null
 
-  constructor(config: FakeModConfig) {
-    this.config = config;
+  constructor(private readonly link: { port: number, secret: string }, private readonly engineId: string) {}
+
+  private url(route: string) {
+    return `http://127.0.0.1:${this.link.port}/bridge/v1/${route}`
   }
 
-  private getLinkFile(): string {
-    const env = process.env;
-    const homeDir = env.HOME || env.USERPROFILE || os.homedir();
-    // The test harness sets XDG_RUNTIME_DIR/LOCALAPPDATA to point into testDir
-    return linkFileOf(process.platform, env, homeDir);
-  }
-
-  private getEngineId(): string {
-    return this.config.engineId || 'test-engine-id';
+  private headers(json = false): Record<string, string> {
+    return { Authorization: `Bearer ${this.link.secret}`, ...(json ? { 'Content-Type': 'application/json' } : {}) }
   }
 
   async start(): Promise<void> {
-    const linkFile = this.getLinkFile();
-    // Poll for link.json to appear (embedded server writes it after starting)
-    let attempts = 0;
-    while (!fs.existsSync(linkFile) && attempts < 100) {
-      await new Promise(r => setTimeout(r, 100));
-      attempts++;
+    const res = await fetch(this.url('hello'), { method: 'POST', headers: this.headers(true), body: JSON.stringify({ protocol: LINK_PROTOCOL, engineId: this.engineId }) })
+    if (!res.ok) throw new Error(`bridge hello refused: ${res.status} ${await res.text()}`)
+    this.bridgeId = (await res.json()).bridgeId
+    this.running = true
+    this.loop = this.poll()
+  }
+
+  // One long wait at a time, like the real mod: the hub answers as soon as it has orders.
+  private async poll(): Promise<void> {
+    while (this.running) {
+      try {
+        const res = await fetch(this.url(`orders?bridgeId=${encodeURIComponent(this.bridgeId)}&wait=${POLL_WAIT_MS}`), { headers: this.headers() })
+        if (!res.ok) { await new Promise(resolve => setTimeout(resolve, 200)); continue }
+        const { orders = [] } = await res.json() as { orders?: Order[] }
+        if (orders.length === 0) continue
+        this.orders.push(...orders)
+        await fetch(this.url('ack'), { method: 'POST', headers: this.headers(true), body: JSON.stringify({ bridgeId: this.bridgeId, orderIds: orders.map(order => order.orderId) }) })
+      } catch {
+        if (this.running) await new Promise(resolve => setTimeout(resolve, 200))
+      }
     }
-    if (!fs.existsSync(linkFile)) {
-      throw new Error(`link.json not found at ${linkFile} after 10 seconds`);
+  }
+
+  // The first recorded order that matches, waiting for it.
+  async waitForOrder(isWanted: (order: Order) => boolean, timeoutMs = ORDER_TIMEOUT_MS): Promise<Order> {
+    const deadline = Date.now() + timeoutMs
+    for (;;) {
+      const found = this.orders.find(isWanted)
+      if (found !== undefined) return found
+      if (Date.now() > deadline) throw new Error(`no matching order, received: ${JSON.stringify(this.orders)}`)
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
-    const link = JSON.parse(fs.readFileSync(linkFile, 'utf8'));
-    this.secret = link.secret;
-    this.port = link.port;
-    this.running = true;
-    await this.hello();
-    this.pollOrders();
   }
 
   async stop(): Promise<void> {
-    this.running = false;
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-  }
-
-  private async hello(): Promise<void> {
-    const res = await fetch(`http://127.0.0.1:${this.port}/bridge/v1/hello`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.secret}`,
-      },
-      body: JSON.stringify({ protocol: LINK_PROTOCOL, engineId: this.getEngineId() }),
-    });
-    if (!res.ok) {
-      throw new Error(`hello failed: ${res.status} ${await res.text()}`);
-    }
-    const data = await res.json();
-    this.bridgeId = data.bridgeId || '';
-  }
-
-  private pollOrders(): void {
-    this.pollInterval = setInterval(async () => {
-      if (!this.running) return;
-      try {
-        const res = await fetch(`http://127.0.0.1:${this.port}/bridge/v1/orders?bridgeId=${this.bridgeId}&wait=20000`, {
-          headers: {
-            Authorization: `Bearer ${this.secret}`,
-          },
-        });
-        if (!res.ok) return;
-        const orders = await res.json();
-        for (const order of orders) {
-          if (this.seenOrderIds.has(order.orderId)) continue;
-          this.seenOrderIds.add(order.orderId);
-          this.config.onOrder?.(order);
-          // Auto-ack with bridgeId
-          await this.ack(order.orderId);
-          this.config.onAck?.(order.engineId);
-        }
-      } catch {
-        // Ignore poll errors
-      }
-    }, 200);
-  }
-
-  private async ack(orderId: string): Promise<void> {
-    try {
-      await fetch(`http://127.0.0.1:${this.port}/bridge/v1/ack`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.secret}`,
-        },
-        body: JSON.stringify({ bridgeId: this.bridgeId, orderIds: [orderId] }),
-      });
-    } catch {
-      // Ignore ack errors
-    }
+    this.running = false
+    await this.loop?.catch(() => {})
   }
 }
 
-export const createFakeMod = (config: FakeModConfig) => new FakeMod(config);
+export const readLink = (linkFile: string): { port: number, secret: string, dataDir: string } => JSON.parse(fs.readFileSync(linkFile, 'utf8'))
