@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 
-import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, saveIndex, saveSessionList, scanHostFiles, sessionsOf } from './session-index.mjs'
+import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, runningDistrosOf, saveIndex, saveSessionList, scanHostFiles, sessionsOf, wslLiveDirsOf } from './session-index.mjs'
 import { findMatches, hostsByEngineOf, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
 import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
 import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, send, sendNotFound } from './cockpit-server-http.mjs'
@@ -52,21 +52,67 @@ const PARK_KINDS = new Set(['blocked', 'later'])
 const UNSAFE_FOLDER_PATTERN = /[\x00-\x1f";]/
 const FOREIGN_SITES = new Set(['cross-site', 'same-site'])
 
-// Lists MSIX package folders under LOCALAPPDATA/Packages on Windows.
-const msixPackageNames = (homeDir, env) => {
+// Lists the folders of LOCALAPPDATA/<parent> on Windows: the MSIX packages (Packages) and
+// Claude Desktop's data folders (Claude-Data).
+const localAppDataNames = (homeDir, env, parent) => {
   if (process.platform !== 'win32') return []
-  const packagesDir = path.join(env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), 'Packages')
   try {
-    return fs.readdirSync(packagesDir)
+    return fs.readdirSync(path.join(env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), parent))
   } catch {
     return []
   }
 }
 
+// Read at each refresh: Claude Desktop creates its data folder at its first launch, maybe
+// after the cockpit started.
+const hostSessionsDirsNow = (homeDir, env) => hostSessionsDirsOf(process.platform, homeDir, env, localAppDataNames(homeDir, env, 'Packages'), localAppDataNames(homeDir, env, 'Claude-Data'))
+
+const WSL_LIST_TIMEOUT_MS = 5000
+const WSL_LIST_REFRESH_MS = 30000
+
+// The WSL distros running now (Windows only), from `wsl.exe --list --running --quiet`. Never
+// waits longer than WSL_LIST_TIMEOUT_MS: on a machine without WSL the command may not answer.
+const listRunningDistros = () => new Promise(resolve => {
+  if (process.platform !== 'win32') return resolve([])
+  const chunks = []
+  let child
+  const done = distros => {
+    clearTimeout(timer)
+    resolve(distros)
+  }
+  const timer = setTimeout(() => {
+    child?.kill()
+    done([])
+  }, WSL_LIST_TIMEOUT_MS)
+  try {
+    child = spawn('wsl.exe', ['--list', '--running', '--quiet'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] })
+  } catch {
+    return done([])
+  }
+  child.stdout.on('data', chunk => chunks.push(chunk))
+  child.on('error', () => done([]))
+  child.on('close', code => done(code === 0 ? runningDistrosOf(Buffer.concat(chunks)) : []))
+})
+
+// The last known list, asked again in the background at most every WSL_LIST_REFRESH_MS: the
+// session index never waits for wsl.exe.
+const runningDistrosNow = ctx => {
+  const { wsl } = ctx.state
+  if (!wsl.isAsking && Date.now() - wsl.at >= WSL_LIST_REFRESH_MS) {
+    wsl.isAsking = true
+    wsl.at = Date.now()
+    void ctx.runningDistros()
+      .then(distros => { wsl.distros = distros })
+      .catch(() => {})
+      .finally(() => { wsl.isAsking = false })
+  }
+  return wsl.distros
+}
+
 // Everything one cockpit server needs: the fixed assets (`rootDir`), where it
 // reads and writes the page, index and pasted images (`dataDir`), its port,
 // its session token, and where the orders for the mod go (`sink`).
-const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env }) => ({
+const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, pageAuth = 'meta', token = crypto.randomBytes(24).toString('hex'), homeDir = os.homedir(), env = process.env, runningDistros = listRunningDistros }) => ({
   rootDir,
   dataDir,
   port,
@@ -80,14 +126,16 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
   cacheFile: path.join(dataDir, 'session-cache.json'),
   searchCacheFile: path.join(dataDir, 'search-cache.json'),
   transcriptsDir: path.join(homeDir, '.claude', 'projects'),
-  hostSessionsDirs: hostSessionsDirsOf(process.platform, homeDir, env, msixPackageNames(homeDir, env)),
+  hostSessionsDirs: () => hostSessionsDirsNow(homeDir, env),
   liveSessionsDir: path.join(homeDir, '.claude', 'sessions'),
+  runningDistros,
   state: {
     sessionIndex: loadIndex(path.join(dataDir, 'session-cache.json')),
     savedLiveKey: null,
     isIndexing: false,
     remoteRepos: new Map(),
     lastReportedError: '',
+    wsl: { at: 0, distros: [], isAsking: false },
     searchIndex: { files: {} },
     searchRefresh: null,
     isSearchDirty: false,
@@ -256,11 +304,12 @@ const refreshSessionIndex = async ctx => {
   if (state.isIndexing) return
   state.isIndexing = true
   try {
-    const scanned = (await Promise.all(ctx.hostSessionsDirs.map(dir => scanHostFiles(dir)))).flat()
+    const scanned = (await Promise.all(ctx.hostSessionsDirs().map(dir => scanHostFiles(dir)))).flat()
     const refreshed = await refreshIndex(state.sessionIndex, scanned, readText)
-    const live = await readLiveEngineIds(ctx.liveSessionsDir)
-    const liveKey = [...live].sort().join('|')
     state.sessionIndex = refreshed.index
+    const wslDirs = wslLiveDirsOf(sessionsOf(refreshed.index), runningDistrosNow(ctx))
+    const live = [...new Set((await Promise.all([ctx.liveSessionsDir, ...wslDirs].map(dir => readLiveEngineIds(dir)))).flat())]
+    const liveKey = [...live].sort().join('|')
     const remotesChanged = await resolveRemoteRepos(ctx, state.sessionIndex)
     if (!refreshed.changed && !remotesChanged && liveKey === state.savedLiveKey) return
     saveIndex(ctx.cacheFile, state.sessionIndex)

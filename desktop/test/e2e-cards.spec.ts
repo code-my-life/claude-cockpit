@@ -97,6 +97,30 @@ test('A3: the open island shows the deck, top card face up, never an empty block
   await attachScreenshot(testInfo, island, 'A3-paquet')
 })
 
+test('A5: the team view (ÉQUIPE) shows cards, not the old rows, and a card keeps its face across a data refresh (#66)', async ({}, testInfo) => {
+  const page = await openCockpit(cockpit.app)
+  await expect(cardOf(page, 'e2e-question')).toBeVisible({ timeout: DATA_REFRESH_MS })
+  await page.locator('[data-view="team"]').click()
+  const team = page.locator('#team')
+  const teamCard = (engineId: string) => team.locator(`sg-flip[data-engine="${engineId}"]`)
+  for (const [zone, engineId] of [['waiting', 'e2e-question'], ['working', 'e2e-working'], ['stuck', 'e2e-blocked'], ['later', 'e2e-later']]) {
+    await expect(team.locator(`.t-zone.${zone} sg-flip[data-engine="${engineId}"]`)).toBeVisible()
+  }
+  await expect(team.locator('.t-agent')).toHaveCount(0)
+  const card = teamCard('e2e-question')
+  await card.evaluate(el => el.scrollIntoView({ block: 'center' }))
+  await card.locator('sg-card').click()
+  await expect(card).toHaveAttribute('flipped', '')
+  // New data: the page renders again; the card is the same node, still face up.
+  const marker = await card.evaluate(el => { (el as HTMLElement & { e2eMarker?: number }).e2eMarker = 1; return 1 })
+  const before = await page.evaluate(() => (window as unknown as { __CONVERSATIONS__: { generatedAt: number } }).__CONVERSATIONS__.generatedAt)
+  cockpit.writeData()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __CONVERSATIONS__: { generatedAt: number } }).__CONVERSATIONS__.generatedAt), { timeout: DATA_REFRESH_MS * 2 }).toBeGreaterThan(before)
+  expect(await teamCard('e2e-question').evaluate(el => (el as HTMLElement & { e2eMarker?: number }).e2eMarker)).toBe(marker)
+  await expect(teamCard('e2e-question')).toHaveAttribute('flipped', '')
+  await attachScreenshot(testInfo, page, 'A5-equipe')
+})
+
 test('A4: with another page version, the island shows the update notice', async ({}, testInfo) => {
   const island = await openIsland(cockpit.app)
   await expect(island.locator('#pile sg-flip[data-engine]').first()).toBeVisible({ timeout: DATA_REFRESH_MS })

@@ -1289,15 +1289,36 @@
     </section>`;
   };
 
-  const renderTeamCardZone = (zone, title, color, rows, now, empty = '') => {
-    const lane = document.createElement('div');
-    lane.className = 'lane cards';
-    renderCardLane(lane, rows, now);
-    const content = rows.length === 0 && empty ? empty : lane.outerHTML;
-    return `<section class="t-zone ep-plate ${zone}" aria-label="${escapeHtml(title)}">
-      <div class="t-zone-head"><span class="t-dot" style="background: ${color}"></span><span class="t-zone-title">${escapeHtml(title)}</span><span class="t-zone-count">${rows.length}</span></div>
-      ${content}
-    </section>`;
+  const TEAM_ZONES = [
+    ['waiting', 'T\'attendent', 'var(--warning)'],
+    ['working', 'En mission', 'var(--accent)'],
+    ['stuck', 'Bloqués', 'var(--danger)'],
+    ['later', 'Plus tard', 'var(--ink-faint)'],
+  ];
+
+  // The card zones stay in the page from one render to the next: a card keeps its face and its
+  // WebGPU canvas, as in the list view. Rendered into a detached node and copied as HTML, it lost both.
+  const teamCardBoardOf = team => {
+    const existing = team.querySelector(':scope > .t-board[data-cards]');
+    if (existing) return existing;
+    team.innerHTML = `<div class="t-board" data-cards>${TEAM_ZONES.map(([zone, title, color]) => `<section class="t-zone ep-plate ${zone}" aria-label="${escapeHtml(title)}">
+      <div class="t-zone-head"><span class="t-dot" style="background: ${color}"></span><span class="t-zone-title">${escapeHtml(title)}</span><span class="t-zone-count"></span></div>
+      <div class="t-zone-empty"></div>
+      <div class="lane cards" data-team-zone="${zone}"></div>
+    </section>`).join('')}</div><div class="t-extra"></div>`;
+    return team.querySelector(':scope > .t-board[data-cards]');
+  };
+
+  const renderTeamCards = (team, groups, now) => {
+    const board = teamCardBoardOf(team);
+    for (const [zone] of TEAM_ZONES) {
+      const rows = groups[zone];
+      const section = board.querySelector(`.t-zone.${zone}`);
+      section.querySelector('.t-zone-count').textContent = rows.length;
+      section.querySelector('.t-zone-empty').innerHTML = zone === 'waiting' && rows.length === 0 ? renderTeamEmpty() : '';
+      renderCardLane(section.querySelector('.lane'), rows, now);
+    }
+    return team.querySelector(':scope > .t-extra');
   };
 
   const renderTeamEmpty = () => {
@@ -1393,29 +1414,25 @@
     </div>`;
   };
 
-  const renderTeam = now => {
+  const renderTeam = (now, useCards) => {
     const groups = teamGroups();
-    let board;
+    const team = document.getElementById('team');
+    const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
+    if (state.teamPopId && !popRow) state.teamPopId = null;
+    const popup = popRow ? renderTeamPopup(popRow, now) : '';
+    state.teamPopFresh = false;
+    const extra = `${groups.rest.length > 0 ? renderTeamRest(groups.rest, now) : ''}${popup}`;
     if (useCards) {
-      board = `<div class="t-board">
-        ${renderTeamCardZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
-        ${renderTeamCardZone('working', 'En mission', 'var(--accent)', groups.working, now)}
-        ${renderTeamCardZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
-        ${renderTeamCardZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
-      </div>`;
+      renderTeamCards(team, groups, now).innerHTML = extra;
     } else {
-      board = `<div class="t-board">
+      const board = `<div class="t-board">
         ${renderTeamZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
         ${renderTeamZone('working', 'En mission', 'var(--accent)', groups.working, now)}
         ${renderTeamZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
         ${renderTeamZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
       </div>`;
+      team.innerHTML = `${board}${extra}`;
     }
-    const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
-    if (state.teamPopId && !popRow) state.teamPopId = null;
-    const popup = popRow ? renderTeamPopup(popRow, now) : '';
-    state.teamPopFresh = false;
-    document.getElementById('team').innerHTML = `${board}${groups.rest.length > 0 ? renderTeamRest(groups.rest, now) : ''}${popup}`;
     document.body.style.overflow = popRow ? 'hidden' : (state.bigId === null ? '' : 'hidden');
     return groups;
   };
@@ -1732,7 +1749,7 @@
     document.getElementById('rest-list').innerHTML = state.othersOpen ? groups.others.map(row => renderRestRow(row, now)).join('') : '';
 
     renderDayStats();
-    if (state.view === 'team') renderTeam(now);
+    if (state.view === 'team') renderTeam(now, useCards);
     else document.getElementById('team').innerHTML = '';
     hydrateIdentities();
 
