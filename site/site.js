@@ -18,13 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Stop animations on flow-type elements if reduced motion
-  if (still) {
-    document.querySelectorAll('ep-flow-type').forEach(el => {
-      el.setAttribute('animate', 'none');
-    });
-  }
-  
   // Keyboard accessibility for sg-flip cards
   document.querySelectorAll('sg-flip[tabindex]').forEach(el => {
     el.addEventListener('keydown', e => {

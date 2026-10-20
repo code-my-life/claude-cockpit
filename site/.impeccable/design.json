@@ -119,10 +119,10 @@
       "Fidélité mesurée à la maquette validée, par test de structure et comparaison de pixels."
     ],
     "rules": [
-      { "name": "The Lit Instrument Rule", "body": "La couleur est réservée aux gravures holographiques des cartes (<sg-card>) et au fond BgGen. Aucun texte, bouton, tag ou fond d'interface ne prend de teinte.", "section": "colors" },
+      { "name": "The Lit Instrument Rule", "body": "La couleur est réservée aux gravures holographiques des cartes (<sg-card>), au reflet de la carte du logo et au fond BgGen. Aucun texte, bouton, tag ou fond d'interface ne prend de teinte.", "section": "colors" },
       { "name": "The Icon and Word Rule", "body": "Un état se lit toujours par une icône et un mot (Permission, Question, Delivered, Working). Les tons d'état sont des gris : si on retire la couleur, rien ne doit changer.", "section": "colors" },
       { "name": "The Two Voices Rule", "body": "Le serif parle, le mono commande. Un titre n'est jamais en mono, un bouton ou un tag n'est jamais en serif.", "section": "typography" },
-      { "name": "The One Display Rule", "body": "La taille Display n'apparaît qu'une fois, dans le héros. Le nom en grand du pied de page est un ep-flow-type décoratif, masqué aux lecteurs d'écran.", "section": "typography" },
+      { "name": "The One Display Rule", "body": "La taille Display ne sert qu'au titre du héros et à la signature du bas de page (le logo et « Claude Cockpit », masqués aux lecteurs d'écran).", "section": "typography" },
       { "name": "The Two Lines Rule", "body": "Aucun titre, du héros aux plaques, ne dépasse deux lignes, à 1440 comme à 390 px, en anglais comme en français. On raccourcit le texte avant de toucher à la taille. Un test le vérifie avec les vraies polices.", "section": "typography" },
       { "name": "The Mockup First Rule", "body": "Toute évolution qui change la mise en page passe d'abord par une nouvelle maquette validée dans docs/design/site/. Le test de structure et la comparaison visuelle à 1440 et 390 px font respecter la maquette en vigueur.", "section": "layout" },
       { "name": "The Glass Over Paper Rule", "body": "Le verre flotte toujours au-dessus du papier grainé et du fond BgGen. On ne pose pas de verre sur du verre, sauf les tags et les boutons à l'intérieur d'une plaque.", "section": "elevation" }

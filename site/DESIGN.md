@@ -184,7 +184,7 @@ Une palette sans teinte : des gris légèrement chauds, de la craie au graphite,
 Les tons d'état du thème Noir sont eux aussi des gris (success, warning, danger et leurs teintes). Ils se distinguent par l'icône et le mot du tag, jamais par la couleur.
 
 ### Named Rules
-**The Lit Instrument Rule.** La couleur est réservée aux gravures holographiques des cartes (`<sg-card>`) et au fond `BgGen`. Aucun texte, bouton, tag ou fond d'interface ne prend de teinte.
+**The Lit Instrument Rule.** La couleur est réservée aux gravures holographiques des cartes (`<sg-card>`), au reflet de la carte du logo et au fond `BgGen`. Aucun texte, bouton, tag ou fond d'interface ne prend de teinte.
 
 **The Icon and Word Rule.** Un état se lit toujours par une icône et un mot (Permission, Question, Delivered, Working). Les tons d'état sont des gris : si on retire la couleur, rien ne doit changer.
 
@@ -209,7 +209,7 @@ Les tons d'état du thème Noir sont eux aussi des gris (success, warning, dange
 ### Named Rules
 **The Two Voices Rule.** Le serif parle, le mono commande. Un titre n'est jamais en mono, un bouton ou un tag n'est jamais en serif.
 
-**The One Display Rule.** La taille Display n'apparaît qu'une fois, dans le héros. Le nom en grand du pied de page est un `ep-flow-type` décoratif, masqué aux lecteurs d'écran.
+**The One Display Rule.** La taille Display ne sert qu'au titre du héros et à la signature du bas de page (le logo et « Claude Cockpit », masqués aux lecteurs d'écran).
 
 **The Two Lines Rule.** Aucun titre, du héros aux plaques, ne dépasse deux lignes, à 1440 comme à 390 px, en anglais comme en français. On raccourcit le texte avant de toucher à la taille. Un test le vérifie avec les vraies polices.
 
@@ -269,7 +269,10 @@ Les tags (`ep-tag`) : mono 11 px en capitales, pilule de verre. Les variantes d'
 - **Head :** titre de plaque à gauche, tag à droite (`ep-plate__head`), par exemple « Privacy / Local first ».
 
 ### Navigation
-Une barre de verre détachée du bord (12 px en haut et sur les côtés, arrondi 24 px, 56 px de haut), collante au défilement. À gauche la marque (`ep-mark` 32 px et « Claude Cockpit » en serif 24 px), à droite cinq liens en mono capitales, Cendre au repos, Craie au survol. Le dernier lien bascule vers la version française. Sous 900 px, la navigation passe sur sa propre ligne et défile horizontalement sans barre visible.
+Une barre de verre détachée du bord (12 px en haut et sur les côtés, arrondi 24 px, 56 px de haut), collante au défilement. À gauche le logo (`.cc-mark` 32 px) et « Claude Cockpit » en serif 24 px, à droite cinq liens en mono capitales, Cendre au repos, Craie au survol. Le dernier lien bascule vers la version française. Sous 900 px, la navigation passe sur sa propre ligne et défile horizontalement sans barre visible.
+
+### Logo
+Une main de trois cartes en éventail (`.cc-mark`, SVG en ligne de 32 × 32). Les deux cartes du fond sont dessinées à l'encre, remplies de la couleur de la surface (`--mark-bg`). La carte du dessus porte le reflet holographique des cartes, en dégradé des couleurs de séries du thème sombre (#9ba8ff, #4fc3cf, #e0b04a, #d4558a), avec un trait de lumière. C'est le seul point de couleur hors des cartes : il dit « cartes holographiques » dès l'en-tête. Trois usages : la barre de navigation (32 px), la signature du bas de page (96 px, avec le nom en Display, qui passe sous le logo sur téléphone) et le favicon (`favicon.svg`, couleurs fixes, lisible sur onglet clair ou sombre).
 
 ### Carte vivante (signature)
 L'objet central du site : une `<sg-card>` (gravure, finition, rareté, état) dans un `<sg-flip>` qui se retourne au clic, à Entrée ou à Espace. Le dos montre la gravure et le titre ; la face avant (`cc-front`, Papier de nuit à 86 %, arrondi 14 px, 16 px de marge) montre un tag d'état, la demande en clair, les réponses rapides et une note. Chaque carte retournable porte `role="button"` et un `aria-label` qui dit son état et l'action. Les seeds sont fixes pour que le rendu soit le même à chaque visite. La face avant est opaque à 86 % : la gravure du dos reste visible au travers, c'est voulu. Elle contient toujours sa demande et ses réponses sans défilement, un test le vérifie.
