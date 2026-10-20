@@ -16,8 +16,8 @@ function copySiteDir(src, dest) {
     const srcPath = join(src, entry.name);
     const destPath = join(dest, entry.name);
 
-    // Skip the dist and test directories
-    if (entry.name === 'dist' || entry.name === 'test') {
+    // Skip the dist and test directories, and the design system notes (not published)
+    if (['dist', 'test', 'DESIGN.md', '.impeccable'].includes(entry.name)) {
       continue;
     }
 
