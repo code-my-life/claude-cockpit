@@ -7,16 +7,16 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const templatePath = path.join(__dirname, 'conversations.html')
 
-test('team view renders cards not rows - renderTeam function uses useCards flag', () => {
+test('team view renders cards not rows - both renders read the shared cardsOn check', () => {
   const html = fs.readFileSync(templatePath, 'utf8')
-  
-  // Verify that renderTeam function uses useCards flag
-  // The fix should make renderTeam check useCards and use renderCardLane for team zones
-  assert.match(html, /const useCards = isCards/, 'useCards flag should be defined from isCards')
-  
-  // Verify that renderTeam uses renderCardLane for team zones when useCards is true
-  // The pattern: renderTeam should contain logic that branches on useCards
-  assert.match(html, /renderTeam[^}]*useCards|useCards[^}]*renderTeam/, 'renderTeam should reference useCards')
+
+  // renderTeam used to read useCards, a constant local to render(): a ReferenceError on every team
+  // render (audit 2026-10-20, P0). Both renders now call the same function.
+  assert.match(html, /const cardsOn = \(\) =>/, 'cardsOn should be defined once, outside render()')
+  const team = html.slice(html.indexOf('const renderTeam = now =>'), html.indexOf('const renderTeam = now =>') + 400)
+  assert.match(team, /if \(cardsOn\(\)\)/, 'renderTeam should call cardsOn()')
+  assert.doesNotMatch(team, /\buseCards\b/, 'renderTeam should not read the local useCards of render()')
+  assert.match(html, /const useCards = cardsOn\(\);/, 'render() should take useCards from cardsOn()')
 })
 
 test('team view renders cards not rows - team zones rendered via renderCardLane when useCards', () => {

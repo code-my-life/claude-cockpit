@@ -143,7 +143,7 @@
     const focusFirst = view => {
       const selector = FIELD_OF_VIEW[view] || FIRST_FOCUS;
       const isShown = el => !el.hidden && el.offsetParent !== null;
-      const el = $(selector, ctx.layerEl(shownViewOf(view))).find(isShown) || $(selector).find(isShown);
+      const el = $$(selector, ctx.layerEl(shownViewOf(view))).find(isShown) || $$(selector).find(isShown);
       if (el) el.focus({ preventScroll: true });
     };
 

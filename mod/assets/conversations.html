@@ -468,6 +468,8 @@
   const isIsland = pageParams.has('island');
   // Les conversations en cartes (systems-generator) ; ?cards=0 garde l'ancien affichage en lignes.
   const isCards = !isIsland && pageParams.get('cards') !== '0';
+  // Shared by the list and team renders: both draw cards only once the card engine is ready.
+  const cardsOn = () => Boolean(isCards && state.data.cards !== false && window.CockpitCards && window.CockpitCards.isReady());
   const isIslandCards = isIsland && pageParams.get('cards') !== '0' && !(window.__CONVERSATIONS__ && window.__CONVERSATIONS__.cards === false);
   const isOsGlass = pageParams.has('glass');
   const isLauncher = pageParams.has('launcher');
@@ -1396,7 +1398,7 @@
   const renderTeam = now => {
     const groups = teamGroups();
     let board;
-    if (useCards) {
+    if (cardsOn()) {
       board = `<div class="t-board">
         ${renderTeamCardZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
         ${renderTeamCardZone('working', 'En mission', 'var(--accent)', groups.working, now)}
@@ -1701,7 +1703,7 @@
     let offset = 0;
     for (const row of [...groups.waiting, ...groups.working, ...groups.parked]) state.shownOrder.set(row.engineId, offset++);
 
-    const useCards = isCards && state.data.cards !== false && window.CockpitCards && window.CockpitCards.isReady();
+    const useCards = cardsOn();
     if (useCards) window.CockpitCards.configure({ finishes: state.data.cardFinishes });
     const crew = document.getElementById('crew');
     if (useCards) window.CockpitCards.renderMinis(crew, [...groups.waiting, ...groups.working], row => cardInfoOf(row, now), row => (row.stats ? `${row.stats.messages} msg` : ''));
@@ -1732,7 +1734,13 @@
     document.getElementById('rest-list').innerHTML = state.othersOpen ? groups.others.map(row => renderRestRow(row, now)).join('') : '';
 
     renderDayStats();
-    if (state.view === 'team') renderTeam(now);
+    if (state.view === 'team') {
+      // A failed team render must say so in the view rather than leave an empty screen that reads as "nobody waits".
+      try { renderTeam(now); } catch (error) {
+        console.error('team view render failed', error);
+        document.getElementById('team').innerHTML = `<div class="ep-alert ep-tone-warning" role="alert"><p class="ep-alert__title">La vue Équipe n'a pas pu s'afficher</p><p class="ep-alert__msg">Passe en vue Liste pour voir les conversations. Détail : ${escapeHtml(String(error && error.message || error))}</p></div>`;
+      }
+    }
     else document.getElementById('team').innerHTML = '';
     hydrateIdentities();
 
@@ -1883,6 +1891,7 @@
     }
     notifyNewWaiting(state.data.rows);
     render();
+    if (isLauncher && desktop && document.getElementById('search-input').value.trim().length === 0) renderSuggestions({ keep: true });
   };
 
   const sendPost = (path, payload) => fetch(`${serverBase}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-cockpit-token': cockpitToken }, body: JSON.stringify(payload) });
@@ -1973,17 +1982,22 @@
     };
   };
 
-  const renderSuggestions = () => {
+  let shownSuggestions = null;
+  // keep: called by the data refresh; redraws only when the suggestions changed and keeps the selected row.
+  const renderSuggestions = ({ keep = false } = {}) => {
     const rows = window.CockpitDock.suggestionsOf(state.data.rows, WAITING_STATUSES);
+    const signature = rows.map(row => `${row.engineId}:${row.status}:${row.updatedAt}:${row.title}`).join('|');
+    if (keep && signature === shownSuggestions) return;
+    shownSuggestions = signature;
     const waitingCount = rows.filter(row => WAITING_STATUSES.includes(row.status)).length;
     const plural = waitingCount > 1;
-    const header = waitingCount > 0 ? `${waitingCount} conversation${plural ? 's' : ''} t'attend${plural ? 'ent' : ''}` : 'Conversations récentes';
+    const header = rows.length === 0 ? 'Aucune conversation pour l\'instant' : waitingCount > 0 ? `${waitingCount} conversation${plural ? 's' : ''} t'attend${plural ? 'ent' : ''}` : 'Conversations récentes';
     const now = Date.now();
     const results = rows.map(suggestionResultOf);
     const html = results.map(result => renderSearchRow(result, now)).join('');
     document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(header)}</p>${html}`;
     hydrateIdentities();
-    selectLauncherRow(0);
+    selectLauncherRow(keep ? Math.max(launcherIndex, 0) : 0);
   };
 
   const renderSearchStatus = message => {
