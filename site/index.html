@@ -3,6 +3,7 @@
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta charset="utf-8">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>Claude Cockpit: every Claude Code conversation at a glance</title>
 <link rel="stylesheet" href="ds/encrepapier/theme.css">
 <link rel="stylesheet" href="ds/encrepapier/components/bundle.css">
@@ -20,13 +21,17 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 .cc-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .cc-section{margin-top:var(--space-24)}
 .cc-section > p.ep-lede{max-width:var(--measure)}
-.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:center}
+.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:start}
 .cc-hero-card{width:100%;max-width:calc(var(--space-24) * 3.4);justify-self:center}
 .ep-header{gap:var(--space-4)}
 .ep-header .ep-nav{min-width:0;flex:0 1 auto;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;justify-content:flex-start}
 .ep-header__brand{min-height:calc(var(--space-10) + var(--space-1))}
 .ep-header .ep-nav::-webkit-scrollbar{display:none}
-.ep-header__brand ep-mark{width:var(--space-8);height:var(--space-8);flex:none}
+/* The logo: a hand of holographic cards; the back cards take the colour of the surface behind them */
+.cc-mark{display:block;width:var(--space-8);height:var(--space-8);flex:none;overflow:visible;color:var(--ink);--mark-bg:var(--paper)}
+.cc-signature{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--space-4) var(--space-8);margin-top:var(--space-16)}
+.cc-signature .cc-mark{width:var(--space-24);height:var(--space-24)}
+.cc-signature span{margin:0;white-space:nowrap}
 .cc-flip{display:block;width:100%}
 .cc-flip sg-card{width:100%}
 .cc-flip:focus-visible{outline:2px solid var(--focus);outline-offset:var(--space-1)}
@@ -38,6 +43,8 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 .cc-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-6)}
 .cc-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6)}
 .cc-state .ep-toggle{display:flex;flex-wrap:wrap;max-width:100%}
+/* #65: once the buttons wrap, a pill radius cuts into the ends of each row; same specificity as Liquid Paper glass rule, declared later */
+.cc-state .ep-stack > .ep-toggle{border-radius:var(--radius-glass)}
 .cc-state .ep-toggle button{min-height:calc(var(--space-10) + var(--space-1))}
 .cc-band:focus-visible{outline:2px solid var(--focus);outline-offset:var(--space-1)}
 .cc-band figcaption{flex-direction:column;align-items:flex-start;gap:var(--space-1)}
@@ -64,21 +71,39 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 @media (max-width:560px){
   .cc-grid-4,.cc-grid-3,.cc-grid-2,.cc-track{grid-template-columns:minmax(0,1fr)}
 }
+/* #68: the page background (#cc-bg) shows through: only body paints the paper */
+body > .ep-root{background:none}
+#download{padding-bottom:var(--space-16)}
+main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--space-4) var(--space-16);margin-bottom:var(--space-12)}
+@media (max-width:900px){main > .ep-wrap.ep-glass{margin-inline:var(--space-3)}}
+/* Release 0.4.2: review with design-taste-frontend */
+/* The hero title runs across the whole hero so it holds on two lines; text and card share the row below */
+.cc-hero-title{grid-column:1 / -1;margin:0}
+/* Running notes are read at 16px; card fronts keep the smaller Liquid Paper note */
+main .ep-note:not(.cc-front *){font-size:16px}
+/* Sections enter in parts when motion is allowed (site.js adds .cc-reveal); without it nothing is hidden */
+@media (prefers-reduced-motion:no-preference){
+  .cc-reveal{opacity:0;transform:translateY(var(--space-6));transition:opacity .6s cubic-bezier(.2,.8,.2,1) var(--cc-delay,0ms),transform .6s cubic-bezier(.2,.8,.2,1) var(--cc-delay,0ms)}
+  .cc-reveal.is-in{opacity:1;transform:none}
+}
+/* The engravings band wraps on narrow screens instead of running past the edge */
+@media (max-width:900px){.cc-band{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}}
+@media (max-width:560px){.cc-band{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body class="ep-root">
 <div class="ep-root" data-theme="noir" style="position: relative; min-height: 100%">
 <div id="cc-bg" class="cc-bg" aria-hidden="true"></div>
 <header class="ep-header">
-<a class="ep-header__brand" href="#top"><ep-mark name="Claude Cockpit" size="32"></ep-mark> Claude Cockpit</a>
+<a class="ep-header__brand" href="#top"><svg class="cc-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><linearGradient id="cc-holo-head" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ba8ff"/><stop offset=".35" stop-color="#4fc3cf"/><stop offset=".65" stop-color="#e0b04a"/><stop offset="1" stop-color="#d4558a"/></linearGradient></defs><g transform="rotate(-24 16 29)"><rect x="9.5" y="4" width="13" height="19" rx="2.2" fill="var(--mark-bg)" stroke="currentColor" stroke-width="1.8"/></g><g transform="rotate(24 16 29)"><rect x="9.5" y="4" width="13" height="19" rx="2.2" fill="var(--mark-bg)" stroke="currentColor" stroke-width="1.8"/></g><rect x="9.5" y="4" width="13" height="19" rx="2.2" fill="url(#cc-holo-head)" stroke="currentColor" stroke-width="1.8"/><path d="M12.5 15 L19.5 8.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".7"/></svg> Claude Cockpit</a>
 <nav class="ep-nav" aria-label="Main"><a href="#features">Features</a><a href="#install">Install</a><a href="#cards">Cards</a><a href="#roadmap">Roadmap</a><a href="fr/" hreflang="fr" lang="fr">Français</a></nav>
 </header>
 <main id="top">
 <section id="download" class="ep-wrap" aria-labelledby="h-hero" style="padding-top: var(--space-16)">
 <div class="cc-hero">
+<h1 id="h-hero" class="display-xl cc-hero-title">Every conversation, <em>at a glance</em></h1>
 <div class="ep-stack" style="gap: var(--space-6)">
-<h1 id="h-hero" class="display-xl">Every Claude Code conversation, <em>at a glance</em></h1>
-<p class="ep-lede">See who is waiting for you, who is working and who is stuck. Answer, allow or deny without opening the app.</p>
+<p class="ep-lede">See which Claude Code conversations wait for you, work or are stuck. Answer, allow or deny without opening the app.</p>
 <div class="ep-cluster">
 <a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Download for Windows</a>
 <a class="ep-btn ep-btn--ghost ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit">Source on GitHub</a>
@@ -99,7 +124,7 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 </div>
 </div>
 </section>
-<div class="ep-wrap">
+<div class="ep-wrap ep-glass">
 <section class="cc-section" aria-labelledby="h-waiting">
 <h2 id="h-waiting" class="h2">Waiting for your orders</h2>
 <p class="ep-lede">The cockpit sorts your conversations by what they need from you. Turn a card over to read the plain summary and answer.</p>
@@ -364,9 +389,9 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 <section id="developers" class="cc-section" aria-labelledby="h-dev">
 <h2 id="h-dev" class="h2">Three pieces, one repository</h2>
 <div class="cc-grid-3" style="margin-top: var(--space-8)">
-<div class="ep-plate ep-plate--pad"><h3 class="h4">The mod</h3><p class="ep-note">Loaded by every Claude Code conversation in <code>mod/</code>. It publishes the real status and runs a small local server.</p></div>
-<div class="ep-plate ep-plate--pad"><h3 class="h4">The cockpit</h3><p class="ep-note">The page that server shows: list and team views, one holographic card per conversation.</p></div>
-<div class="ep-plate ep-plate--pad"><h3 class="h4">The island</h3><p class="ep-note">An Electron app in <code>desktop/</code>: a glass shape at the top of the screen, always above your windows.</p></div>
+<div><h3 class="h4">The mod</h3><p class="ep-note">Loaded by every Claude Code conversation in <code>mod/</code>. It publishes the real status and runs a small local server.</p></div>
+<div><h3 class="h4">The cockpit</h3><p class="ep-note">The page that server shows: list and team views, one holographic card per conversation.</p></div>
+<div><h3 class="h4">The island</h3><p class="ep-note">An Electron app in <code>desktop/</code>: a glass shape at the top of the screen, always above your windows.</p></div>
 </div>
 <div class="ep-cluster" style="margin-top: var(--space-6)">
 <a class="ep-btn" href="https://github.com/code-my-life/claude-cockpit">Source on GitHub</a>
@@ -374,10 +399,10 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 </div>
 </section>
 <section class="cc-section ep-plate ep-plate--pad cc-cta" aria-labelledby="h-cta">
-<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Never miss a conversation that waits for you</h2><p class="ep-note">Windows 10 and 11, free, about two minutes to install.</p></div>
+<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Never miss a waiting conversation</h2><p class="ep-note">Windows 10 and 11, free, about two minutes to install.</p></div>
 <a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Download for Windows</a>
 </section>
-<ep-flow-type max-size="150" seed="31" wrap="none" style="margin-top: var(--space-16)" aria-hidden="true">Claude|Cockpit</ep-flow-type>
+<div class="cc-signature" aria-hidden="true"><svg class="cc-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><linearGradient id="cc-holo-foot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ba8ff"/><stop offset=".35" stop-color="#4fc3cf"/><stop offset=".65" stop-color="#e0b04a"/><stop offset="1" stop-color="#d4558a"/></linearGradient></defs><g transform="rotate(-24 16 29)"><rect x="9.5" y="4" width="13" height="19" rx="2.2" fill="var(--mark-bg)" stroke="currentColor" stroke-width="1.8"/></g><g transform="rotate(24 16 29)"><rect x="9.5" y="4" width="13" height="19" rx="2.2" fill="var(--mark-bg)" stroke="currentColor" stroke-width="1.8"/></g><rect x="9.5" y="4" width="13" height="19" rx="2.2" fill="url(#cc-holo-foot)" stroke="currentColor" stroke-width="1.8"/><path d="M12.5 15 L19.5 8.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".7"/></svg><span class="display-xl">Claude Cockpit</span></div>
 <footer class="ep-foot ep-cluster" style="justify-content: space-between"><span>Claude Cockpit, MIT licence · <a href="#developers">Developers</a></span><span>Design: Liquid Paper, © Code My Life, all rights reserved</span></footer>
 </div>
 </main>

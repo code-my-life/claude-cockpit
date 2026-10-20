@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T04:00:00+02:00",
+  "title": "Design System: Claude Cockpit, site de présentation",
+  "extensions": {
+    "colorMeta": {
+      "paper-night": { "role": "neutral", "displayName": "Papier de nuit", "canonical": "#17181b", "tonalRamp": ["#0f1012", "#17181b", "#202125", "#2b2c31", "#6a6b6f", "#8a8b8f", "#b3b4b0", "#f0f0ec"] },
+      "paper-deep": { "role": "neutral", "displayName": "Papier profond", "canonical": "#0f1012" },
+      "plate-graphite": { "role": "neutral", "displayName": "Graphite", "canonical": "#202125" },
+      "plate-hover": { "role": "neutral", "displayName": "Graphite éclairé", "canonical": "#2b2c31" },
+      "ink-chalk": { "role": "neutral", "displayName": "Craie", "canonical": "#f0f0ec", "tonalRamp": ["#17181b", "#2d2e33", "#6a6b6f", "#8a8b8f", "#b3b4b0", "#cfd0cc", "#e2e3df", "#f0f0ec"] },
+      "ink-ash": { "role": "neutral", "displayName": "Cendre", "canonical": "#b3b4b0" },
+      "ink-faint": { "role": "neutral", "displayName": "Gris effacé", "canonical": "#6a6b6f" },
+      "line-steel": { "role": "neutral", "displayName": "Acier", "canonical": "#8a8b8f" },
+      "rule-hairline": { "role": "neutral", "displayName": "Filet", "canonical": "rgba(240,240,236,.16)" },
+      "accent-chalk": { "role": "primary", "displayName": "Craie (accent)", "canonical": "#f0f0ec" },
+      "on-accent": { "role": "primary", "displayName": "Texte sur craie", "canonical": "#17181b" },
+      "accent-tint": { "role": "primary", "displayName": "Teinte d'accent", "canonical": "#2d2e33" },
+      "success": { "role": "neutral", "displayName": "Ton succès", "canonical": "#e2e3df" },
+      "warning": { "role": "neutral", "displayName": "Ton alerte", "canonical": "#cfd0cc" },
+      "danger": { "role": "neutral", "displayName": "Ton danger", "canonical": "#ffffff" },
+      "glass": { "role": "neutral", "displayName": "Verre", "canonical": "rgba(255,255,255,.07)" },
+      "glass-edge": { "role": "neutral", "displayName": "Arête de verre", "canonical": "rgba(255,255,255,.16)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Le seul titre du héros, chute en italique." },
+      "headline": { "displayName": "Headline", "purpose": "Un titre par section (h2)." },
+      "title": { "displayName": "Title", "purpose": "Sous-parties de section (h3) et appel final." },
+      "title-s": { "displayName": "Title S", "purpose": "Titres de plaques, d'étapes et de jalons (h4)." },
+      "lede": { "displayName": "Lede", "purpose": "Phrase d'introduction sous un titre, 46 caractères de large au plus." },
+      "body": { "displayName": "Body", "purpose": "Texte courant." },
+      "note": { "displayName": "Note", "purpose": "Descriptions de figures et de plaques, mentions, en 16 px (14 px dans les faces de cartes)." },
+      "label": { "displayName": "Label", "purpose": "Navigation, boutons, tags, légendes, pied de page, en capitales." }
+    },
+    "shadows": [
+      { "name": "shadow-glass", "value": "0 18px 44px -14px rgba(0,0,0,.72), 0 2px 6px rgba(0,0,0,.4)", "purpose": "Plaques et barre de navigation en verre." },
+      { "name": "shadow-glass-s", "value": "0 8px 18px -10px rgba(0,0,0,.7)", "purpose": "Boutons de verre au repos." },
+      { "name": "shadow-glass-pop", "value": "0 32px 70px -22px rgba(0,0,0,.85), 0 3px 8px rgba(0,0,0,.5)", "purpose": "Ce qui passe au-dessus du reste." },
+      { "name": "shadow-plate", "value": "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 34px -24px rgba(0,0,0,.85), 0 2px 3px rgba(0,0,0,.45)", "purpose": "Plaques pleines hors verre." }
+    ],
+    "motion": [
+      { "name": "ease-glass", "value": "cubic-bezier(.3, 1.35, .45, 1)", "purpose": "Léger rebond des boutons de verre au survol (0.2 s)." },
+      { "name": "duration-glass", "value": "200ms", "purpose": "Transitions d'ombre, de fond et de transformation des boutons de verre." },
+      { "name": "flip-front-reveal", "value": "visibility 0s .35s", "purpose": "La face avant d'une carte se masque après le retournement." },
+      { "name": "section-entrance", "value": "opacity + translateY(24px), 0.6s cubic-bezier(.2,.8,.2,1), 70ms stagger", "purpose": "Les parties de chaque section entrent l'une après l'autre, une fois, si le mouvement est permis." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "Fond BgGen figé, ep-flow-type sans animation, aucune transition de bouton, aucune entrée de section." }
+    ],
+    "breakpoints": [
+      { "name": "tablet", "value": "900px" },
+      { "name": "mobile", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bouton principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "L'unique appel à l'action de la vue : Download for Windows.",
+      "html": "<a class=\"ds-btn-primary\" href=\"#\">Download for Windows</a>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 16px 28px; font: 500 11px/1 \"DM Mono\", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: #17181b; background: #f0f0ec; border: 1px solid #f0f0ec; border-radius: 999px; box-shadow: 0 8px 18px -10px rgba(0,0,0,.7); transition: box-shadow .2s, background-color .2s, transform .2s cubic-bezier(.3, 1.35, .45, 1); } .ds-btn-primary:hover { background: #b3b4b0; border-color: #b3b4b0; transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 2px solid #f0f0ec; outline-offset: 3px; }"
+    },
+    {
+      "name": "Bouton de verre",
+      "kind": "button",
+      "refersTo": "button-glass",
+      "description": "Bouton par défaut : pilule translucide à arête claire.",
+      "html": "<a class=\"ds-btn-glass\" href=\"#\">Source on GitHub</a>",
+      "css": ".ds-btn-glass { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 12px 22px; font: 500 11px/1 \"DM Mono\", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: #f0f0ec; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 8px 18px -10px rgba(0,0,0,.7); backdrop-filter: blur(14px) saturate(1.6); transition: box-shadow .2s, background-color .2s, transform .2s cubic-bezier(.3, 1.35, .45, 1); } .ds-btn-glass:hover { background: rgba(255,255,255,.12); transform: translateY(-1px); } .ds-btn-glass:focus-visible { outline: 2px solid #f0f0ec; outline-offset: 3px; }"
+    },
+    {
+      "name": "Bouton fantôme",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Action secondaire, transparente jusqu'au survol.",
+      "html": "<a class=\"ds-btn-ghost\" href=\"#\">Report an issue</a>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 12px 22px; font: 500 11px/1 \"DM Mono\", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: #f0f0ec; background: transparent; border: 1px solid transparent; border-radius: 999px; transition: background-color .2s, border-color .2s; } .ds-btn-ghost:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.16); } .ds-btn-ghost:focus-visible { outline: 2px solid #f0f0ec; outline-offset: 3px; }"
+    },
+    {
+      "name": "Tag d'état",
+      "kind": "chip",
+      "refersTo": "tag-warning",
+      "description": "Un état se lit par l'icône et le mot, jamais par la couleur.",
+      "html": "<span class=\"ds-tag\"><svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v6M12 16.5v.5\"/></svg>Permission</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font: 500 11px/1 \"DM Mono\", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: #cfd0cc; background: #303135; border: 1px solid #cfd0cc; border-radius: 999px; }"
+    },
+    {
+      "name": "Plaque de verre",
+      "kind": "card",
+      "refersTo": "plate",
+      "description": "Conteneur de contenu : étapes d'installation, confidentialité, règle de rareté.",
+      "html": "<div class=\"ds-plate\"><div class=\"ds-plate-head\"><h3 class=\"ds-plate-title\">Privacy</h3><span class=\"ds-plate-tag\">Local first</span></div><p class=\"ds-plate-note\">No account, no analytics, no server of ours.</p></div>",
+      "css": ".ds-plate { position: relative; padding: 24px; color: #f0f0ec; background: rgba(30,31,35,.20); border: 1px solid rgba(255,255,255,.16); border-radius: 24px; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 44px -14px rgba(0,0,0,.72), 0 2px 6px rgba(0,0,0,.4); backdrop-filter: blur(16px) saturate(1.6); background-image: linear-gradient(135deg, rgba(255,255,255,.09) 0%, transparent 42%); } .ds-plate-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; } .ds-plate-title { margin: 0; font: 400 22px/1.15 \"Instrument Serif\", Georgia, serif; letter-spacing: -.005em; } .ds-plate-tag { padding: 6px 12px; font: 500 11px/1 \"DM Mono\", monospace; letter-spacing: .1em; text-transform: uppercase; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; } .ds-plate-note { margin: 8px 0 0; font: 400 14px/1.55 \"Instrument Sans\", system-ui, sans-serif; color: #b3b4b0; }"
+    },
+    {
+      "name": "Barre de navigation",
+      "kind": "nav",
+      "refersTo": "header",
+      "description": "Barre de verre flottante, marque en serif, liens en mono capitales.",
+      "html": "<header class=\"ds-header\"><a class=\"ds-brand\" href=\"#\">Claude Cockpit</a><nav class=\"ds-nav\" aria-label=\"Main\"><a href=\"#\">Features</a><a href=\"#\">Install</a><a href=\"#\">Cards</a><a href=\"#\">Roadmap</a><a href=\"#\" lang=\"fr\">Français</a></nav></header>",
+      "css": ".ds-header { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 6px 28px; background: rgba(30,31,35,.20); border: 1px solid rgba(255,255,255,.16); border-radius: 24px; box-shadow: 0 18px 44px -14px rgba(0,0,0,.72); backdrop-filter: blur(16px) saturate(1.6); } .ds-brand { font: 400 24px/1 \"Instrument Serif\", Georgia, serif; letter-spacing: -.01em; color: #f0f0ec; text-decoration: none; } .ds-nav { display: flex; margin-left: auto; } .ds-nav a { padding: 14px 10px; font: 500 11px/1 \"DM Mono\", monospace; letter-spacing: .12em; text-transform: uppercase; color: #b3b4b0; text-decoration: none; border-bottom: 2px solid transparent; } .ds-nav a:hover { color: #f0f0ec; } .ds-nav a:focus-visible { outline: 2px solid #f0f0ec; outline-offset: 2px; }"
+    },
+    {
+      "name": "Sélecteur d'état",
+      "kind": "custom",
+      "refersTo": "button-sm",
+      "description": "Bloc de verre (arrondi 24 px) qui change l'état de la carte voisine.",
+      "html": "<div class=\"ds-toggle\" role=\"group\" aria-label=\"Card state\"><button type=\"button\" aria-pressed=\"false\">Working</button><button type=\"button\" aria-pressed=\"true\">Waiting</button><button type=\"button\" aria-pressed=\"false\">Delivered</button></div>",
+      "css": ".ds-toggle { display: inline-flex; flex-wrap: wrap; padding: 4px; gap: 2px; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; background: rgba(255,255,255,.07); backdrop-filter: blur(14px) saturate(1.5); } .ds-toggle button { padding: 9px 16px; font: 500 11px/1 \"DM Mono\", monospace; letter-spacing: .1em; text-transform: uppercase; color: #b3b4b0; background: transparent; border: 0; border-radius: 999px; cursor: pointer; transition: background-color .2s, color .2s, box-shadow .2s; } .ds-toggle button:hover { color: #f0f0ec; } .ds-toggle button[aria-pressed=\"true\"] { color: #f0f0ec; background: rgba(30,31,35,.20); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 5px 12px -5px rgba(0,0,0,.4); } .ds-toggle button:focus-visible { outline: 2px solid #f0f0ec; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le Tableau de bord nocturne",
+    "overview": "Le site se lit comme un cockpit vu de nuit. Le fond est un papier noir grainé, l'encre est une craie presque blanche, et tout ce qui se manipule est posé sous une vitre : barre de navigation flottante, plaques, boutons en pilule. Rien ne prend de couleur, sauf les cartes holographiques. Elles sont les seuls instruments allumés du tableau de bord, et c'est là que le regard doit tomber.\n\nLe système est imposé : Liquid Paper, variante Encre et Papier, thème Noir (data-theme=\"noir\"), en mode verre (aucune surface data-surface=\"paper\"). Les gravures et le fond animé viennent de systems-generator (<sg-card>, <sg-flip>, BgGen en metaballs-page). Le site n'invente aucun jeton : il compose ceux du paquet avec une poignée de classes cc-* de mise en page.\n\nLa densité est celle d'une page éditoriale : de grands titres en Instrument Serif, des textes courts à la mesure de 46 caractères, de larges respirations entre les sections (96 px). Le ton reste calme et sûr. On montre l'objet réel (une carte vivante qu'on retourne) plutôt que de le décrire.",
+    "keyCharacteristics": [
+      "Monochrome strict, de la craie sur du papier noir ; la couleur n'existe que dans les gravures des cartes.",
+      "Verre liquide sur tout ce qui est interactif ou flotte : pilules, plaques arrondies, barre détachée du bord.",
+      "Serif éditorial pour les titres, sans-serif pour lire, mono capitales espacées pour tout ce qui est étiquette ou commande.",
+      "Des démonstrations vivantes (cartes à retourner, sélecteur d'état) à la place des captures décoratives.",
+      "Fidélité mesurée à la maquette validée, par test de structure et comparaison de pixels."
+    ],
+    "rules": [
+      { "name": "The Lit Instrument Rule", "body": "La couleur est réservée aux gravures holographiques des cartes (<sg-card>), au reflet de la carte du logo et au fond BgGen. Aucun texte, bouton, tag ou fond d'interface ne prend de teinte.", "section": "colors" },
+      { "name": "The Icon and Word Rule", "body": "Un état se lit toujours par une icône et un mot (Permission, Question, Delivered, Working). Les tons d'état sont des gris : si on retire la couleur, rien ne doit changer.", "section": "colors" },
+      { "name": "The Two Voices Rule", "body": "Le serif parle, le mono commande. Un titre n'est jamais en mono, un bouton ou un tag n'est jamais en serif.", "section": "typography" },
+      { "name": "The One Display Rule", "body": "La taille Display ne sert qu'au titre du héros et à la signature du bas de page (le logo et « Claude Cockpit », masqués aux lecteurs d'écran).", "section": "typography" },
+      { "name": "The Two Lines Rule", "body": "Aucun titre, du héros aux plaques, ne dépasse deux lignes, à 1440 comme à 390 px, en anglais comme en français. On raccourcit le texte avant de toucher à la taille. Un test le vérifie avec les vraies polices.", "section": "typography" },
+      { "name": "The Mockup First Rule", "body": "Toute évolution qui change la mise en page passe d'abord par une nouvelle maquette validée dans docs/design/site/. Le test de structure et la comparaison visuelle à 1440 et 390 px font respecter la maquette en vigueur.", "section": "layout" },
+      { "name": "The Glass Over Paper Rule", "body": "Le verre flotte toujours au-dessus du papier grainé et du fond BgGen. On ne pose pas de verre sur du verre, sauf les tags et les boutons à l'intérieur d'une plaque.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do utiliser uniquement les jetons et composants de Liquid Paper (--space-*, --radius-*, ep-*), avec des classes cc-* réservées à la mise en page.",
+      "Do garder data-theme=\"noir\" et le mode verre sur toute la page.",
+      "Do garder un seul bouton principal par vue, avec le même libellé « Download for Windows ».",
+      "Do montrer une carte vivante et retournable chaque fois qu'on parle d'une conversation, plutôt qu'une capture ou une illustration.",
+      "Do donner à chaque élément retournable tabindex=\"0\", role=\"button\", un aria-label explicite, et le retournement à Entrée et à Espace.",
+      "Do respecter prefers-reduced-motion : fond BgGen figé, ep-flow-type sans animation, aucune transition de bouton, aucune entrée de section.",
+      "Do garder chaque titre en deux lignes au plus, à toutes les largeurs et dans les deux langues.",
+      "Do faire passer tout changement de mise en page par une nouvelle maquette validée dans docs/design/site/, puis mettre à jour les tests."
+    ],
+    "donts": [
+      "Don't ajouter de couleur à l'interface : pas d'accent bleu, pas de dégradé coloré, pas de texte ou de fond teinté. La couleur reste dans les cartes.",
+      "Don't signaler un état par la couleur seule ; toujours l'icône et le mot.",
+      "Don't créer de jeton, de police, de rayon ou d'ombre en dehors de Liquid Paper, ni écrire des pixels à la main là où une valeur --space-* existe.",
+      "Don't utiliser la taille Display ailleurs que dans le héros, ni mettre un titre en mono ou un bouton en serif.",
+      "Don't mélanger verre et papier sur une même page (pas de data-surface=\"paper\"), ni empiler du verre sur du verre au-delà des tags et boutons dans une plaque.",
+      "Don't inventer de témoignage, de chiffre d'usage, de logo client ou de citation de presse.",
+      "Don't mettre de tiret cadratin dans les textes.",
+      "Don't modifier les fichiers Liquid Paper copiés (ds/encrepapier/) ni ceux de systems-generator (vendor/) ; ils viennent de leurs paquets et Liquid Paper est exclu de la licence MIT."
+    ]
+  }
+}

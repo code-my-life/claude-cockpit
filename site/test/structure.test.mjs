@@ -90,3 +90,39 @@ test('site pages expose every section and theme derived from the mockup (EN and 
   const navENRegex = /<a[^>]*href="fr\/"[^>]*hreflang="fr"[^>]*lang="fr"/;
   assert.ok(navENRegex.test(enContent), "EN page should have FR link");
 });
+// #68: everything under the hero sits in one glass block, the hero stays on the page background
+test('the content block under the hero is a Liquid Paper glass block (mockup, EN and FR)', () => {
+  for (const file of [mockupPath, enFile, frFile]) {
+    const html = fs.readFileSync(file, 'utf-8');
+    const sibling = html.match(/<section id="download"[\s\S]*?<\/section>\s*<div class="([^"]*)"/);
+    assert.ok(sibling, `${file}: #download should be followed by a div`);
+    const classes = sibling[1].split(/\s+/);
+    assert.ok(classes.includes('ep-wrap'), `${file}: the block under the hero should keep ep-wrap`);
+    assert.ok(classes.includes('ep-glass'), `${file}: the block under the hero should carry ep-glass`);
+  }
+});
+
+// Release 0.4.2: the developers section no longer repeats the install section's row of plates
+test('the developers section is not a row of plates like the install section (mockup, EN and FR)', () => {
+  for (const file of [mockupPath, enFile, frFile]) {
+    const html = fs.readFileSync(file, 'utf-8');
+    const section = html.match(/<section id="developers"[\s\S]*?<\/section>/);
+    assert.ok(section, `${file}: #developers should exist`);
+    assert.ok(!/ep-plate/.test(section[0]), `${file}: #developers should not use ep-plate`);
+  }
+});
+
+// Release 0.4.2: the logo is a hand of holographic cards, in the header, the page signature and the favicon
+test('the logo is the hand of holographic cards in the header, the signature and the favicon (mockup, EN and FR)', () => {
+  for (const [file, favicon] of [[mockupPath, 'docs/design/site/favicon.svg'], [enFile, 'site/favicon.svg'], [frFile, 'site/favicon.svg']]) {
+    const html = fs.readFileSync(file, 'utf-8');
+    const brand = html.match(/<a class="ep-header__brand"[\s\S]*?<\/a>/);
+    assert.ok(brand, `${file}: the header brand should exist`);
+    assert.ok(/<svg class="cc-mark"/.test(brand[0]), `${file}: the header brand should carry the cc-mark logo`);
+    assert.ok(!/ep-mark/.test(html), `${file}: the generated ep-mark should be gone`);
+    assert.ok(!/ep-flow-type/.test(html), `${file}: the engraved ep-flow-type name should be gone`);
+    assert.ok(/class="cc-signature"[\s\S]*?<svg class="cc-mark"/.test(html), `${file}: the page signature should carry the logo`);
+    assert.ok(/<link rel="icon" href="[^"]*favicon\.svg" type="image\/svg\+xml">/.test(html), `${file}: the page should link the favicon`);
+    assert.ok(fs.existsSync(favicon), `${favicon} should exist`);
+  }
+});

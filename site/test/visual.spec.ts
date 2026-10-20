@@ -88,7 +88,7 @@ async function sectionIds(page: Page): Promise<string[]> {
 }
 
 // Decode both PNGs in a browser page and compare them pixel by pixel on their common area
-async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: number[], anchorsB: number[]) {
+async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: number[], anchorsB: number[], tolerance = CHANNEL_TOLERANCE) {
   const context = await browser.newContext();
   const page = await context.newPage();
   try {
@@ -194,7 +194,7 @@ async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: num
         urlB: `data:image/png;base64,${b.toString('base64')}`,
         anchorsA,
         anchorsB,
-        tolerance: CHANNEL_TOLERANCE,
+        tolerance,
         coarseTolerance: COARSE_TOLERANCE,
         cols: COARSE_COLS,
         rows: COARSE_ROWS,
@@ -203,6 +203,46 @@ async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: num
   } finally {
     await context.close();
   }
+}
+
+// Decode a PNG in a browser page and return the RGB of its top-left pixel
+async function firstPixel(browser: Browser, png: Buffer): Promise<[number, number, number]> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    return await page.evaluate(async url => {
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('PNG decode failed'));
+        img.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r, g, b] as [number, number, number];
+    }, `data:image/png;base64,${png.toString('base64')}`);
+  } finally {
+    await context.close();
+  }
+}
+
+// Scroll a page point to the middle of the viewport, then return its pixel and the element under it
+async function probe(browser: Browser, page: Page, x: number, y: number) {
+  const { innerHeight } = await page.evaluate(() => ({ innerHeight: window.innerHeight }));
+  await page.evaluate(top => window.scrollTo({ top, behavior: 'instant' }), Math.max(0, y - innerHeight / 2));
+  const scrollY = await page.evaluate(() => window.scrollY);
+  const vy = y - scrollY;
+  const target = await page.evaluate(([px, py]) => {
+    const el = document.elementFromPoint(px, py);
+    if (!el) return 'none';
+    return el.matches('main, section, .ep-wrap') ? 'background' : `${el.tagName.toLowerCase()}.${el.className}`;
+  }, [x, vy]);
+  const shot = await page.screenshot({ clip: { x, y: vy, width: 1, height: 1 } });
+  return { rgb: await firstPixel(browser, shot), target };
 }
 
 let dist: { server: Server; origin: string };
@@ -267,6 +307,47 @@ test.describe('Site structure visual comparison', () => {
           }
         });
       }
+    }
+  }
+
+  // #65: when the state toggle wraps, a pill radius cuts into the buttons at the ends of each row
+  for (const { width, height } of viewports) {
+    for (const [name, origin, route] of [
+      ['mockup', () => mockup.origin, '/'],
+      ['site EN', () => dist.origin, '/'],
+      ['site FR', () => dist.origin, '/fr/index.html'],
+    ] as const) {
+      test(`state toggle buttons stay inside its rounded outline at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, height);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          const outside = await page.evaluate(() => {
+            const toggle = document.querySelector('.cc-state .ep-toggle')!;
+            const t = toggle.getBoundingClientRect();
+            const border = parseFloat(getComputedStyle(toggle).borderTopWidth) || 0;
+            // Inner outline of the toggle: its box minus the border, with the used corner radius
+            const box = { left: t.left + border, right: t.right - border, top: t.top + border, bottom: t.bottom - border };
+            const radius = Math.max(0, Math.min(parseFloat(getComputedStyle(toggle).borderTopLeftRadius), t.height / 2, t.width / 2) - border);
+            const inside = (x: number, y: number) => {
+              if (x < box.left - 0.5 || x > box.right + 0.5 || y < box.top - 0.5 || y > box.bottom + 0.5) return false;
+              const cx = Math.min(Math.max(x, box.left + radius), box.right - radius);
+              const cy = Math.min(Math.max(y, box.top + radius), box.bottom - radius);
+              return Math.hypot(x - cx, y - cy) <= radius + 0.5;
+            };
+            // Sample the outline of each pill button: its ends and the start of its straight edges
+            return Array.from(toggle.querySelectorAll('button')).flatMap(button => {
+              const b = button.getBoundingClientRect();
+              const r = Math.min(parseFloat(getComputedStyle(button).borderTopLeftRadius), b.height / 2);
+              const midY = b.top + b.height / 2;
+              const points = [[b.left, midY], [b.right, midY], [b.left + r, b.top], [b.left + r, b.bottom], [b.right - r, b.top], [b.right - r, b.bottom]];
+              return points.some(([x, y]) => !inside(x, y)) ? [button.textContent!.trim()] : [];
+            });
+          });
+          expect(outside).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
     }
   }
 
@@ -355,4 +436,205 @@ test.describe('Site structure visual comparison', () => {
       await context.close();
     }
   });
+
+  // #68: the page background layer (#cc-bg) must show behind the hero, in the side margins,
+  // and blurred through the glass content block. The layer is painted magenta and its canvas
+  // hidden, so the test depends neither on the generator nor on reduced motion.
+  const BG_CSS = '#cc-bg{background:#ff00ff!important} #cc-bg canvas{visibility:hidden!important}';
+  const magenta = ([r, g, b]: number[]) => r > 200 && b > 200 && g < 40;
+  const throughGlass = ([r, g]: number[]) => r > 120 && r < 245 && g < 60;
+  for (const { width, height } of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    for (const [name, origin, route] of [
+      ['mockup', () => mockup.origin, '/'],
+      ['site EN', () => dist.origin, '/'],
+      ['site FR', () => dist.origin, '/fr/index.html'],
+    ] as const) {
+      test(`page background shows behind the hero and around the content block at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, height);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          await page.addStyleTag({ content: BG_CSS });
+          const geo = await page.evaluate(() => {
+            const pageRect = (el: Element) => {
+              const r = el.getBoundingClientRect();
+              return { top: r.top + window.scrollY, left: r.left + window.scrollX };
+            };
+            const block = document.querySelector('main > div.ep-wrap')!;
+            return { hero: pageRect(document.getElementById('download')!), block: pageRect(block) };
+          });
+          const hero = await probe(browser, page, 8, geo.hero.top + 32);
+          const margin = await probe(browser, page, 3, geo.block.top + 200);
+          const inside = await probe(browser, page, geo.block.left + 8, geo.block.top + 40);
+          console.log(`MEASURE bg ${width} ${name} hero=${hero.rgb} margin=${margin.rgb} inside=${inside.rgb}`);
+          expect([hero.target, margin.target, inside.target]).toEqual(['background', 'background', 'background']);
+          expect(magenta(hero.rgb), `hero pixel ${hero.rgb}`).toBe(true);
+          expect(magenta(margin.rgb), `side margin pixel ${margin.rgb}`).toBe(true);
+          expect(throughGlass(inside.rgb), `glass block pixel ${inside.rgb}`).toBe(true);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+  // Release 0.4.2: the review of the site with design-taste-frontend
+  const PAGES = [
+    ['mockup', () => mockup.origin, '/'],
+    ['site EN', () => dist.origin, '/'],
+    ['site FR', () => dist.origin, '/fr/index.html'],
+  ] as const;
+  const SITE_PAGES = PAGES.filter(([name]) => name !== 'mockup');
+
+  for (const { width, height } of viewports) {
+    for (const [name, origin, route] of PAGES) {
+      // Every heading, the hero title included, holds on two lines or fewer
+      test(`headings hold on two lines at ${width} (${name})`, async ({ browser }) => {
+        // Line breaks depend on the real faces: this test loads the Google Fonts the page asks for
+        const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+        const page = await context.newPage();
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'load' });
+          await page.evaluate(() => document.fonts.ready);
+          expect(await page.evaluate(() => document.fonts.check('40px "Instrument Serif"')), 'Instrument Serif loaded').toBe(true);
+          const tooLong = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('h1, h2, h3, h4')).flatMap(h => {
+              if (h.closest('sg-flip [data-front]')) return [];
+              const range = document.createRange();
+              range.selectNodeContents(h);
+              // Group the text fragments into lines: a fragment starts a new line when its middle is
+              // more than half a line below the previous one (an <em> box does not count as a line)
+              const lineHeight = parseFloat(getComputedStyle(h).lineHeight) || parseFloat(getComputedStyle(h).fontSize);
+              const middles = Array.from(range.getClientRects()).filter(r => r.width > 1).map(r => (r.top + r.bottom) / 2).sort((a, b) => a - b);
+              let lines = 0;
+              let last = -Infinity;
+              for (const m of middles) {
+                if (m - last > lineHeight / 2) lines++;
+                last = m;
+              }
+              return lines > 2 ? [`${h.textContent!.trim()} (${lines} lines)`] : [];
+            })
+          );
+          expect(tooLong).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+
+  for (const { width, height } of viewports) {
+    for (const [name, origin, route] of PAGES) {
+      // A card front holds its whole content: no scrollbar, no clipped buttons
+      test(`every card front holds its content without scrolling at ${width} (${name})`, async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+        const page = await context.newPage();
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'load' });
+          await page.evaluate(() => document.fonts.ready);
+          const overflowing = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('sg-flip .cc-front')).flatMap(front =>
+              front.scrollHeight > front.clientHeight + 1 ? [front.querySelector('p')?.textContent?.trim().slice(0, 40) ?? '?'] : []
+            )
+          );
+          expect(overflowing).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+
+  for (const width of [768, 390]) {
+    for (const [name, origin, route] of PAGES) {
+      // The engravings band wraps instead of running past the screen edge
+      test(`the engravings band stays inside the screen at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, 900);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          const cut = await page.evaluate(() => {
+            const band = document.querySelector('.cc-band')!;
+            const box = band.getBoundingClientRect();
+            return Array.from(band.children).flatMap(item => {
+              const r = item.getBoundingClientRect();
+              return r.left < box.left - 0.5 || r.right > box.right + 0.5 || r.right > window.innerWidth ? [item.textContent!.trim()] : [];
+            });
+          });
+          expect(cut).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+
+  for (const [name, origin, route] of PAGES) {
+    // Running notes are read: 16px or more, outside the small card fronts
+    test(`running notes are set at 16px or more (${name})`, async ({ browser }) => {
+      const { context, page } = await openPage(browser, 1440, 900);
+      try {
+        await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        const small = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('main .ep-note'))
+            .filter(n => !n.closest('sg-flip [data-front]') && parseFloat(getComputedStyle(n).fontSize) < 16)
+            .map(n => n.textContent!.trim().slice(0, 40))
+        );
+        expect(small).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+  }
+
+  for (const [name, origin, route] of SITE_PAGES) {
+    // The state toggle speaks the language of its page
+    test(`the state toggle names the state in the page language (${name})`, async ({ browser }) => {
+      const { context, page } = await openPage(browser, 1440, 900);
+      try {
+        await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        await page.locator('.cc-state .ep-toggle button[data-state="working"]').click();
+        const label = await page.locator('.cc-state .ep-toggle button[data-state="working"]').textContent();
+        await expect(page.locator('.cc-state p.h4')).toHaveText(label!.trim());
+        await expect(page.locator('.cc-state sg-card')).toHaveAttribute('state', 'working');
+      } finally {
+        await context.close();
+      }
+    });
+
+    // Sections enter in staggered parts when motion is allowed, and nothing is hidden when it is not
+    test(`sections enter in parts, and the reduced page shows everything (${name})`, async ({ browser }) => {
+      const moving = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' });
+      const still = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+      try {
+        const page = await moving.newPage();
+        await blockFonts(page);
+        await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        const parts = await page.locator('.cc-reveal').count();
+        expect(parts).toBeGreaterThanOrEqual(16);
+        // Scroll the whole page, then every part has entered and is fully shown
+        const total = await page.evaluate(() => document.documentElement.scrollHeight);
+        for (let y = 0; y <= total; y += 450) {
+          await page.evaluate(top => window.scrollTo({ top, behavior: 'instant' }), y);
+          await page.waitForTimeout(120);
+        }
+        await page.waitForTimeout(1200);
+        const hidden = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('.cc-reveal'))
+            .filter(el => !el.classList.contains('is-in') || parseFloat(getComputedStyle(el).opacity) < 0.99)
+            .map(el => `${el.tagName.toLowerCase()}.${el.className}: ${el.textContent!.trim().slice(0, 30)}`)
+        );
+        expect(hidden).toEqual([]);
+
+        const reduced = await still.newPage();
+        await blockFonts(reduced);
+        await reduced.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        await reduced.waitForTimeout(300);
+        const reducedHidden = await reduced.evaluate(() =>
+          Array.from(document.querySelectorAll('main h2, main .ep-lede, main .ep-plate, main figure')).filter(el => parseFloat(getComputedStyle(el).opacity) < 0.99).length
+        );
+        expect(reducedHidden).toBe(0);
+      } finally {
+        await moving.close();
+        await still.close();
+      }
+    });
+  }
 });
