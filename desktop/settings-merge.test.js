@@ -97,3 +97,53 @@ test('a plan for a missing file creates it, with nothing to back up', () => {
   assert.equal(applyPlan(file, plan, fixedNow), null)
   assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { env: { [KEY]: MOD_DIR } })
 })
+
+const { chainPlans, planAddHooks, planRemoveHooks, HOOK_EVENTS } = require('./settings-merge')
+const HOOK = 'sh "C:/Users/x/.claude/cockpit/cockpit-hook.sh"'
+const ownCommandsOf = (settings, event) => (settings.hooks[event] ?? []).flatMap(entry => entry.hooks.map(hook => hook.command)).filter(command => command.includes('cockpit-hook.sh'))
+
+test('the cockpit hook is declared once on each event, next to the other hooks, in the background but for the start and end of the session', () => {
+  const before = JSON.stringify({ theme: 'dark', hooks: { Stop: [{ hooks: [{ type: 'command', command: '"C:/x/coucou-hook.exe" Stop' }] }] }, model: 'opus' })
+  const plan = planAddHooks(before, HOOK)
+  assert.equal(plan.status, 'change')
+  const after = JSON.parse(plan.after)
+  assert.deepEqual(Object.keys(after), ['theme', 'hooks', 'model'])
+  for (const [event] of HOOK_EVENTS) assert.deepEqual(ownCommandsOf(after, event), [HOOK])
+  assert.equal(after.hooks.Stop[0].hooks[0].command, '"C:/x/coucou-hook.exe" Stop')
+  assert.equal(after.hooks.PreToolUse[0].hooks[0].async, true)
+  assert.equal(after.hooks.Stop[1].hooks[0].async, true)
+  assert.equal(after.hooks.SessionStart[0].hooks[0].async, undefined)
+  assert.equal(after.hooks.SessionEnd[0].hooks[0].async, undefined)
+  assert.equal(after.hooks.Stop[1].hooks[0].timeout, 5)
+})
+
+test('declaring the hook again changes nothing; an older cockpit entry is replaced, never doubled', () => {
+  const once = planAddHooks('{}', HOOK).after
+  assert.equal(planAddHooks(once, HOOK).status, 'unchanged')
+  const moved = JSON.parse(planAddHooks(once, 'sh "D:/new/.claude/cockpit/cockpit-hook.sh"').after)
+  assert.deepEqual(ownCommandsOf(moved, 'Stop'), ['sh "D:/new/.claude/cockpit/cockpit-hook.sh"'])
+})
+
+test('removing the hook keeps every other hook and gives back the file it found', () => {
+  const original = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'other' }] }] }, env: { A: '1' } }
+  const removed = planRemoveHooks(planAddHooks(JSON.stringify(original), HOOK).after)
+  assert.deepEqual(JSON.parse(removed.after), original)
+  assert.deepEqual(JSON.parse(planRemoveHooks(planAddHooks('{}', HOOK).after).after), {})
+  assert.equal(planRemoveHooks('{}').status, 'unchanged')
+})
+
+test('a hooks block of an unexpected type is refused, not overwritten', () => {
+  assert.throws(() => planAddHooks('{ "hooks": [] }', HOOK), /hooks/)
+  assert.throws(() => planAddHooks('{ "hooks": { "Stop": {} } }', HOOK), /hooks\.Stop/)
+})
+
+test('the mod and the hook in one plan of the original file', () => {
+  const plan = chainPlans(planAddPluginDir('{}', MOD_DIR, 'win32'), after => planAddHooks(after, HOOK))
+  assert.equal(plan.status, 'change')
+  assert.deepEqual(plan.changes.map(change => change.key), [KEY, 'hooks'])
+  const file = tempSettings('{}')
+  applyPlan(file, plan, fixedNow)
+  const written = JSON.parse(fs.readFileSync(file, 'utf8'))
+  assert.equal(written.env[KEY], MOD_DIR)
+  assert.deepEqual(ownCommandsOf(written, 'SessionStart'), [HOOK])
+})

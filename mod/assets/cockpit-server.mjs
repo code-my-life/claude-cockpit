@@ -5,7 +5,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 
-import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, runningDistrosOf, saveIndex, saveSessionList, scanHostFiles, sessionsOf, wslLiveDirsOf } from './session-index.mjs'
+import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, runningDistrosOf, saveIndex, saveSessionList, scanHostFiles, sessionsOf, wslHomesOf } from './session-index.mjs'
+import { readHookStatuses } from './hook-status.mjs'
 import { findMatches, hostsByEngineOf, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
 import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
 import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, send, sendNotFound } from './cockpit-server-http.mjs'
@@ -129,6 +130,7 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
   transcriptsDir: path.join(homeDir, '.claude', 'projects'),
   hostSessionsDirs: () => hostSessionsDirsNow(homeDir, env),
   liveSessionsDir: path.join(homeDir, '.claude', 'sessions'),
+  hookStatusDir: path.join(homeDir, '.claude', 'cockpit', 'status'),
   runningDistros,
   state: {
     sessionIndex: loadIndex(path.join(dataDir, 'session-cache.json')),
@@ -308,13 +310,15 @@ const refreshSessionIndex = async ctx => {
     const scanned = (await Promise.all(ctx.hostSessionsDirs().map(dir => scanHostFiles(dir)))).flat()
     const refreshed = await refreshIndex(state.sessionIndex, scanned, readText)
     state.sessionIndex = refreshed.index
-    const wslDirs = wslLiveDirsOf(sessionsOf(refreshed.index), runningDistrosNow(ctx))
-    const live = [...new Set((await Promise.all([ctx.liveSessionsDir, ...wslDirs].map(dir => readLiveEngineIds(dir)))).flat())]
-    const liveKey = [...live].sort().join('|')
+    const wslHomes = wslHomesOf(sessionsOf(refreshed.index), runningDistrosNow(ctx))
+    const liveDirs = [ctx.liveSessionsDir, ...wslHomes.map(home => path.win32.join(home, '.claude', 'sessions'))]
+    const live = [...new Set((await Promise.all(liveDirs.map(dir => readLiveEngineIds(dir)))).flat())]
+    const hooks = await readHookStatuses([ctx.hookStatusDir, ...wslHomes.map(home => path.win32.join(home, '.claude', 'cockpit', 'status'))])
+    const liveKey = `${[...live].sort().join('|')}#${JSON.stringify(hooks)}`
     const remotesChanged = await resolveRemoteRepos(ctx, state.sessionIndex)
     if (!refreshed.changed && !remotesChanged && liveKey === state.savedLiveKey) return
     saveIndex(ctx.cacheFile, state.sessionIndex)
-    saveSessionList(ctx.indexFile, state.sessionIndex, live, state.remoteRepos)
+    saveSessionList(ctx.indexFile, state.sessionIndex, live, state.remoteRepos, hooks)
     state.savedLiveKey = liveKey
   } catch (error) {
     reportError(ctx, 'relevé des sessions', error)

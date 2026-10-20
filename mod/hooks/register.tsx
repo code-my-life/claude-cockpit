@@ -215,17 +215,18 @@ const knownFoldersOf = async ($: EngineInterface, rows: ConversationRow[]) => {
   return [...new Set([...recent, ...repos])]
 }
 
-type SessionIndexFile = { live?: string[]; hosts?: HostSession[] }
-type SessionIndex = { mtimeMs: number; hosts: HostSession[]; liveEngineIds: Set<string> }
+type SessionIndexFile = { live?: string[]; hosts?: HostSession[]; hooks?: Record<string, SessionEntry> }
+type SessionIndex = { mtimeMs: number; hosts: HostSession[]; liveEngineIds: Set<string>; hooked: Record<string, SessionEntry> }
 
-const EMPTY_INDEX: SessionIndex = { mtimeMs: 0, hosts: [], liveEngineIds: new Set() }
+const EMPTY_INDEX: SessionIndex = { mtimeMs: 0, hosts: [], liveEngineIds: new Set(), hooked: {} }
 let sessionIndex: SessionIndex = EMPTY_INDEX
 
 const parseSessionIndex = (text: string, mtimeMs: number): SessionIndex => {
   const data = JSON.parse(text) as SessionIndexFile
   const hosts = data.hosts ?? []
   const liveEngineIds = new Set(data.live ?? [])
-  return { mtimeMs, hosts, liveEngineIds }
+  const hooked = data.hooks !== null && typeof data.hooks === 'object' && !Array.isArray(data.hooks) ? data.hooks : {}
+  return { mtimeMs, hosts, liveEngineIds, hooked }
 }
 
 const readSessionIndex = async ($: EngineInterface): Promise<SessionIndex> => {
@@ -276,12 +277,12 @@ const setSeen = async ($: EngineInterface, row: ConversationRow, isSeen: boolean
 
 const refresh = async ($: EngineInterface) => {
   const live = await readAll($)
-  const { hosts, liveEngineIds } = await readSessionIndex($)
+  const { hosts, liveEngineIds, hooked } = await readSessionIndex($)
   const acks = await readAcks($)
   const shared = await readSharedSummaries($)
   const parked = await readParked($)
   const stats = await readStoredStats($)
-  const rows = buildRows({ live, hosts, liveEngineIds, acks, shared, parked, ownEngineId })
+  const rows = buildRows({ live, hooked, hosts, liveEngineIds, acks, shared, parked, ownEngineId })
   await update($, list, () => rows)
   await update($, summaries, current => mergeSummaries(shared, current))
   if (isServing) await writeDataFile($, rows, shared, stats)

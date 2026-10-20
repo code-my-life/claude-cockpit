@@ -59,7 +59,8 @@
       "oneClick": true,
       "perMachine": false,
       "runAfterFinish": true,
-      "shortcutName": "Claude Cockpit"
+      "shortcutName": "Claude Cockpit",
+      "include": "build/installer.nsh"
     }
   },
   "devDependencies": {

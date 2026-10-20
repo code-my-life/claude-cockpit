@@ -8,7 +8,7 @@ import path from 'node:path'
 import { FakeMod, linkFileOf, readLink } from './fake-mod'
 import { buildFixtures, conversationsDataOf, DESKTOP_DATA_SEARCH, desktopDataSessionsDirOf, desktopSessionsBaseOf, writeDesktopSearchSession, writeDesktopSession, type Fixtures, type Row } from './fixtures/structured-data'
 
-const DESKTOP_DIR = path.join(__dirname, '..')
+export const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
 const SCREENSHOT_TIMEOUT_MS = 5000
 const WINDOW_TIMEOUT_MS = 30_000
@@ -24,7 +24,7 @@ export type Cockpit = {
   terminalLaunches: () => Array<{ cwd: string, at: number }>,
 }
 
-const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
+export const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
   ...process.env,
   COCKPIT_E2E: '1',
   HOME: home,
