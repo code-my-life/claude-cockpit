@@ -101,3 +101,13 @@ test('the content block under the hero is a Liquid Paper glass block (mockup, EN
     assert.ok(classes.includes('ep-glass'), `${file}: the block under the hero should carry ep-glass`);
   }
 });
+
+// Release 0.4.2: the developers section no longer repeats the install section's row of plates
+test('the developers section is not a row of plates like the install section (mockup, EN and FR)', () => {
+  for (const file of [mockupPath, enFile, frFile]) {
+    const html = fs.readFileSync(file, 'utf-8');
+    const section = html.match(/<section id="developers"[\s\S]*?<\/section>/);
+    assert.ok(section, `${file}: #developers should exist`);
+    assert.ok(!/ep-plate/.test(section[0]), `${file}: #developers should not use ep-plate`);
+  }
+});

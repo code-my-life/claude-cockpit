@@ -88,7 +88,7 @@ async function sectionIds(page: Page): Promise<string[]> {
 }
 
 // Decode both PNGs in a browser page and compare them pixel by pixel on their common area
-async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: number[], anchorsB: number[]) {
+async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: number[], anchorsB: number[], tolerance = CHANNEL_TOLERANCE) {
   const context = await browser.newContext();
   const page = await context.newPage();
   try {
@@ -194,7 +194,7 @@ async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: num
         urlB: `data:image/png;base64,${b.toString('base64')}`,
         anchorsA,
         anchorsB,
-        tolerance: CHANNEL_TOLERANCE,
+        tolerance,
         coarseTolerance: COARSE_TOLERANCE,
         cols: COARSE_COLS,
         rows: COARSE_ROWS,
@@ -475,5 +475,165 @@ test.describe('Site structure visual comparison', () => {
         }
       });
     }
+  }
+  // Release 0.4.2: the review of the site with design-taste-frontend
+  const PAGES = [
+    ['mockup', () => mockup.origin, '/'],
+    ['site EN', () => dist.origin, '/'],
+    ['site FR', () => dist.origin, '/fr/index.html'],
+  ] as const;
+  const SITE_PAGES = PAGES.filter(([name]) => name !== 'mockup');
+
+  for (const { width, height } of viewports) {
+    for (const [name, origin, route] of PAGES) {
+      // Every heading, the hero title included, holds on two lines or fewer
+      test(`headings hold on two lines at ${width} (${name})`, async ({ browser }) => {
+        // Line breaks depend on the real faces: this test loads the Google Fonts the page asks for
+        const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+        const page = await context.newPage();
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'load' });
+          await page.evaluate(() => document.fonts.ready);
+          expect(await page.evaluate(() => document.fonts.check('40px "Instrument Serif"')), 'Instrument Serif loaded').toBe(true);
+          const tooLong = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('h1, h2, h3, h4')).flatMap(h => {
+              if (h.closest('sg-flip [data-front]')) return [];
+              const range = document.createRange();
+              range.selectNodeContents(h);
+              // Group the text fragments into lines: a fragment starts a new line when its middle is
+              // more than half a line below the previous one (an <em> box does not count as a line)
+              const lineHeight = parseFloat(getComputedStyle(h).lineHeight) || parseFloat(getComputedStyle(h).fontSize);
+              const middles = Array.from(range.getClientRects()).filter(r => r.width > 1).map(r => (r.top + r.bottom) / 2).sort((a, b) => a - b);
+              let lines = 0;
+              let last = -Infinity;
+              for (const m of middles) {
+                if (m - last > lineHeight / 2) lines++;
+                last = m;
+              }
+              return lines > 2 ? [`${h.textContent!.trim()} (${lines} lines)`] : [];
+            })
+          );
+          expect(tooLong).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
+
+      // A turned card shows its front only: the back engraving must not show through, mirrored
+      test(`a turned card does not show its back through the front at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, height);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          await page.evaluate(() => document.fonts.ready);
+          const flip = page.locator('sg-flip[flipped]').first();
+          await flip.scrollIntoViewIfNeeded();
+          // Hide the moving page background; the card back (its canvas carries the title) stays
+          await page.addStyleTag({ content: '#cc-bg { visibility: hidden !important; }' });
+          await page.waitForTimeout(500);
+          const shot = await flip.screenshot();
+          await page.addStyleTag({ content: 'sg-flip[flipped] sg-card { opacity: 0 !important; }' });
+          const backHidden = await flip.screenshot();
+          // A faint mirrored title is enough to fail: compare at a fine channel tolerance
+          const { pixelDiff } = await comparePngs(browser, shot, backHidden, [], [], 8);
+          console.log(`MEASURE flip ${width} ${name} pixelDiff=${pixelDiff.toFixed(4)}`);
+          expect(pixelDiff).toBeLessThanOrEqual(0.001);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+
+  for (const width of [768, 390]) {
+    for (const [name, origin, route] of PAGES) {
+      // The engravings band wraps instead of running past the screen edge
+      test(`the engravings band stays inside the screen at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, 900);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          const cut = await page.evaluate(() => {
+            const band = document.querySelector('.cc-band')!;
+            const box = band.getBoundingClientRect();
+            return Array.from(band.children).flatMap(item => {
+              const r = item.getBoundingClientRect();
+              return r.left < box.left - 0.5 || r.right > box.right + 0.5 || r.right > window.innerWidth ? [item.textContent!.trim()] : [];
+            });
+          });
+          expect(cut).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+
+  for (const [name, origin, route] of PAGES) {
+    // Running notes are read: 16px or more, outside the small card fronts
+    test(`running notes are set at 16px or more (${name})`, async ({ browser }) => {
+      const { context, page } = await openPage(browser, 1440, 900);
+      try {
+        await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        const small = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('main .ep-note'))
+            .filter(n => !n.closest('sg-flip [data-front]') && parseFloat(getComputedStyle(n).fontSize) < 16)
+            .map(n => n.textContent!.trim().slice(0, 40))
+        );
+        expect(small).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+  }
+
+  for (const [name, origin, route] of SITE_PAGES) {
+    // The state toggle speaks the language of its page
+    test(`the state toggle names the state in the page language (${name})`, async ({ browser }) => {
+      const { context, page } = await openPage(browser, 1440, 900);
+      try {
+        await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        await page.locator('.cc-state .ep-toggle button[data-state="working"]').click();
+        const label = await page.locator('.cc-state .ep-toggle button[data-state="working"]').textContent();
+        await expect(page.locator('.cc-state p.h4')).toHaveText(label!.trim());
+        await expect(page.locator('.cc-state sg-card')).toHaveAttribute('state', 'working');
+      } finally {
+        await context.close();
+      }
+    });
+
+    // Sections enter in staggered parts when motion is allowed, and nothing is hidden when it is not
+    test(`sections enter in parts, and the reduced page shows everything (${name})`, async ({ browser }) => {
+      const moving = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' });
+      const still = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+      try {
+        const page = await moving.newPage();
+        await blockFonts(page);
+        await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        const parts = await page.locator('.cc-reveal').count();
+        expect(parts).toBeGreaterThanOrEqual(16);
+        // Scroll the whole page, then every part has entered and is fully shown
+        const total = await page.evaluate(() => document.documentElement.scrollHeight);
+        for (let y = 0; y <= total; y += 450) {
+          await page.evaluate(top => window.scrollTo({ top, behavior: 'instant' }), y);
+          await page.waitForTimeout(120);
+        }
+        await page.waitForTimeout(1200);
+        const hidden = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('.cc-reveal')).filter(el => !el.classList.contains('is-in') || parseFloat(getComputedStyle(el).opacity) < 0.99).length
+        );
+        expect(hidden).toBe(0);
+
+        const reduced = await still.newPage();
+        await blockFonts(reduced);
+        await reduced.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+        await reduced.waitForTimeout(300);
+        const reducedHidden = await reduced.evaluate(() =>
+          Array.from(document.querySelectorAll('main h2, main .ep-lede, main .ep-plate, main figure')).filter(el => parseFloat(getComputedStyle(el).opacity) < 0.99).length
+        );
+        expect(reducedHidden).toBe(0);
+      } finally {
+        await moving.close();
+        await still.close();
+      }
+    });
   }
 });

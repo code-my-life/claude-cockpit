@@ -20,8 +20,8 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 .cc-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .cc-section{margin-top:var(--space-24)}
 .cc-section > p.ep-lede{max-width:var(--measure)}
-.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:center}
-.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 3.4);justify-self:center}
+.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:start}
+.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 2.7);justify-self:center}
 .ep-header{gap:var(--space-4)}
 .ep-header .ep-nav{min-width:0;flex:0 1 auto;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;justify-content:flex-start}
 .ep-header__brand{min-height:calc(var(--space-10) + var(--space-1))}
@@ -71,6 +71,21 @@ body > .ep-root{background:none}
 #download{padding-bottom:var(--space-16)}
 main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--space-4) var(--space-16);margin-bottom:var(--space-12)}
 @media (max-width:900px){main > .ep-wrap.ep-glass{margin-inline:var(--space-3)}}
+/* Release 0.4.2: review with design-taste-frontend */
+/* The hero title runs across the whole hero so it holds on two lines; text and card share the row below */
+.cc-hero-title{grid-column:1 / -1;margin:0}
+/* A turned card shows its front only: the back engraving must not show through, mirrored */
+.cc-flip sg-card{-webkit-backface-visibility:hidden;backface-visibility:hidden}
+/* Running notes are read at 16px; card fronts keep the smaller Liquid Paper note */
+main .ep-note:not(.cc-front *){font-size:16px}
+/* Sections enter in parts when motion is allowed (site.js adds .cc-reveal); without it nothing is hidden */
+@media (prefers-reduced-motion:no-preference){
+  .cc-reveal{opacity:0;transform:translateY(var(--space-6));transition:opacity .6s cubic-bezier(.2,.8,.2,1) var(--cc-delay,0ms),transform .6s cubic-bezier(.2,.8,.2,1) var(--cc-delay,0ms)}
+  .cc-reveal.is-in{opacity:1;transform:none}
+}
+/* The engravings band wraps on narrow screens instead of running past the edge */
+@media (max-width:900px){.cc-band{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}}
+@media (max-width:560px){.cc-band{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body class="ep-root">
@@ -83,9 +98,9 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 <main id="top">
 <section id="download" class="ep-wrap" aria-labelledby="h-hero" style="padding-top: var(--space-16)">
 <div class="cc-hero">
+<h1 id="h-hero" class="display-xl cc-hero-title">Every conversation, <em>at a glance</em></h1>
 <div class="ep-stack" style="gap: var(--space-6)">
-<h1 id="h-hero" class="display-xl">Every Claude Code conversation, <em>at a glance</em></h1>
-<p class="ep-lede">See who is waiting for you, who is working and who is stuck. Answer, allow or deny without opening the app.</p>
+<p class="ep-lede">See which Claude Code conversations wait for you, work or are stuck. Answer, allow or deny without opening the app.</p>
 <div class="ep-cluster">
 <a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Download for Windows</a>
 <a class="ep-btn ep-btn--ghost ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit">Source on GitHub</a>
@@ -371,9 +386,9 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 <section id="developers" class="cc-section" aria-labelledby="h-dev">
 <h2 id="h-dev" class="h2">Three pieces, one repository</h2>
 <div class="cc-grid-3" style="margin-top: var(--space-8)">
-<div class="ep-plate ep-plate--pad"><h3 class="h4">The mod</h3><p class="ep-note">Loaded by every Claude Code conversation in <code>mod/</code>. It publishes the real status and runs a small local server.</p></div>
-<div class="ep-plate ep-plate--pad"><h3 class="h4">The cockpit</h3><p class="ep-note">The page that server shows: list and team views, one holographic card per conversation.</p></div>
-<div class="ep-plate ep-plate--pad"><h3 class="h4">The island</h3><p class="ep-note">An Electron app in <code>desktop/</code>: a glass shape at the top of the screen, always above your windows.</p></div>
+<div><h3 class="h4">The mod</h3><p class="ep-note">Loaded by every Claude Code conversation in <code>mod/</code>. It publishes the real status and runs a small local server.</p></div>
+<div><h3 class="h4">The cockpit</h3><p class="ep-note">The page that server shows: list and team views, one holographic card per conversation.</p></div>
+<div><h3 class="h4">The island</h3><p class="ep-note">An Electron app in <code>desktop/</code>: a glass shape at the top of the screen, always above your windows.</p></div>
 </div>
 <div class="ep-cluster" style="margin-top: var(--space-6)">
 <a class="ep-btn" href="https://github.com/code-my-life/claude-cockpit">Source on GitHub</a>
@@ -381,7 +396,7 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 </div>
 </section>
 <section class="cc-section ep-plate ep-plate--pad cc-cta" aria-labelledby="h-cta">
-<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Never miss a conversation that waits for you</h2><p class="ep-note">Windows 10 and 11, free, about two minutes to install.</p></div>
+<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Never miss a waiting conversation</h2><p class="ep-note">Windows 10 and 11, free, about two minutes to install.</p></div>
 <a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Download for Windows</a>
 </section>
 <ep-flow-type max-size="150" seed="31" wrap="none" style="margin-top: var(--space-16)" aria-hidden="true">Claude|Cockpit</ep-flow-type>

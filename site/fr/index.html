@@ -20,8 +20,8 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 .cc-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .cc-section{margin-top:var(--space-24)}
 .cc-section > p.ep-lede{max-width:var(--measure)}
-.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:center}
-.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 3.4);justify-self:center}
+.cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:start}
+.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 2.7);justify-self:center}
 .ep-header{gap:var(--space-4)}
 .ep-header .ep-nav{min-width:0;flex:0 1 auto;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;justify-content:flex-start}
 .ep-header__brand{min-height:calc(var(--space-10) + var(--space-1))}
@@ -71,6 +71,21 @@ body > .ep-root{background:none}
 #download{padding-bottom:var(--space-16)}
 main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--space-4) var(--space-16);margin-bottom:var(--space-12)}
 @media (max-width:900px){main > .ep-wrap.ep-glass{margin-inline:var(--space-3)}}
+/* Release 0.4.2: review with design-taste-frontend */
+/* The hero title runs across the whole hero so it holds on two lines; text and card share the row below */
+.cc-hero-title{grid-column:1 / -1;margin:0}
+/* A turned card shows its front only: the back engraving must not show through, mirrored */
+.cc-flip sg-card{-webkit-backface-visibility:hidden;backface-visibility:hidden}
+/* Running notes are read at 16px; card fronts keep the smaller Liquid Paper note */
+main .ep-note:not(.cc-front *){font-size:16px}
+/* Sections enter in parts when motion is allowed (site.js adds .cc-reveal); without it nothing is hidden */
+@media (prefers-reduced-motion:no-preference){
+  .cc-reveal{opacity:0;transform:translateY(var(--space-6));transition:opacity .6s cubic-bezier(.2,.8,.2,1) var(--cc-delay,0ms),transform .6s cubic-bezier(.2,.8,.2,1) var(--cc-delay,0ms)}
+  .cc-reveal.is-in{opacity:1;transform:none}
+}
+/* The engravings band wraps on narrow screens instead of running past the edge */
+@media (max-width:900px){.cc-band{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}}
+@media (max-width:560px){.cc-band{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body class="ep-root">
@@ -83,9 +98,9 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 <main id="top">
 <section id="download" class="ep-wrap" aria-labelledby="h-hero" style="padding-top: var(--space-16)">
 <div class="cc-hero">
+<h1 id="h-hero" class="display-xl cc-hero-title">Vos conversations, <em>d'un coup d'œil</em></h1>
 <div class="ep-stack" style="gap: var(--space-6)">
-<h1 id="h-hero" class="display-xl">Toutes les conversations Claude Code, <em>d'un coup d'œil</em></h1>
-<p class="ep-lede">Voyez qui vous attend, qui travaille et qui bloque. Répondez, autorisez ou refusez sans ouvrir l'application.</p>
+<p class="ep-lede">Voyez quelles conversations Claude Code vous attendent, travaillent ou bloquent. Répondez, autorisez ou refusez sans ouvrir l'application.</p>
 <div class="ep-cluster">
 <a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Télécharger pour Windows</a>
 <a class="ep-btn ep-btn--ghost ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit">Source sur GitHub</a>
@@ -139,7 +154,7 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 </div>
 </section>
 <section id="features" class="cc-section" aria-labelledby="h-features">
-<h2 id="h-features" class="h2">Sachez qui a besoin de vous, répondez en un geste</h2>
+<h2 id="h-features" class="h2">Qui vous attend, répondez en un geste</h2>
 <div class="cc-grid-3" style="margin-top: var(--space-8)">
 <figure class="ep-plate-wrap" style="margin: 0">
 <div class="ep-plate ep-plate--pad cc-shot">
@@ -219,7 +234,7 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 </div>
 </section>
 <section id="cards" class="cc-section" aria-labelledby="h-cards">
-<h2 id="h-cards" class="h2">Une carte holographique par conversation</h2>
+<h2 id="h-cards" class="h2">Chaque conversation a sa carte</h2>
 <p class="ep-lede">La gravure et la finition viennent de la conversation, elle garde donc toujours sa carte. L'état suit le statut en direct. La rareté se gagne.</p>
 <h3 class="h3" style="margin-top: var(--space-12)">La rareté se gagne dans le cockpit</h3>
 <div class="cc-grid-4" style="margin-top: var(--space-6)">
@@ -269,7 +284,7 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 </figure>
 </div>
 <div class="ep-plate ep-plate--pad" style="margin-top: var(--space-6)">
-<div class="ep-plate__head"><h3 class="ep-plate__title">Comment la rareté est calculée</h3><span class="ep-tag ep-tag--info">Règle du cockpit</span></div>
+<div class="ep-plate__head"><h3 class="ep-plate__title">Le calcul de la rareté</h3><span class="ep-tag ep-tag--info">Règle du cockpit</span></div>
 <p class="ep-note">Chaque conversation obtient un score de 0 à 1. Chaque partie compte jusqu'à son plafond, puis arrête de croître.</p>
 <dl class="ep-dl">
 <div class="ep-dl__row"><dt>Temps actif</dt><dd>40 %, comblé à 4 heures de travail</dd></div>
@@ -371,9 +386,9 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 <section id="developers" class="cc-section" aria-labelledby="h-dev">
 <h2 id="h-dev" class="h2">Trois morceaux, un dépôt</h2>
 <div class="cc-grid-3" style="margin-top: var(--space-8)">
-<div class="ep-plate ep-plate--pad"><h3 class="h4">Le mod</h3><p class="ep-note">Chargé par chaque conversation Claude Code dans <code>mod/</code>. Il publie le statut réel et fait tourner un petit serveur local.</p></div>
-<div class="ep-plate ep-plate--pad"><h3 class="h4">Le cockpit</h3><p class="ep-note">La page que ce serveur montre : vues liste et équipe, une carte holographique par conversation.</p></div>
-<div class="ep-plate ep-plate--pad"><h3 class="h4">L'île</h3><p class="ep-note">Une application Electron dans <code>desktop/</code> : une forme en verre en haut de l'écran, toujours au-dessus de vos fenêtres.</p></div>
+<div><h3 class="h4">Le mod</h3><p class="ep-note">Chargé par chaque conversation Claude Code dans <code>mod/</code>. Il publie le statut réel et fait tourner un petit serveur local.</p></div>
+<div><h3 class="h4">Le cockpit</h3><p class="ep-note">La page que ce serveur montre : vues liste et équipe, une carte holographique par conversation.</p></div>
+<div><h3 class="h4">L'île</h3><p class="ep-note">Une application Electron dans <code>desktop/</code> : une forme en verre en haut de l'écran, toujours au-dessus de vos fenêtres.</p></div>
 </div>
 <div class="ep-cluster" style="margin-top: var(--space-6)">
 <a class="ep-btn" href="https://github.com/code-my-life/claude-cockpit">Source sur GitHub</a>
@@ -381,7 +396,7 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 </div>
 </section>
 <section class="cc-section ep-plate ep-plate--pad cc-cta" aria-labelledby="h-cta">
-<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Ne manquez aucune conversation qui vous attend</h2><p class="ep-note">Windows 10 et 11, gratuit, environ deux minutes à installer.</p></div>
+<div class="ep-stack" style="gap: var(--space-2)"><h2 id="h-cta" class="h3">Ne manquez plus une conversation</h2><p class="ep-note">Windows 10 et 11, gratuit, environ deux minutes à installer.</p></div>
 <a class="ep-btn ep-btn--primary ep-btn--lg" href="https://github.com/code-my-life/claude-cockpit/releases/latest">Télécharger pour Windows</a>
 </section>
 <ep-flow-type max-size="150" seed="31" wrap="none" style="margin-top: var(--space-16)" aria-hidden="true">Claude|Cockpit</ep-flow-type>

@@ -59,24 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       
-      // Update the heading text
-      const headings = {
-        'working': 'En travail',
-        'waiting': 'En attente',
-        'permission': 'Permission',
-        'done': 'Livré',
-        'blocked': 'Bloqué',
-        'later': 'Plus tard',
-        'rest': 'Repos'
-      };
-      
+      // The heading takes the label of the pressed button, so it follows the page language
       const heading = button.closest('.ep-stack').querySelector('p.h4');
-      if (heading && headings[state]) {
-        heading.textContent = headings[state];
+      if (heading) {
+        heading.textContent = button.textContent.trim();
       }
-      
-      // Update the note text
-      const notes = {
+
+      // Update the note text, in the language of the page
+      const notes = document.documentElement.lang === 'fr' ? {
         'working': 'Claude travaille : il explore le code ou exécute des commandes.',
         'waiting': 'Claude a posé une question ou terminé : il attend votre réponse.',
         'permission': 'Claude a besoin d\'autorisation pour une commande.',
@@ -84,12 +74,47 @@ document.addEventListener('DOMContentLoaded', () => {
         'blocked': 'Claude est bloqué par une erreur ou une décision requise.',
         'later': 'Tâche mise en attente pour plus tard.',
         'rest': 'Aucune activité en cours.'
+      } : {
+        'working': 'Claude is working: exploring the code or running commands.',
+        'waiting': 'Claude asked a question or finished: it waits for your answer.',
+        'permission': 'Claude needs your permission to run a command.',
+        'done': 'Mission done: the task is complete.',
+        'blocked': 'Claude is blocked by an error or a decision it needs.',
+        'later': 'Set aside for later.',
+        'rest': 'Nothing in progress.'
       };
-      
+
       const note = button.closest('.ep-stack').querySelector('p.ep-note');
       if (note && notes[state]) {
         note.textContent = notes[state];
       }
     });
   });
+
+  // Section entrances: the parts of each section rise in turn as it enters (heading, text, then
+  // the pictures), once. Only when motion is allowed and the browser can observe: otherwise no part
+  // is ever hidden (the hidden starting state lives in CSS under prefers-reduced-motion: no-preference).
+  if (!still && 'IntersectionObserver' in window) {
+    const PARTS = [
+      ':scope > .cc-hero > *',
+      ':scope > h2', ':scope > h3', ':scope > p',
+      ':scope > .cc-grid-2 > *', ':scope > .cc-grid-3 > *', ':scope > .cc-grid-4 > *',
+      ':scope > .cc-track > *', ':scope > .cc-band > *', ':scope > .cc-state',
+      ':scope > .ep-plate', ':scope > .ep-cluster', ':scope > .ep-stack',
+    ].join(', ');
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add('is-in');
+        observer.unobserve(entry.target);
+      }
+    }, { rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('main section').forEach(section => {
+      section.querySelectorAll(PARTS).forEach((part, index) => {
+        part.style.setProperty('--cc-delay', `${Math.min(index, 6) * 70}ms`);
+        part.classList.add('cc-reveal');
+        observer.observe(part);
+      });
+    });
+  }
 });
