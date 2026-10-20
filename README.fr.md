@@ -27,7 +27,7 @@
 
 </div>
 
-<!-- Screenshot: cddev adds one capture here, e.g. <p align="center"><img src="docs/screenshot.png" alt="Claude Cockpit" width="800"></p> -->
+<p align="center"><img src="docs/claude-cockpit-card.png" alt="Claude Cockpit : une carte holographique mythique avec le logo, une main de cartes" width="320"></p>
 
 [site-badge]: https://img.shields.io/badge/site-code--my--life.github.io-000000?style=flat
 [site]: https://code-my-life.github.io/claude-cockpit/
