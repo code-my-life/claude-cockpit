@@ -64,12 +64,11 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .pile .conv-card [data-body] .reply .ep-btn { justify-self: end; }
 .island .pile .conv-card [data-body] .ep-alert { font-size: 13px; }
 .island .pile .conv-card [data-body].is-waiting .is-card-text .clamp { display: none; }
-/* Le champ de réponse porte son picto d'envoi ; l'étiquette reste pour les lecteurs d'écran. */
-.island .pile .conv-card [data-body] #replyForm { position: relative; }
-.island .pile .conv-card [data-body] #replyForm .ep-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.island .pile .conv-card [data-body] #replyForm .ep-input { padding-right: 44px; }
-.island .pile .conv-card [data-body] #replySend { position: absolute; right: 6px; bottom: 6px; width: 32px; min-height: 32px; height: 32px; padding: 0; border-radius: 999px; font-size: 0; justify-self: auto; }
-.island .pile .conv-card [data-body] #replySend .ep-icon { font-size: 16px; }
+/* Le champ de réponse porte son picto d'envoi (inline SVG) ; l'étiquette reste pour les lecteurs d'écran. */
+.island .pile .conv-card [data-body] .reply { position: relative; }
+.island .pile .conv-card [data-body] .reply .ep-input { padding-right: 44px; }
+.island .pile .conv-card [data-body] .send { position: absolute; right: 6px; bottom: 6px; width: 32px; min-height: 32px; height: 32px; padding: 0; background: none; border: none; border-radius: 0; color: currentColor; font-size: 0; justify-self: auto; }
+.island .pile .conv-card [data-body] .send svg { width: 16px; height: 16px; display: block; }
 /* Mini-cartes à la place des petites entités (pastilles, état réduit, rail). */
 .island .mini-slot { display: inline-flex; flex: none; width: var(--mini, 24px); }
 .island .mini-slot sg-card { width: var(--mini, 24px); border-radius: 3px; }
