@@ -161,3 +161,26 @@ test('the session index never waits for the list of running WSL distros', async 
     fs.rmSync(home, { recursive: true, force: true })
   }
 })
+
+test('the status written by the cockpit hook reaches the session list read by the mod', async () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-hookidx-'))
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-hookidx-home-'))
+  const statusDir = path.join(home, '.claude', 'cockpit', 'status')
+  fs.mkdirSync(statusDir, { recursive: true })
+  fs.writeFileSync(path.join(statusDir, 'engine-h.json'), JSON.stringify({ sessionId: 'engine-h', event: 'PermissionRequest', notification: '', tool: 'Bash', cwd: home, at: 1700000000 }))
+  const cockpit = createCockpitServer({ rootDir, port: 0, sink: () => {}, homeDir: home, env: {}, runningDistros: async () => [] })
+  try {
+    await cockpit.listen()
+    const listFile = path.join(rootDir, 'session-index.json')
+    let hooks = null
+    for (let attempt = 0; attempt < 30 && hooks === null; attempt++) {
+      if (fs.existsSync(listFile)) hooks = JSON.parse(fs.readFileSync(listFile, 'utf8')).hooks ?? null
+      if (hooks === null) await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    assert.deepEqual(hooks, { 'engine-h': { id: 'engine-h', cwd: home, prompt: '', status: 'permission', updatedAt: 1700000000000 } })
+  } finally {
+    await cockpit.close()
+    fs.rmSync(rootDir, { recursive: true, force: true })
+    fs.rmSync(home, { recursive: true, force: true })
+  }
+})

@@ -138,7 +138,7 @@ test('a missing or broken saved index starts empty', () => {
   assert.deepEqual(broken, { files: {} })
 })
 
-test('the list read by conversations holds only sessions and live ids, no paths', async () => {
+test('the list read by conversations holds only sessions, live ids and hook statuses, no paths', async () => {
   const tree = makeTree()
   const fileA = path.join(tree.orgDir, 'local_a.json')
   const broken = path.join(tree.orgDir, 'local_broken.json')
@@ -157,7 +157,8 @@ test('the list read by conversations holds only sessions and live ids, no paths'
   assert.equal(saved.hosts.length, 1)
   const savedKeys = Object.keys(saved).sort()
   const hostKeys = Object.keys(saved.hosts[0]).sort()
-  assert.deepEqual(savedKeys, ['hosts', 'live'])
+  assert.deepEqual(savedKeys, ['hooks', 'hosts', 'live'])
+  assert.deepEqual(saved.hooks, {})
   assert.deepEqual(hostKeys, ['branch', 'cwd', 'engineId', 'gitCommonDir', 'hostId', 'isArchived', 'lastActivityAt', 'prs', 'repo', 'ticket', 'title'])
 })
 
