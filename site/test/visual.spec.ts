@@ -270,6 +270,47 @@ test.describe('Site structure visual comparison', () => {
     }
   }
 
+  // #65: when the state toggle wraps, a pill radius cuts into the buttons at the ends of each row
+  for (const { width, height } of viewports) {
+    for (const [name, origin, route] of [
+      ['mockup', () => mockup.origin, '/'],
+      ['site EN', () => dist.origin, '/'],
+      ['site FR', () => dist.origin, '/fr/index.html'],
+    ] as const) {
+      test(`state toggle buttons stay inside its rounded outline at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, height);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          const outside = await page.evaluate(() => {
+            const toggle = document.querySelector('.cc-state .ep-toggle')!;
+            const t = toggle.getBoundingClientRect();
+            const border = parseFloat(getComputedStyle(toggle).borderTopWidth) || 0;
+            // Inner outline of the toggle: its box minus the border, with the used corner radius
+            const box = { left: t.left + border, right: t.right - border, top: t.top + border, bottom: t.bottom - border };
+            const radius = Math.max(0, Math.min(parseFloat(getComputedStyle(toggle).borderTopLeftRadius), t.height / 2, t.width / 2) - border);
+            const inside = (x: number, y: number) => {
+              if (x < box.left - 0.5 || x > box.right + 0.5 || y < box.top - 0.5 || y > box.bottom + 0.5) return false;
+              const cx = Math.min(Math.max(x, box.left + radius), box.right - radius);
+              const cy = Math.min(Math.max(y, box.top + radius), box.bottom - radius);
+              return Math.hypot(x - cx, y - cy) <= radius + 0.5;
+            };
+            // Sample the outline of each pill button: its ends and the start of its straight edges
+            return Array.from(toggle.querySelectorAll('button')).flatMap(button => {
+              const b = button.getBoundingClientRect();
+              const r = Math.min(parseFloat(getComputedStyle(button).borderTopLeftRadius), b.height / 2);
+              const midY = b.top + b.height / 2;
+              const points = [[b.left, midY], [b.right, midY], [b.left + r, b.top], [b.left + r, b.bottom], [b.right - r, b.top], [b.right - r, b.bottom]];
+              return points.some(([x, y]) => !inside(x, y)) ? [button.textContent!.trim()] : [];
+            });
+          });
+          expect(outside).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
+
   test('hides canvas and screenshot placeholders in visual tests', async ({ browser }) => {
     const { context, page } = await openPage(browser, 1440, 900);
     try {
