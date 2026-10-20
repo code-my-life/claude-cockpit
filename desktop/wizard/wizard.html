@@ -19,6 +19,9 @@
   .change { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3) var(--space-4); padding: var(--space-5); align-items: baseline; }
   .change code { overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
   .change .note { grid-column: 1 / -1; margin: 0; color: var(--ink-2); font-size: 14px; }
+  .targets { grid-column: 1 / -1; display: grid; gap: var(--space-4); }
+  .target { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-4); align-items: baseline; }
+  .target h2 { grid-column: 1 / -1; margin: 0; font-size: 15px; }
   .actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
   [hidden] { display: none !important; }
 </style>
@@ -27,14 +30,11 @@
 <div class="ep-scene__bg" aria-hidden="true"><ep-flow-bg fill tone="paper" seed="cockpit" disc="none" animate="none"></ep-flow-bg></div>
 <main class="wizard">
   <h1>Relier le <em>cockpit</em> à Claude</h1>
-  <p class="lead">Le cockpit charge un petit mod dans tes conversations Claude Code : c’est lui qui leur transmet tes ordres et lit leur état. Pour cela, il ajoute une ligne à ton fichier de réglages de Claude Code.</p>
+  <p class="lead">Le cockpit charge un petit mod dans tes conversations Claude Code : c’est lui qui leur transmet tes ordres. Il ajoute aussi des hooks qui disent où en est chaque conversation, y compris dans WSL. Pour cela, il modifie tes fichiers de réglages de Claude Code.</p>
 
   <section class="ep-plate change" id="change" hidden>
-    <span class="label-mono">Fichier</span><code id="file"></code>
-    <span class="label-mono">Réglage</span><code id="key"></code>
-    <span class="label-mono">Avant</span><code id="from"></code>
-    <span class="label-mono">Après</span><code id="to"></code>
-    <p class="note">Une copie datée de ton fichier est gardée à côté. Le reste du fichier, hooks et permissions compris, ne change pas.</p>
+    <div id="targets" class="targets"></div>
+    <p class="note">Une copie datée de chaque fichier est gardée à côté. Le reste du fichier, tes autres hooks et tes permissions compris, ne change pas.</p>
   </section>
 
   <label class="ep-check" id="autostart-row" hidden><input type="checkbox" id="autostart" checked> Lancer le cockpit à l’ouverture de ma session</label>
@@ -43,7 +43,7 @@
 
   <div class="actions">
     <button type="button" class="ep-btn ep-btn--ghost" id="later">Plus tard</button>
-    <button type="button" class="ep-btn ep-btn--primary" id="install" hidden>Installer le mod</button>
+    <button type="button" class="ep-btn ep-btn--primary" id="install" hidden>Installer</button>
     <button type="button" class="ep-btn ep-btn--primary" id="close" hidden>Fermer</button>
   </div>
 </main>
@@ -83,13 +83,34 @@
     byId('close').focus();
   };
 
+  const line = (label, value) => {
+    const name = document.createElement('span');
+    name.className = 'label-mono';
+    name.textContent = label;
+    const code = document.createElement('code');
+    code.textContent = value;
+    return [name, code];
+  };
+
+  // One settings file: what changes in it, and the hook script written next to it.
+  const targetOf = target => {
+    const box = document.createElement('div');
+    box.className = 'target';
+    const title = document.createElement('h2');
+    title.textContent = target.label;
+    box.append(title, ...line('Fichier', target.file));
+    for (const change of target.changes) {
+      if (change.key === 'hooks') box.append(...line('Hooks', `hooks du cockpit ajoutés sur ${change.to}`));
+      else box.append(...line('Réglage', change.key), ...line('Avant', change.from ?? '(absent)'), ...line('Après', change.to));
+    }
+    if (target.script) box.append(...line('Script', target.script));
+    return box;
+  };
+
   const showPlan = plan => {
     if (!plan.ok) return showResult(alertOf('danger', 'Erreur', 'réglages illisibles', `${plan.error} (${plan.file})`));
-    if (plan.status === 'unchanged') return showResult(alertOf('success', 'Succès', 'mod déjà installé', 'Tes conversations Claude Code chargent déjà le mod du cockpit.'));
-    byId('file').textContent = plan.file;
-    byId('key').textContent = plan.change.key;
-    byId('from').textContent = plan.change.from ?? '(absent)';
-    byId('to').textContent = plan.change.to;
+    if (plan.status === 'unchanged') return showResult(alertOf('success', 'Succès', 'cockpit déjà installé', 'Tes conversations Claude Code chargent déjà le mod et les hooks du cockpit.'));
+    byId('targets').replaceChildren(...plan.targets.map(targetOf));
     byId('autostart').checked = true;
     show('change', true);
     show('autostart-row', true);
@@ -104,8 +125,8 @@
       byId('install').disabled = false;
       return showResult(alertOf('danger', 'Erreur', 'installation impossible', result.error), { keepPreview: true });
     }
-    const backupNote = result.backup ? ` Copie de l’ancien fichier : ${result.backup}.` : '';
-    showResult(alertOf('success', 'Succès', 'mod installé', `Redémarre Claude Desktop pour que tes conversations le chargent.${backupNote}`));
+    const backupNote = result.backup ? ` Copies des anciens fichiers : ${result.backup}.` : '';
+    showResult(alertOf('success', 'Succès', 'cockpit installé', `Redémarre Claude Desktop et tes terminaux Claude Code pour que tes conversations chargent le mod et les hooks.${backupNote}`));
   });
   byId('later').addEventListener('click', () => wizard.close());
   byId('close').addEventListener('click', () => wizard.close());

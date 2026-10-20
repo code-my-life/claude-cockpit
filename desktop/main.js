@@ -11,7 +11,7 @@ const { readPixels } = require('./island/pixels')
 const { startEmbeddedServer } = require('./embedded-server')
 const { registerIslandShortcuts } = require('./island-shortcuts')
 const { trayIconBitmap, trayMenuOf, TRAY_ICON_SIZE } = require('./tray-model')
-const { isModInstalled, openWizard, registerWizardIpc } = require('./wizard')
+const { isModInstalled, openWizard, refreshHookScripts, registerWizardIpc, removeFromClaude } = require('./wizard')
 const { SOUND_FILE_NAME, readSoundState, serializeSoundState, parseSoundChoice, introDecision, oneLine } = require('./sound-setting')
 const { writeFileAtomic } = require('./atomic-write')
 const { createUpdater } = require('./updater')
@@ -19,6 +19,7 @@ const { createUpdater } = require('./updater')
 // The app serves the cockpit itself; when its server cannot start, the windows
 // fall back on the server a conversation with the mod runs on this port.
 const MOD_SERVER_PORT = 48123
+const UNINSTALL_FLAG = '--cockpit-uninstall'
 let serverPort = MOD_SERVER_PORT
 let embeddedServer = null
 // The page token lives only in an HttpOnly cookie of the app's own windows.
@@ -536,6 +537,10 @@ const exposeTestProbe = () => {
 if (IS_E2E && !useTestDataDir()) {
   console.error('COCKPIT_E2E=1 needs --user-data-dir: the test run never touches the real app data')
   app.exit(1)
+} else if (process.argv.includes(UNINSTALL_FLAG)) {
+  // The uninstaller asks the app to take its mod and hooks out of Claude Code's settings.
+  removeFromClaude()
+  app.exit(0)
 } else if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
@@ -557,6 +562,7 @@ if (IS_E2E && !useTestDataDir()) {
     createTray()
     startUpdates()
     registerWizardIpc(refreshTrayMenu)
+    refreshHookScripts()
     if (!IS_E2E && !isModInstalled()) openWizard(SECURE_WEB_PREFERENCES)
   })
   app.on('will-quit', () => {
