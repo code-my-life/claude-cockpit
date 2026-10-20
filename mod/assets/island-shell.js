@@ -1,6 +1,23 @@
 (function (root) {
   'use strict';
 
+  // Import shared reply field markup
+  let renderReplyField;
+  try {
+    ({ renderReplyField } = require('./reply-field'));
+  } catch (_) {
+    // Fallback for browser where require is not available
+      renderReplyField = () => `<form class="reply" id="replyForm" autocomplete="off">
+      <input class="ep-input" id="replyInput" type="text" placeholder="Répondre…" />
+      <button class="send" type="submit" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h13" />
+          <path d="M13 6l6 6-6 6" />
+        </svg>
+      </button>
+    </form>`;
+  }
+
   // La structure fixe de l'île (HTML), sans donnée : onglets, couches de vues, formulaires, grande entité.
   // Les textes et les listes sont remplis par island-ui.js ; les formulaires ne sont jamais réécrits (ils gardent ce qu'on y tape).
   const tab = (id, label, selected) => `<button type="button" class="ep-tab" role="tab" id="tab-${id}" data-tab="${id}" aria-controls="v-${id}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}">${label}</button>`;
@@ -23,10 +40,7 @@
             <div class="alert-main">
               <h2 class="h4" id="wName"></h2>
               <div class="ep-alert ep-tone-warning" role="status"><div><p class="ep-alert__title"><span>T'attend :</span> <span id="wKind"></span></p><p class="ep-alert__msg" id="wQuote"></p></div></div>
-              <form class="reply" id="replyForm" autocomplete="off">
-                <div class="ep-field"><label class="ep-label" for="replyInput">Réponse rapide</label><input class="ep-input" id="replyInput" type="text"></div>
-                <button type="submit" class="ep-btn ep-btn--primary" id="replySend">Envoyer <span class="ep-icon ep-icon--arrow" aria-hidden="true"></span></button>
-              </form>
+              ${renderReplyField()}
               <div class="ep-cluster" id="wQuick" role="group" aria-label="Réponses courtes"></div>
               <div class="perm" id="wPerm" hidden>
                 <pre class="ep-code" id="wCmd" tabindex="0" aria-label="Ce que Claude veut faire"></pre>
