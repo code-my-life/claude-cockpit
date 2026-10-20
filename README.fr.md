@@ -107,8 +107,8 @@ Windows 10 ou 11 uniquement pour l'installation complète. Sur macOS et Linux, l
 
 1. Télécharge `claude-cockpit-setup-<version>.exe` depuis la [dernière version](https://github.com/code-my-life/claude-cockpit/releases/latest) (sommes de contrôle dans `SHA256SUMS.txt`).
 2. Lance-le. L'installeur n'est pas encore signé : Windows peut afficher « Windows a protégé votre ordinateur ». Clique sur **Informations complémentaires**, puis **Exécuter quand même**.
-3. Au premier lancement, l'assistant montre la ligne exacte qu'il ajoute à `~/.claude/settings.json` pour charger le mod, et ne l'écrit qu'après ton clic.
-4. Redémarre Claude Desktop : chaque conversation charge le mod à son démarrage.
+3. Au premier lancement, l'assistant montre ce qu'il ajoute à `~/.claude/settings.json`, et ne l'écrit qu'après ton clic : la ligne qui charge le mod, et les hooks du cockpit, qui disent où en est chaque conversation. Si WSL tourne, il fait de même dans le `~/.claude/settings.json` de chaque distribution où Claude Code a servi (les hooks seulement, le mod est propre à Windows). Une copie datée de chaque fichier est gardée à côté.
+4. Redémarre Claude Desktop et tes terminaux Claude Code : chaque conversation charge le mod et les hooks à son démarrage.
 
 L'app s'installe pour ton compte Windows uniquement, sans droits administrateur, et se désinstalle depuis les Paramètres de Windows.
 
@@ -136,10 +136,8 @@ Depuis le code : `git pull`, redémarre Claude Desktop, et redémarre l'île si 
 
 ### Désinstallation
 
-Dans les deux cas, retire d'abord le dossier du mod de la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.json`. Ensuite :
-
-- **app installée** : désinstalle « Claude Cockpit » depuis les Paramètres de Windows (Applications) ;
-- **depuis le code** : supprime les deux raccourcis et le dossier cloné.
+- **app installée** : désinstalle « Claude Cockpit » depuis les Paramètres de Windows (Applications). Avant de partir, l'app retire le mod et ses hooks des réglages de Claude Code (Windows et distributions WSL en marche), avec une copie datée de chaque fichier, et efface `~/.claude/cockpit`. Une mise à jour n'y touche pas.
+- **depuis le code** : retire d'abord le dossier du mod de la ligne `CLAUDE_CODE_PLUGIN_DIRS` du bloc `env` de `~/.claude/settings.json`, puis supprime les deux raccourcis et le dossier cloné.
 
 ## Utiliser
 

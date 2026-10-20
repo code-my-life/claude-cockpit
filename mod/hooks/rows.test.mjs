@@ -105,3 +105,38 @@ test('a status no section lists falls in Autres, and a tool shows what it does',
   assert.equal(styleOf({ status: 'tool', tool: 'Bash' }).label, 'lance une commande')
   assert.equal(styleOf({ status: 'tool', tool: 'Inconnu' }).label, 'utilise un outil')
 })
+
+test('a conversation without the mod takes its status from the cockpit hook', () => {
+  const rows = buildRows(sources({
+    hosts: [host('wsl')],
+    hooked: { wsl: entry('wsl', 'permission', 3000, { prompt: '' }) },
+    liveEngineIds: new Set(['wsl']),
+  }))
+  assert.equal(statusOf(rows, 'wsl'), 'permission')
+  assert.equal(rows.find(row => row.engineId === 'wsl').title, 'Titre wsl')
+})
+
+test('the newer of the mod and the hook gives the status; the mod keeps its activity feed', () => {
+  const steps = [{ at: 1, kind: 'read', label: 'Lu' }]
+  const rows = buildRows(sources({
+    hosts: [host('a'), host('b')],
+    live: { a: entry('a', 'thinking', 5000, { steps }), b: entry('b', 'thinking', 1000, { steps }) },
+    hooked: { a: entry('a', 'done', 4000), b: entry('b', 'tool', 2000, { tool: 'Bash' }) },
+    liveEngineIds: new Set(['a', 'b']),
+  }))
+  const [a, b] = ['a', 'b'].map(id => rows.find(row => row.engineId === id))
+  assert.equal(a.status, 'thinking')
+  assert.equal(b.status, 'tool')
+  assert.equal(b.tool, 'Bash')
+  assert.deepEqual(b.steps, steps)
+  assert.equal(b.updatedAt, 2000)
+})
+
+test('a terminal conversation seen only by the hook is listed while it is live', () => {
+  const rows = buildRows(sources({
+    hooked: { term: entry('term', 'done', 3000, { prompt: '' }), gone: entry('gone', 'done', 3000) },
+    liveEngineIds: new Set(['term']),
+  }))
+  assert.deepEqual(rows.map(row => row.engineId), ['term'])
+  assert.equal(rows[0].title, '(terminal)')
+})

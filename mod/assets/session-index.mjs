@@ -200,10 +200,10 @@ export const sessionsOf = index => {
   return sessions.filter(session => session !== null)
 }
 
-export const saveSessionList = (file, index, live, remotes = new Map()) => {
+export const saveSessionList = (file, index, live, remotes = new Map(), hooks = {}) => {
   const sessions = sessionsOf(index)
   const hosts = sessions.map(({ priorEngineIds, wslDistro, ...session }) => ({ ...session, repo: session.prs[0]?.repo ?? remotes.get(session.gitCommonDir) ?? null }))
-  const payload = JSON.stringify({ live, hosts })
+  const payload = JSON.stringify({ live, hosts, hooks })
   writeAtomically(file, payload)
 }
 
@@ -211,17 +211,20 @@ export const saveSessionList = (file, index, live, remotes = new Map()) => {
 // Windows reads through \\wsl.localhost. Only for running distros: reading the share boots a stopped one.
 const LINUX_HOME = /^\/(home\/[^/]+|root)(?:\/|$)/
 
-export const wslLiveDirsOf = (sessions, runningDistros) => {
+// The Linux homes, seen from Windows, of the WSL sessions in running distros.
+export const wslHomesOf = (sessions, runningDistros) => {
   const running = new Set(runningDistros)
-  const dirs = new Set()
+  const homes = new Set()
   for (const session of sessions) {
     if (session.wslDistro === null || session.wslDistro === undefined || !running.has(session.wslDistro)) continue
     const home = LINUX_HOME.exec(session.cwd)
     if (home === null) continue
-    dirs.add(path.win32.join('\\\\wsl.localhost', session.wslDistro, ...home[1].split('/'), '.claude', 'sessions'))
+    homes.add(path.win32.join('\\\\wsl.localhost', session.wslDistro, ...home[1].split('/')))
   }
-  return [...dirs]
+  return [...homes]
 }
+
+export const wslLiveDirsOf = (sessions, runningDistros) => wslHomesOf(sessions, runningDistros).map(home => path.win32.join(home, '.claude', 'sessions'))
 
 // The distro names printed by `wsl.exe --list --running --quiet`, one per line: UTF-16LE from
 // Windows, UTF-8 when WSL_UTF8 is set or when run from inside WSL.

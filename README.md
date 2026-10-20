@@ -107,8 +107,8 @@ Windows 10 or 11 only for the full install. On macOS and Linux the cockpit and t
 
 1. Download `claude-cockpit-setup-<version>.exe` from the [latest release](https://github.com/code-my-life/claude-cockpit/releases/latest) (checksums in `SHA256SUMS.txt`).
 2. Run it. The installer is not signed yet: Windows may show "Windows protected your PC". Click **More info**, then **Run anyway**.
-3. On first launch, the wizard shows the exact line it adds to `~/.claude/settings.json` to load the mod, and writes it only after your click.
-4. Restart Claude Desktop: each conversation loads the mod when it starts.
+3. On first launch, the wizard shows what it adds to `~/.claude/settings.json`, and writes it only after your click: the line that loads the mod, and the cockpit hooks, which tell where each conversation stands. If WSL is running, it does the same in the `~/.claude/settings.json` of each distro where Claude Code has run (hooks only, the mod is Windows only). A dated copy of each file is kept next to it.
+4. Restart Claude Desktop and your Claude Code terminals: each conversation loads the mod and the hooks when it starts.
 
 The app installs for your Windows account only, without administrator rights, and uninstalls from Windows Settings.
 
@@ -136,10 +136,8 @@ From source: `git pull`, restart Claude Desktop, and restart the island if `desk
 
 ### Uninstalling
 
-In both cases, first remove the mod folder from the `CLAUDE_CODE_PLUGIN_DIRS` line of the `env` block in `~/.claude/settings.json`. Then:
-
-- **installed app**: uninstall "Claude Cockpit" from Windows Settings (Apps);
-- **from source**: delete the two shortcuts and the cloned folder.
+- **installed app**: uninstall "Claude Cockpit" from Windows Settings (Apps). Before it goes, the app takes the mod and its hooks out of Claude Code's settings (Windows and running WSL distros), with a dated copy of each file, and removes `~/.claude/cockpit`. An update leaves them alone.
+- **from source**: first remove the mod folder from the `CLAUDE_CODE_PLUGIN_DIRS` line of the `env` block in `~/.claude/settings.json`, then delete the two shortcuts and the cloned folder.
 
 ## Running
 

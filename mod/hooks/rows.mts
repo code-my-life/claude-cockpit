@@ -40,6 +40,8 @@ const contextOf = (host: HostSession): ConversationContext => ({
 
 export type RowSources = {
   live: Record<string, SessionEntry>
+  // From the cockpit hook (mod/assets/hook-status.mjs): conversations that do not load the mod too.
+  hooked?: Record<string, SessionEntry>
   hosts: HostSession[]
   liveEngineIds: Set<string>
   acks: Acks
@@ -48,7 +50,20 @@ export type RowSources = {
   ownEngineId: string
 }
 
-export const buildRows = ({ live, hosts, liveEngineIds, acks, shared, parked, ownEngineId }: RowSources): ConversationRow[] => {
+// What the mod wrote and what the hook saw: the newer status wins, the mod's activity feed stays.
+export const entryOf = (fromMod: SessionEntry | undefined, fromHook: SessionEntry | undefined): SessionEntry | undefined => {
+  if (fromHook === undefined) return fromMod
+  if (fromMod === undefined) return fromHook
+  if (fromMod.updatedAt >= fromHook.updatedAt) return fromMod
+  return { ...fromMod, status: fromHook.status, tool: fromHook.tool, updatedAt: fromHook.updatedAt }
+}
+
+export const buildRows = ({ live: fromMods, hooked = {}, hosts, liveEngineIds, acks, shared, parked, ownEngineId }: RowSources): ConversationRow[] => {
+  const live: Record<string, SessionEntry> = {}
+  for (const id of new Set([...Object.keys(fromMods), ...Object.keys(hooked)])) {
+    const entry = entryOf(fromMods[id], hooked[id])
+    if (entry !== undefined) live[id] = entry
+  }
   const statusOf = (engineId: string, status: RowStatus, updatedAt: number): RowStatus => {
     const park = parked[engineId]
     if (park !== undefined && status !== 'archived' && status !== 'closed') return park.kind
