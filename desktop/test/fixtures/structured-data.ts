@@ -60,3 +60,26 @@ export const buildFixtures = (root: string, configBase: string, now = Date.now()
 
 export const conversationsDataOf = (rows: Row[], extra: Record<string, unknown> = {}): string =>
   `window.__CONVERSATIONS__ = ${JSON.stringify({ generatedAt: Date.now(), rows, folders: [], ...extra })};`
+
+// D6 (#1): a Claude Desktop conversation found by the launcher search, with its Desktop title and link.
+// Its session file sits in the MSIX package folder on Windows (the Microsoft Store install), in the
+// classic config folder elsewhere; its transcript holds a word only it contains.
+export const DESKTOP_SEARCH = { engineId: 'e2e-desktop-search', sessionId: 'host-e2e-desktop-search', title: 'Conversation Desktop retrouvée', word: 'marqueurdesktop' }
+
+export const desktopSessionsBaseOf = (env: NodeJS.ProcessEnv, platform = process.platform): string =>
+  platform === 'win32' ? path.join(env.LOCALAPPDATA!, 'Packages', 'Claude_e2etest', 'LocalCache', 'Roaming') : env.XDG_CONFIG_HOME!
+
+export const writeDesktopSearchSession = (home: string, sessionsBase: string, cwd: string, now = Date.now()) => {
+  const sessions = path.join(sessionsBase, 'Claude', 'claude-code-sessions', 'e2e-account', 'e2e-org')
+  fs.mkdirSync(sessions, { recursive: true })
+  fs.writeFileSync(path.join(sessions, `${DESKTOP_SEARCH.engineId}.json`), JSON.stringify({
+    sessionId: DESKTOP_SEARCH.sessionId, cliSessionId: DESKTOP_SEARCH.engineId, title: DESKTOP_SEARCH.title, cwd, lastActivityAt: now, isArchived: false,
+  }))
+  const project = path.join(home, '.claude', 'projects', 'e2e-desktop')
+  fs.mkdirSync(project, { recursive: true })
+  const at = new Date(now).toISOString()
+  fs.writeFileSync(path.join(project, `${DESKTOP_SEARCH.engineId}.jsonl`), [
+    { type: 'user', message: { role: 'user', content: `Retrouve le ${DESKTOP_SEARCH.word} dans le cockpit` }, timestamp: at, cwd },
+    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'Trouvé.' }] }, timestamp: at, cwd },
+  ].map(line => JSON.stringify(line)).join('\n') + '\n')
+}

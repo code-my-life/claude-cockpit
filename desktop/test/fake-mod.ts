@@ -74,3 +74,20 @@ export class FakeMod {
 }
 
 export const readLink = (linkFile: string): { port: number, secret: string, dataDir: string } => JSON.parse(fs.readFileSync(linkFile, 'utf8'))
+
+// A permission request, as the mod asks it when Claude wants to run a tool: the island shows it.
+export const askPermission = async (link: { port: number, secret: string }, request: { engineId: string, tool: string, summary: string, detail?: string, holdMs?: number }): Promise<string> => {
+  const res = await fetch(`http://127.0.0.1:${link.port}/bridge/v1/permission/ask`, {
+    method: 'POST', headers: { Authorization: `Bearer ${link.secret}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ canAlways: true, holdMs: 60_000, detail: '', ...request }),
+  })
+  if (!res.ok) throw new Error(`permission ask refused: ${res.status} ${await res.text()}`)
+  return (await res.json()).requestId
+}
+
+// The island's decision for a request, or null while none was taken within waitMs.
+export const permissionDecision = async (link: { port: number, secret: string }, requestId: string, waitMs = 1000): Promise<string | null> => {
+  const res = await fetch(`http://127.0.0.1:${link.port}/bridge/v1/permission/wait?requestId=${encodeURIComponent(requestId)}&wait=${waitMs}`, { headers: { Authorization: `Bearer ${link.secret}` } })
+  if (!res.ok) throw new Error(`permission wait refused: ${res.status} ${await res.text()}`)
+  return (await res.json()).decision ?? null
+}
