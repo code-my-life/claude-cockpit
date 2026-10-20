@@ -104,6 +104,12 @@
       const row = ctx.focus();
       const target = $('#homeText');
       renderDetails(row);
+      // If server is stale, show update notice instead of normal content
+      const stale = root.CockpitIsland && root.CockpitIsland.staleNoticeOf ? root.CockpitIsland.staleNoticeOf() : null;
+      if (stale) {
+        target.innerHTML = `<div class="is-update" role="alert"><h2 class="h4">${stale}</h2><p class="body-s">L'&icirc;le attend le nouveau serveur. Red&eacute;marre Claude Desktop pour charger la version r&eacute;cente du cockpit.</p></div>`;
+        return;
+      }
       if (!row) {
         target.innerHTML = '<h2 class="h4">Personne au travail</h2><p class="body-s">Aucune conversation ne bouge pour l\'instant. Lance-en une depuis l\'onglet « Nouvelle conversation ».</p>';
         return;

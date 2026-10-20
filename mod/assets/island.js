@@ -147,11 +147,21 @@
     };
 
     return { observe };
-  };
+    };
 
-  const api = {
+    const UPDATE_NOTICE = 'Le cockpit a été mis à jour, redémarre Claude Desktop';
+
+    const staleNoticeOf = () => {
+      const served = root.__CONVERSATIONS__ && root.__CONVERSATIONS__.pageVersion;
+      const mine = root.__PAGE_VERSION__;
+      if (!served || !mine) return null;
+      return served === mine ? null : UPDATE_NOTICE;
+    };
+
+    const api = {
     SHAPE_SELECTOR, ACTIVITY_THROTTLE_MS, isInsideShape, createPointerReporter, statusChanges, waitingCountOf,
     pinKindOf, announcementOf, hasNewWaiting, shouldPauseLoops, TOAST_WIDTH, TOAST_MARGIN, toastExtentOf, watchToasts, shouldAnnounce, createThrottle, init,
+    staleNoticeOf,
   };
 
   if (typeof module !== 'undefined' && module.exports) {
