@@ -168,6 +168,8 @@ const openTerminal = (ctx, cwd) => {
   if (!isKnownFolder(knownRootsOf(sessionsOf(ctx.state.sessionIndex), ctx.state.searchIndex), cwd, ctx.homeDir)) throw new HttpError(403, 'dossier inconnu du cockpit')
   const isFolder = fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
   if (!isFolder) throw new HttpError(404, 'dossier introuvable')
+  // COCKPIT_E2E: the e2e tests read the checked folder here instead of a real terminal window.
+  if (process.env.COCKPIT_E2E === '1') return fs.appendFileSync(path.join(ctx.dataDir, 'e2e-terminal.jsonl'), `${JSON.stringify({ cwd, at: Date.now() })}\n`)
   launchFirstWorking(ctx, terminalCandidatesOf(process.platform, cwd))
 }
 
