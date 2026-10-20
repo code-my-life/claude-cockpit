@@ -115,7 +115,7 @@ test('the island scripts and the living entities are served from the assets fold
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-data-'))
   fs.mkdirSync(path.join(rootDir, 'mod', 'assets', 'entity'), { recursive: true })
   fs.mkdirSync(path.join(rootDir, 'mod', 'assets', 'systems-generator'), { recursive: true })
-  const names = ['cards.js', 'island-deck.js', 'systems-generator/index.global.js', 'systems-generator/cards.css', 'island-model.js', 'island-ui.js', 'island-shell.js', 'island-views.js', 'island-living.js', 'island-motion.js', 'island-actions.js', 'island.css', 'entity/entity.js', 'entity/entity-forms.js', 'entity/entity-2d.js', 'entity/entity-mount.js']
+  const names = ['cards.js', 'island-deck.js', 'systems-generator/index.global.js', 'systems-generator/cards.css', 'status-words.js', 'island-model.js', 'island-ui.js', 'island-shell.js', 'island-views.js', 'island-living.js', 'island-motion.js', 'island-actions.js', 'island.css', 'entity/entity.js', 'entity/entity-forms.js', 'entity/entity-2d.js', 'entity/entity-mount.js']
   for (const name of names) fs.writeFileSync(path.join(rootDir, 'mod', 'assets', name), `// ${name}`)
   const cockpit = createCockpitServer({ rootDir, dataDir, port: 0, sink: () => {}, homeDir: dataDir, env: {} })
   try {

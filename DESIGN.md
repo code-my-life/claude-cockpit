@@ -213,7 +213,7 @@ Une palette froide et sourde, d'où ne ressortent que les cartes et quatre coule
 
 ### Hierarchy
 - **Display** (400, 40 à 56 px, interligne 1) : « Ton *équipe* », le seul grand titre du cockpit. L'horloge (34 px, chiffres tabulaires) l'accompagne.
-- **Headline** (400, 30 px) : les sections du cockpit (Attendent tes ordres, En mission, Mis de côté).
+- **Headline** (400, 30 px) : les sections du cockpit (T'attendent, En mission, Mis de côté).
 - **Title** (400, 22 px ; 18 px dans la pile de l'île) : le nom d'une conversation, sur la carte et dans l'île.
 - **Body** (400, 15 px, interligne 1.55) : les résumés, la conversation, les champs. **Body S** (400, 13 px) : le corps des faces de cartes de l'île.
 - **Label** (500, 13 px, sans-serif, casse de phrase) : onglets, boutons, pastilles d'état, libellés de champ et de statistique.
@@ -277,7 +277,7 @@ Une barre de recherche en verre (« Rechercher dans toutes les conversations »)
 `<sg-card>` de systems-generator : gravure générative tirée de l'identifiant de la conversation (elle garde toujours la même), finition, rareté gagnée (commune, peu commune, rare, mythique), état en direct. Elle se retourne pour agir (`<sg-flip>`). Sa face avant contient toujours sa demande et ses réponses sans défiler.
 
 ### Pastilles d'état
-Pilule en sans-serif, casse de phrase, avec icône : « ⚠ T'attend » ambre, « ✓ Terminé » lagune, « ▶ Travaille » sur verre, bloqué en corail.
+Pilule en sans-serif, casse de phrase, avec icône : « ⚠ Permission » ambre, « ⓘ Question » en accent, « ✓ Mission livrée » lagune, « ▶ Travaille » sur verre, « Bloquée » en corail. Les mots, les icônes, l'ordre et le compte « t'attend » viennent d'un seul module (`mod/assets/status-words.js`), partagé par l'île, le cockpit et le lanceur.
 
 ### Identités et sons
 Les entités génératives (`mod/assets/entity/`) et leurs réactions (attente, terminé, bloqué, survol, pression) ; les sons synthétisés par identité (appel, permission, terminé, erreur), coupables d'un geste. Règles précises dans `README.fr.md`.

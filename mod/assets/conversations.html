@@ -375,7 +375,7 @@
   <div class="search-results" id="search-results" aria-live="polite"></div>
 
   <section id="s-waiting" aria-labelledby="h-waiting">
-    <h2 id="h-waiting" class="display" tabindex="-1">Attendent tes ordres <span class="count-tag" id="n-waiting">0</span></h2>
+    <h2 id="h-waiting" class="display" tabindex="-1">T'attendent <span class="count-tag" id="n-waiting">0</span></h2>
     <div class="lane"></div>
   </section>
 
@@ -412,6 +412,7 @@
 <script src="mod/assets/entity/entity-mount.js"></script>
 <script src="mod/assets/cards.js"></script>
 <script src="mod/assets/dock.js"></script>
+<script src="mod/assets/status-words.js"></script>
 <script src="mod/assets/island-model.js"></script>
 <script src="mod/assets/island.js"></script>
 <script src="mod/assets/island-shell.js"></script>
@@ -436,7 +437,8 @@
   const QUICK_REPLIES = ['OK', 'GO', 'Non'];
 
   const ACTIVE_STATUSES = ['thinking', 'writing', 'tool', 'working'];
-  const WAITING_STATUSES = ['permission', 'done', 'external'];
+  const WORDS = window.CockpitStatusWords;
+  const WAITING_STATUSES = WORDS.WAITING_STATUSES;
   const REST_LABELS = {
     seen: 'vue, au repos', opened: 'ouverte, rien de nouveau', idle: 'hors radar', closed: 'fermée',
     aborted: 'interrompue', error: 'en erreur',
@@ -456,13 +458,9 @@
     [/^AskUserQuestion$/, 'info', 'te pose une question'],
     [/^mcp__/, 'arrow', 'interroge un service'],
   ];
-  const KINDS = {
-    permission: { label: 'Permission', icon: 'alert', color: 'var(--warning)', rank: 0 },
-    question: { label: 'Question', icon: 'info', color: 'var(--accent)', rank: 1 },
-    unknown: { label: 'A fini', icon: 'check', color: 'var(--ink-2)', rank: 2 },
-    delivered: { label: 'Mission livrée', icon: 'check', color: 'var(--success)', rank: 3 },
-    external: { label: 'Attend autre chose', icon: 'later', color: 'var(--ink-2)', rank: 4 },
-  };
+  // Words, icons and order come from the shared vocabulary; only the colours are the cockpit's.
+  const KIND_COLORS = { permission: 'var(--warning)', question: 'var(--accent)', unknown: 'var(--ink-2)', delivered: 'var(--success)', external: 'var(--ink-2)' };
+  const KINDS = Object.fromEntries(Object.entries(WORDS.WAIT_KINDS).map(([kind, words]) => [kind, { ...words, color: KIND_COLORS[kind] }]));
 
   const pageParams = new URLSearchParams(location.search);
   const isIsland = pageParams.has('island');
@@ -671,17 +669,14 @@
   const firstLineOf = text => (String(text || '').split(/\r?\n/).find(line => line.trim().length > 0) || '').replace(/^[-*#>\s]+/, '').replace(/\*\*/g, '').slice(0, 160);
   const awaitingOf = row => (row.summary && !row.summary.isLoading ? (row.summary.awaiting || firstLineOf(row.summary.text)) : '');
 
-  const kindOf = row => {
-    if (row.status === 'permission') return 'permission';
-    if (row.status === 'external') return 'external';
-    const kind = row.summary && row.summary.kind;
-    if (kind === 'question' || kind === 'delivered') return kind;
-    return 'unknown';
-  };
+  const kindOf = WORDS.waitKindOf;
+
+  // "Voir l'agent au repos", "Voir les 3 agents au repos".
+  const restToggleLabelOf = (count, isOpen) => (count === 1 ? `${isOpen ? 'Masquer' : 'Voir'} l'agent au repos` : `${isOpen ? 'Masquer' : 'Voir'} les ${count} agents au repos`);
 
   const PARK_KINDS = {
-    blocked: { icon: 'block', label: 'Bloquée', title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
-    later: { icon: 'later', label: 'Plus tard', title: 'Je reviens dessus…', color: 'var(--ink-2)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
+    blocked: { ...WORDS.PARK_WORDS.blocked, title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
+    later: { ...WORDS.PARK_WORDS.later, title: 'Je reviens dessus…', color: 'var(--ink-2)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
   };
 
   const sectionIdOf = status => {
@@ -964,7 +959,7 @@
     const draft = draftOf(row.engineId);
     const thumbs = draft.images.map((image, index) => `<div class="thumb"><img src="${image.url}" alt=""><button type="button" data-action="remove-image" data-index="${index}" aria-label="Retirer l'image">${iconOf('x')}</button></div>`).join('');
     return `<label style="display: flex"><span class="sr">Ordre pour ${escapeHtml(row.title)}</span>
-      <textarea class="ep-textarea" data-role="draft" style="width: 100%" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Ctrl+Entrée, colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
+      <textarea class="ep-textarea" data-role="draft" style="width: 100%" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Entrée pour envoyer, Maj+Entrée pour un retour à la ligne ; colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
       ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}`;
   };
 
@@ -1311,7 +1306,7 @@
   };
 
   const renderTeamRest = (rows, now) => {
-    const toggleLabel = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${rows.length} agents au repos`;
+    const toggleLabel = restToggleLabelOf(rows.length, state.othersOpen);
     const chips = rows.map(row => {
       const openUrl = openUrlOf(row);
       const stateLabel = REST_LABELS[row.status] || row.status;
@@ -1400,17 +1395,17 @@
     let board;
     if (cardsOn()) {
       board = `<div class="t-board">
-        ${renderTeamCardZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
-        ${renderTeamCardZone('working', 'En mission', 'var(--accent)', groups.working, now)}
-        ${renderTeamCardZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
-        ${renderTeamCardZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
+        ${renderTeamCardZone('waiting', WORDS.SECTION_TITLES.waiting, 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
+        ${renderTeamCardZone('working', WORDS.SECTION_TITLES.working, 'var(--accent)', groups.working, now)}
+        ${renderTeamCardZone('stuck', WORDS.SECTION_TITLES.stuck, 'var(--danger)', groups.stuck, now)}
+        ${renderTeamCardZone('later', WORDS.SECTION_TITLES.later, 'var(--ink-faint)', groups.later, now)}
       </div>`;
     } else {
       board = `<div class="t-board">
-        ${renderTeamZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
-        ${renderTeamZone('working', 'En mission', 'var(--accent)', groups.working, now)}
-        ${renderTeamZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
-        ${renderTeamZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
+        ${renderTeamZone('waiting', WORDS.SECTION_TITLES.waiting, 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
+        ${renderTeamZone('working', WORDS.SECTION_TITLES.working, 'var(--accent)', groups.working, now)}
+        ${renderTeamZone('stuck', WORDS.SECTION_TITLES.stuck, 'var(--danger)', groups.stuck, now)}
+        ${renderTeamZone('later', WORDS.SECTION_TITLES.later, 'var(--ink-faint)', groups.later, now)}
       </div>`;
     }
     const popRow = state.teamPopId ? rowOf(state.teamPopId) : undefined;
@@ -1727,7 +1722,7 @@
     const restToggle = document.getElementById('rest-toggle');
     const errorCount = groups.others.filter(row => row.status === 'error').length;
     const errorNote = errorCount > 0 ? `, dont ${errorCount} en erreur` : '';
-    restToggle.textContent = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${groups.others.length} ${groups.others.length > 1 ? 'agents' : 'agent'} au repos${errorNote}`;
+    restToggle.textContent = `${restToggleLabelOf(groups.others.length, state.othersOpen)}${errorNote}`;
     restToggle.classList.toggle('has-error', errorCount > 0);
     restToggle.setAttribute('aria-expanded', String(state.othersOpen));
     document.getElementById('s-others').style.display = groups.others.length === 0 ? 'none' : '';
@@ -1989,9 +1984,8 @@
     const signature = rows.map(row => `${row.engineId}:${row.status}:${row.updatedAt}:${row.title}`).join('|');
     if (keep && signature === shownSuggestions) return;
     shownSuggestions = signature;
-    const waitingCount = rows.filter(row => WAITING_STATUSES.includes(row.status)).length;
-    const plural = waitingCount > 1;
-    const header = rows.length === 0 ? 'Aucune conversation pour l\'instant' : waitingCount > 0 ? `${waitingCount} conversation${plural ? 's' : ''} t'attend${plural ? 'ent' : ''}` : 'Conversations récentes';
+    const waitingCount = WORDS.waitingCountOf(rows);
+    const header = rows.length === 0 ? 'Aucune conversation pour l\'instant' : waitingCount > 0 ? WORDS.waitingPhraseOf(waitingCount) : 'Conversations récentes';
     const now = Date.now();
     const results = rows.map(suggestionResultOf);
     const html = results.map(result => renderSearchRow(result, now)).join('');
@@ -2377,7 +2371,8 @@
   document.addEventListener('keydown', event => {
     if (!event.target.matches('[data-role="draft"]')) return;
     const card = event.target.closest('[data-engine]');
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    // Enter sends, Shift+Enter starts a new line, as in the island; Ctrl+Enter still sends.
+    if (event.key === 'Enter' && !event.isComposing && !event.shiftKey) {
       event.preventDefault();
       sendReply(card.dataset.engine);
     }
