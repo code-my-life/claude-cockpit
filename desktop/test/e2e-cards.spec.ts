@@ -116,9 +116,11 @@ test('B1: "Agrandir" enlarges the card; Escape and the backdrop close it; the la
   await expect(card).not.toHaveClass(/\bbig\b/)
   await enlarge.click()
   await expect(card).toHaveClass(/\bbig\b/)
-  // A click outside the card lands on the backdrop, which covers the page.
-  await expect(page.locator('.backdrop')).toBeAttached()
-  await page.mouse.click(5, 5)
+  // A click outside the card lands on the backdrop. Bottom left: on Windows a drag strip covers the top
+  // of the glass window (.drag-strip, -webkit-app-region: drag) and swallows clicks.
+  const corner = await page.evaluate(() => ({ x: 8, y: innerHeight - 8 }))
+  await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.className, corner)).toBe('backdrop')
+  await page.mouse.click(corner.x, corner.y)
   await expect(card).not.toHaveClass(/\bbig\b/)
 })
 
