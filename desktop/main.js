@@ -525,6 +525,11 @@ const exposeTestProbe = () => {
     areSoundsOn: () => areSoundsOn(),
     hasGlobalShortcuts: () => activeShortcut !== null || globalShortcut.isRegistered('Control+Alt+I'),
     hasUpdater: () => updater !== null,
+    // cockpitE2E: the launcher has no global shortcut in test mode, the tests show it and read its window.
+    showLauncher: () => showLauncher(),
+    isLauncherVisible: () => launcherWin !== null && !launcherWin.isDestroyed() && launcherWin.isVisible(),
+    launcherBounds: () => (launcherWin === null || launcherWin.isDestroyed() ? null : launcherWin.getBounds()),
+    cursorWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
   }
 }
 

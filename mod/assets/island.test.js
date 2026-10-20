@@ -19,6 +19,8 @@ const {
   toastExtentOf,
 } = require('./island');
 
+const island = require('./island');
+
 const targetMatching = selector => ({ closest: query => (query === selector ? {} : null) });
 
 test('la forme de l ile est la forme de verre seule, plus de dock ni de fiche', () => {
@@ -144,4 +146,21 @@ test('a permission the island can answer pins it like a question', () => {
   const rows = [{ engineId: 'a', title: 'A', status: 'permission', updatedAt: 1 }];
   assert.equal(pinKindOf(rows, { isServer: true }), 'none');
   assert.equal(pinKindOf(rows, { isServer: true, permissions: [{ requestId: 'r', engineId: 'a' }] }), 'attention');
+});
+
+test('island renders update notice when server is stale', () => {
+  const prevPV = globalThis.__PAGE_VERSION__;
+  const prevConv = globalThis.__CONVERSATIONS__;
+  try {
+    globalThis.__PAGE_VERSION__ = 'v-111';
+    globalThis.__CONVERSATIONS__ = { pageVersion: 'v-222', rows: [] };
+    assert.equal(island.staleNoticeOf(), 'Le cockpit a été mis à jour, redémarre Claude Desktop');
+    globalThis.__CONVERSATIONS__.pageVersion = 'v-111';
+    assert.equal(island.staleNoticeOf(), null);
+    delete globalThis.__CONVERSATIONS__;
+    assert.equal(island.staleNoticeOf(), null);
+  } finally {
+    if (prevPV === undefined) delete globalThis.__PAGE_VERSION__; else globalThis.__PAGE_VERSION__ = prevPV;
+    if (prevConv === undefined) delete globalThis.__CONVERSATIONS__; else globalThis.__CONVERSATIONS__ = prevConv;
+  }
 });
