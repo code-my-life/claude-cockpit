@@ -95,9 +95,18 @@ test('C4: a click on a lower card brings it forward without turning it over', as
   await expect(deck(island)).toHaveCount(2, { timeout: DATA_REFRESH_MS })
   const top = await deck(island).first().getAttribute('data-engine')
   const lower = top === 'e2e-question' ? 'e2e-delivered' : 'e2e-question'
-  // The top card covers the middle of the lower one: click the strip of it that shows below.
-  const box = (await island.locator(`#pile sg-flip[data-engine="${lower}"]`).boundingBox())!
-  await island.mouse.click(box.x + box.width / 2, box.y + box.height - 4)
+  // The top card covers the middle of the lower one: click the strip of it that shows below,
+  // once the deck has settled (the cards slide in when the island opens).
+  const card = island.locator(`#pile sg-flip[data-engine="${lower}"]`)
+  const seen: string[] = []
+  await expect.poll(async () => {
+    seen.push(JSON.stringify(await card.boundingBox()))
+    return seen.length >= 3 && seen.slice(-3).every(box => box === seen[seen.length - 1])
+  }, { intervals: [150] }).toBe(true)
+  const box = JSON.parse(seen[seen.length - 1]) as { x: number, y: number, width: number, height: number }
+  const [x, y] = [box.x + box.width / 2, box.y + box.height - 4]
+  expect(await island.evaluate(([px, py]) => document.elementFromPoint(px, py)?.closest('sg-flip')?.getAttribute('data-engine'), [x, y])).toBe(lower)
+  await island.mouse.click(x, y)
   await expect(deck(island).first()).toHaveAttribute('data-engine', lower)
   await expect(deck(island).first()).toHaveAttribute('flipped', '')
   await expect(island.locator('html')).toHaveAttribute('data-island', 'open')
