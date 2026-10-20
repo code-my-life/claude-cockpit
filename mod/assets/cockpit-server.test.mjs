@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { createCockpitServer } from './cockpit-server.mjs'
+import { hostSessionsDirsOf } from './terminal.mjs'
 
 const call = (port, method, route, { headers = {}, body } = {}) =>
   new Promise((resolve, reject) => {
@@ -132,8 +133,9 @@ test('the island scripts and the living entities are served from the assets fold
 test('the session index never waits for the list of running WSL distros', async () => {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-wsl-'))
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-wsl-home-'))
-  const config = path.join(home, '.config')
-  const sessions = path.join(config, 'Claude', 'claude-code-sessions', 'account', 'org')
+  const env = { XDG_CONFIG_HOME: path.join(home, '.config'), APPDATA: path.join(home, 'AppData', 'Roaming'), LOCALAPPDATA: path.join(home, 'AppData', 'Local') }
+  // The Desktop sessions folder of the system running the test.
+  const sessions = path.join(hostSessionsDirsOf(process.platform, home, env)[0], 'account', 'org')
   fs.mkdirSync(sessions, { recursive: true })
   fs.writeFileSync(path.join(sessions, 'local_w.json'), JSON.stringify({ sessionId: 'local_w', cliSessionId: 'engine-w', title: 'Session Desktop', cwd: home, lastActivityAt: 1, isArchived: false }))
   const project = path.join(home, '.claude', 'projects', 'p')
@@ -142,7 +144,7 @@ test('the session index never waits for the list of running WSL distros', async 
   let asked = 0
   // As wsl.exe on a machine where it never answers.
   const runningDistros = () => { asked += 1; return new Promise(() => {}) }
-  const cockpit = createCockpitServer({ rootDir, port: 0, sink: () => {}, homeDir: home, env: { XDG_CONFIG_HOME: config }, token: 'tok', runningDistros })
+  const cockpit = createCockpitServer({ rootDir, port: 0, sink: () => {}, homeDir: home, env, token: 'tok', runningDistros })
   try {
     const port = await cockpit.listen()
     let hostId = null
