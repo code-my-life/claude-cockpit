@@ -231,7 +231,7 @@
   @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
   .trace { position: fixed; left: 50%; bottom: 72px; width: 240px; height: 90px; margin-left: -120px; pointer-events: none; z-index: var(--z-toast); color: var(--ink); }
   .trace svg { display: block; width: 100%; height: 100%; }
-  .trace path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: traceDraw 900ms ease-out forwards, traceFade 500ms ease-in 1100ms forwards; }
+  .trace path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: traceDraw 900ms ease-out forwards, traceFade 200ms cubic-bezier(0.23, 1, 0.32, 1) 1100ms forwards; }
   @keyframes traceDraw { to { stroke-dashoffset: 0; } }
   @keyframes traceFade { to { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .pop, .bump, .changed, .trace path { animation: none !important; } .av { transition: none !important; } .trace { display: none; } }
@@ -984,7 +984,7 @@
   };
 
   const renderComposer = row => {
-    if (!isServer) return '<div class="note">Donner un ordre demande la version servie (voir le bandeau en haut).</div>';
+    if (!isServer) return '<div class="note">Pour donner un ordre d\'ici, ouvre le cockpit depuis l\'app (voir le bandeau en haut).</div>';
     const draft = draftOf(row.engineId);
     const thumbs = draft.images.map((image, index) => `<div class="thumb"><img src="${image.url}" alt=""><button type="button" data-action="remove-image" data-index="${index}" aria-label="Retirer l'image">${iconOf('x')}</button></div>`).join('');
     return `<label style="display: flex"><span class="sr">Ordre pour ${escapeHtml(row.title)}</span>
@@ -2016,7 +2016,29 @@
     desktop.setLauncherHeight(wrap.scrollHeight);
   };
 
-  const launcherRows = () => [...document.querySelectorAll('#search-results .search-row')];
+  // Only the rows that open something take part in the arrows (audit 2026-10-20, P1 n° 9): a terminal-only row has
+  // no link, Enter did nothing on it.
+  const launcherRows = () => [...document.querySelectorAll('#search-results a.search-row')];
+
+  // Combobox pattern: the field keeps the focus, the list is a listbox, the selected row is its active descendant.
+  // The status line alone is announced (not the whole list at each keystroke).
+  const syncLauncherA11y = () => {
+    if (!isLauncher) return;
+    const input = document.getElementById('search-input');
+    const rows = launcherRows();
+    rows.forEach((row, position) => {
+      row.id = `launcher-option-${position}`;
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', String(position === launcherIndex));
+      row.tabIndex = -1;
+    });
+    const selected = rows[launcherIndex];
+    if (selected) input.setAttribute('aria-activedescendant', selected.id); else input.removeAttribute('aria-activedescendant');
+    const status = document.querySelector('#search-results .search-status');
+    const announce = document.getElementById('launcher-announce');
+    const text = status ? status.textContent : '';
+    if (announce && announce.textContent !== text) announce.textContent = text;
+  };
 
   const selectLauncherRow = index => {
     const rows = launcherRows();
@@ -2024,6 +2046,7 @@
     rows.forEach((row, position) => row.classList.toggle('selected', position === launcherIndex));
     const selected = rows[launcherIndex];
     if (selected) selected.scrollIntoView({ block: 'nearest' });
+    syncLauncherA11y();
     syncLauncherHeight();
   };
 
@@ -2068,6 +2091,7 @@
 
   const renderSearchStatus = message => {
     document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(message)}</p>`;
+    if (isLauncher) { launcherIndex = -1; syncLauncherA11y(); }
     syncLauncherHeight();
   };
 
@@ -2262,7 +2286,7 @@
     const card = document.querySelector(`[data-engine="${engineId}"]:not(.big)`);
     if (!card) return;
     const top = card.getBoundingClientRect().top;
-    if (top < 0 || top > window.innerHeight - 80) window.scrollBy({ top: top - 80, behavior: 'smooth' });
+    if (top < 0 || top > window.innerHeight - 80) window.scrollBy({ top: top - 80, behavior: prefersCalm() ? 'auto' : 'smooth' });
   };
 
   const syncBackdrop = () => {
@@ -2339,10 +2363,10 @@
       const row = rowOf(avatar.dataset.av);
       // En cartes : la mini-carte mène à sa carte, retournée ; en lignes : seules celles qui attendent se déplient.
       const flipCard = row && document.querySelector(`sg-flip[data-engine="${escapeHtml(row.engineId)}"]`);
-      if (flipCard) { flipCard.flip(true); flipCard.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+      if (flipCard) { flipCard.flip(true); flipCard.scrollIntoView({ block: 'center', behavior: prefersCalm() ? 'auto' : 'smooth' }); return; }
       if (!row || !WAITING_STATUSES.includes(row.status)) return;
       expand(row.engineId);
-      document.querySelector(`.card[data-engine="${escapeHtml(row.engineId)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      document.querySelector(`.card[data-engine="${escapeHtml(row.engineId)}"]`)?.scrollIntoView({ block: 'center', behavior: prefersCalm() ? 'auto' : 'smooth' });
       return;
     }
     if (event.target.closest('a')) return;
@@ -2627,6 +2651,15 @@
       document.documentElement.classList.add('launcher-mode');
       document.body.classList.add('launcher-mode');
       searchInput.placeholder = 'Rechercher dans toutes les conversations';
+      const results = document.getElementById('search-results');
+      results.removeAttribute('aria-live');
+      results.setAttribute('role', 'listbox');
+      results.setAttribute('aria-label', 'Conversations');
+      searchInput.setAttribute('role', 'combobox');
+      searchInput.setAttribute('aria-expanded', 'true');
+      searchInput.setAttribute('aria-controls', 'search-results');
+      searchInput.setAttribute('aria-autocomplete', 'list');
+      results.insertAdjacentHTML('afterend', '<p class="ep-sr" id="launcher-announce" aria-live="polite"></p>');
       document.addEventListener('click', event => {
         const link = event.target.closest && event.target.closest('a.search-row');
         if (!link) return;

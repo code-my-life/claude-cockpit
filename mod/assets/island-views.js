@@ -205,7 +205,7 @@
       if (!row) return 'Rien à qui parler pour l\'instant.';
       if (row.status === 'permission') return 'Cette demande d\'autorisation se traite dans Claude : l\'île ne peut pas la valider à ta place.';
       if (row.isCurrent) return 'C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.';
-      return 'Répondre demande la version servie du cockpit.';
+      return 'Pour répondre d\'ici, le cockpit doit tourner : ouvre une conversation Claude avec le mod.';
     };
 
     // Une autorisation que l'app tient : la commande et les trois décisions, à la place du champ de réponse. Les boutons

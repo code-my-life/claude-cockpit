@@ -78,6 +78,7 @@
       if (ctx.cards) ctx.deck.render();
       ctx.living.syncHero();
       ctx.living.mountVisible();
+      if (ctx.cards) ctx.deck.syncLive(S.phase === 'open' ? shownViewOf(S.view) : 'compact');
     };
 
     // Un rendu réécrit les vues : le focus clavier retrouve son bouton (par data-act ou data-pick).
@@ -277,7 +278,13 @@
     }
 
     // Thème choisi par l'app selon le bureau derrière (Nuit ou Papier) : les jetons de l'île suivent.
-    const setTheme = theme => { ctx.islandEl.dataset.theme = theme === 'light' ? 'light' : 'dark'; };
+    // The toasts sit outside the island element: the page theme follows too, or a light desktop gets light ink on light
+    // glass in the toasts, which carry the errors (audit 2026-10-20, P1 n° 7).
+    const setTheme = theme => {
+      const name = theme === 'light' ? 'light' : 'dark';
+      ctx.islandEl.dataset.theme = name;
+      doc.documentElement.dataset.theme = name;
+    };
 
     return {
       setPhase, setTheme, update, openWith, fold, pointer, command, dispose: () => { stopAges(); ctx.living.dispose(); },

@@ -161,7 +161,7 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .feed li.in { animation: islandFeedIn 150ms ease-out; }
 @keyframes islandFeedIn { from { transform: translateY(var(--space-2)); } to { transform: none; } }
 html[data-island="hidden"] .island * { animation-play-state: paused !important; }
-@media (prefers-reduced-motion: reduce) { .island, .island .feed li.in { transition: none; animation: none; } }
+@media (prefers-reduced-motion: reduce) { .island, .island *, .island .feed li.in { transition: none !important; animation: none !important; } }
 
 /* Le flou est celui du système (acrylique) : aucun backdrop-filter dans la page (inutile, et coûteux à chaque image d'une entité animée). */
 .island, .island * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }

@@ -170,7 +170,22 @@
       islandEl.classList.add('cards');
     };
 
-    return { render, fillMinis, flash, stackOf, infoOf };
+    // A card the user cannot see stops computing frames (live="false" keeps its last image): the island hidden, a layer
+    // not shown, a card of the deck under the top one (audit 2026-10-20, P1 n° 6; backgroundThrottling is off for the
+    // island, so neither the page visibility nor IntersectionObserver pauses them).
+    const isCalm = () => typeof root.matchMedia === 'function' && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const syncLive = shownLayer => {
+      for (const card of islandEl.querySelectorAll('sg-card')) {
+        const layer = card.closest('.layer');
+        const flip = card.closest('#pile > sg-flip');
+        // Reduced motion: the shaders stand still too (decorative motion), each card keeps its image.
+        const isShown = !isCalm() && S.phase !== 'hidden' && layer !== null && layer.id === `v-${shownLayer}` && !(flip && flip.classList.contains('is-below'));
+        const live = isShown ? 'true' : 'false';
+        if (card.getAttribute('live') !== live) card.setAttribute('live', live);
+      }
+    };
+
+    return { render, fillMinis, flash, stackOf, infoOf, syncLive };
   };
 
   const api = { createDeck, SHOWN, STEP, PEEK };
