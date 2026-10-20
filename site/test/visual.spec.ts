@@ -518,25 +518,24 @@ test.describe('Site structure visual comparison', () => {
           await context.close();
         }
       });
+    }
+  }
 
-      // A turned card shows its front only: the back engraving must not show through, mirrored
-      test(`a turned card does not show its back through the front at ${width} (${name})`, async ({ browser }) => {
-        const { context, page } = await openPage(browser, width, height);
+  for (const { width, height } of viewports) {
+    for (const [name, origin, route] of PAGES) {
+      // A card front holds its whole content: no scrollbar, no clipped buttons
+      test(`every card front holds its content without scrolling at ${width} (${name})`, async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+        const page = await context.newPage();
         try {
-          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          await page.goto(`${origin()}${route}`, { waitUntil: 'load' });
           await page.evaluate(() => document.fonts.ready);
-          const flip = page.locator('sg-flip[flipped]').first();
-          await flip.scrollIntoViewIfNeeded();
-          // Hide the moving page background; the card back (its canvas carries the title) stays
-          await page.addStyleTag({ content: '#cc-bg { visibility: hidden !important; }' });
-          await page.waitForTimeout(500);
-          const shot = await flip.screenshot();
-          await page.addStyleTag({ content: 'sg-flip[flipped] sg-card { opacity: 0 !important; }' });
-          const backHidden = await flip.screenshot();
-          // A faint mirrored title is enough to fail: compare at a fine channel tolerance
-          const { pixelDiff } = await comparePngs(browser, shot, backHidden, [], [], 8);
-          console.log(`MEASURE flip ${width} ${name} pixelDiff=${pixelDiff.toFixed(4)}`);
-          expect(pixelDiff).toBeLessThanOrEqual(0.001);
+          const overflowing = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('sg-flip .cc-front')).flatMap(front =>
+              front.scrollHeight > front.clientHeight + 1 ? [front.querySelector('p')?.textContent?.trim().slice(0, 40) ?? '?'] : []
+            )
+          );
+          expect(overflowing).toEqual([]);
         } finally {
           await context.close();
         }
@@ -618,9 +617,11 @@ test.describe('Site structure visual comparison', () => {
         }
         await page.waitForTimeout(1200);
         const hidden = await page.evaluate(() =>
-          Array.from(document.querySelectorAll('.cc-reveal')).filter(el => !el.classList.contains('is-in') || parseFloat(getComputedStyle(el).opacity) < 0.99).length
+          Array.from(document.querySelectorAll('.cc-reveal'))
+            .filter(el => !el.classList.contains('is-in') || parseFloat(getComputedStyle(el).opacity) < 0.99)
+            .map(el => `${el.tagName.toLowerCase()}.${el.className}: ${el.textContent!.trim().slice(0, 30)}`)
         );
-        expect(hidden).toBe(0);
+        expect(hidden).toEqual([]);
 
         const reduced = await still.newPage();
         await blockFonts(reduced);

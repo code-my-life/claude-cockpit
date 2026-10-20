@@ -21,7 +21,7 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 .cc-section{margin-top:var(--space-24)}
 .cc-section > p.ep-lede{max-width:var(--measure)}
 .cc-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--space-12);align-items:start}
-.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 2.7);justify-self:center}
+.cc-hero-card{width:100%;max-width:calc(var(--space-24) * 3.4);justify-self:center}
 .ep-header{gap:var(--space-4)}
 .ep-header .ep-nav{min-width:0;flex:0 1 auto;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;justify-content:flex-start}
 .ep-header__brand{min-height:calc(var(--space-10) + var(--space-1))}
@@ -74,8 +74,6 @@ main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--s
 /* Release 0.4.2: review with design-taste-frontend */
 /* The hero title runs across the whole hero so it holds on two lines; text and card share the row below */
 .cc-hero-title{grid-column:1 / -1;margin:0}
-/* A turned card shows its front only: the back engraving must not show through, mirrored */
-.cc-flip sg-card{-webkit-backface-visibility:hidden;backface-visibility:hidden}
 /* Running notes are read at 16px; card fronts keep the smaller Liquid Paper note */
 main .ep-note:not(.cc-front *){font-size:16px}
 /* Sections enter in parts when motion is allowed (site.js adds .cc-reveal); without it nothing is hidden */

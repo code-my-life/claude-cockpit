@@ -104,13 +104,16 @@ document.addEventListener('DOMContentLoaded', () => {
     ].join(', ');
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
+        // A part shows once it reaches the screen, or once a fast scroll has already carried it past
+        if (!entry.isIntersecting && entry.boundingClientRect.top > 0) continue;
         entry.target.classList.add('is-in');
         observer.unobserve(entry.target);
       }
-    }, { rootMargin: '0px 0px -8% 0px' });
+    });
     document.querySelectorAll('main section').forEach(section => {
-      section.querySelectorAll(PARTS).forEach((part, index) => {
+      // Cards are left out: an opacity fade on a 3D flip flattens it while it runs
+      const parts = Array.from(section.querySelectorAll(PARTS)).filter(part => !part.matches('sg-flip') && !part.querySelector('sg-flip'));
+      parts.forEach((part, index) => {
         part.style.setProperty('--cc-delay', `${Math.min(index, 6) * 70}ms`);
         part.classList.add('cc-reveal');
         observer.observe(part);
