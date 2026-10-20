@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { FakeMod, linkFileOf, readLink } from './fake-mod'
-import { buildFixtures, conversationsDataOf, type Fixtures, type Row } from './fixtures/structured-data'
+import { buildFixtures, conversationsDataOf, desktopSessionsBaseOf, writeDesktopSearchSession, type Fixtures, type Row } from './fixtures/structured-data'
 
 const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
@@ -17,7 +17,7 @@ const LINK_TIMEOUT_MS = 30_000
 
 export type Cockpit = {
   app: ElectronApplication, root: string, close: () => Promise<void>,
-  fixtures: Fixtures, dataDir: string,
+  fixtures: Fixtures, dataDir: string, link: { port: number, secret: string, dataDir: string },
   // Rewrites conversations-data.js; the pages reload it every 3 s.
   writeData: (rows?: Row[], extra?: Record<string, unknown>) => void,
   startFakeMod: () => Promise<FakeMod>,
@@ -47,6 +47,11 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   for (const dir of ['AppData/Roaming', 'AppData/Local', 'run', 'home/.config']) fs.mkdirSync(path.join(root, dir), { recursive: true, mode: 0o700 })
   const env = isolatedEnv(root, home)
   const fixtures = buildFixtures(root, configBaseOf(env))
+  // Before launch: the server lists the MSIX package folders when it starts.
+  // Its folder sits inside work/: the server also allows the siblings of a known folder (known-folders.mjs).
+  const desktopFolder = path.join(fixtures.folders.work, 'e2e-desktop-search')
+  fs.mkdirSync(desktopFolder, { recursive: true })
+  writeDesktopSearchSession(home, desktopSessionsBaseOf(env), desktopFolder)
   const removeRoot = () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   const app = await electron.launch({
     args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
@@ -84,7 +89,7 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     if (fs.existsSync(log)) await testInfo.attach('cockpit.log', { body: fs.readFileSync(log), contentType: 'text/plain' })
     removeRoot()
   }
-  return { app, root, close, fixtures, dataDir: link.dataDir, writeData, startFakeMod, terminalLaunches }
+  return { app, root, close, fixtures, link, dataDir: link.dataDir, writeData, startFakeMod, terminalLaunches }
 }
 
 // The first window whose address matches, waiting for it when it is not open yet. A window
@@ -125,7 +130,8 @@ export const openCockpit = async (app: ElectronApplication): Promise<Page> => {
   return page
 }
 
-type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean }
+type Bounds = { x: number, y: number, width: number, height: number }
+type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void, isLauncherVisible: () => boolean, launcherBounds: () => Bounds | null, cursorWorkArea: () => Bounds }
 
 // Reads one value of the main process through the probe main.js exposes in test mode.
 export const probe = <K extends keyof Probe>(app: ElectronApplication, key: K): Promise<ReturnType<Probe[K]>> =>
