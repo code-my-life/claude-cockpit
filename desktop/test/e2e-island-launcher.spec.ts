@@ -112,6 +112,22 @@ test('C4: a click on a lower card brings it forward without turning it over', as
   await expect(island.locator('html')).toHaveAttribute('data-island', 'open')
 })
 
+test('C5: on a permission request, no "Détails" button is drawn over the request (#52)', async ({}, testInfo) => {
+  cockpit.writeData(only('e2e-perm'))
+  const island = await openIsland(cockpit.app)
+  await askPermission(cockpit.link, { engineId: 'e2e-perm', tool: 'Bash', summary: 'npm test' })
+  await expect(island.locator('[data-act="perm"][data-decision="allow"]')).toBeVisible({ timeout: DATA_REFRESH_MS })
+  const alert = island.locator('.alert-main:visible').first()
+  await expect(alert).toBeVisible()
+  const request = (await alert.boundingBox())!
+  for (const details of await island.locator('[data-act="details"]:visible').all()) {
+    const box = (await details.boundingBox())!
+    const overlaps = box.x < request.x + request.width && request.x < box.x + box.width && box.y < request.y + request.height && request.y < box.y + box.height
+    expect(overlaps, `"Détails" at ${JSON.stringify(box)} over the request at ${JSON.stringify(request)}`).toBe(false)
+  }
+  await attachScreenshot(testInfo, island, 'C5-autorisation')
+})
+
 test('D1: with an empty query, at most 8 suggestions, the waiting ones first, under "N conversations t\'attendent"', async () => {
   const launcher = await showLauncher()
   const waiting = cockpit.fixtures.rows.filter(row => ['permission', 'done', 'external'].includes(row.status)).sort((a, b) => b.updatedAt - a.updatedAt)
