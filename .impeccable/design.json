@@ -1,0 +1,364 @@
+{
+ "schemaVersion": 2,
+ "generatedAt": "2026-10-20T13:00:00+02:00",
+ "title": "Design System: Claude Cockpit, l'app",
+ "extensions": {
+  "colorMeta": {
+   "paper-night": {
+    "role": "neutral",
+    "displayName": "Papier de nuit"
+   },
+   "paper-deep": {
+    "role": "neutral",
+    "displayName": "Papier profond"
+   },
+   "plate-slate": {
+    "role": "neutral",
+    "displayName": "Ardoise"
+   },
+   "plate-hover": {
+    "role": "neutral",
+    "displayName": "Ardoise éclairée"
+   },
+   "ink-bone": {
+    "role": "neutral",
+    "displayName": "Os",
+    "tonalRamp": [
+     "#0c0d0f",
+     "#121316",
+     "#1b1c20",
+     "#25262b",
+     "#5f6268",
+     "#7a7d84",
+     "#a5a8ae",
+     "#ecece6"
+    ]
+   },
+   "ink-mist": {
+    "role": "neutral",
+    "displayName": "Brume"
+   },
+   "ink-faint": {
+    "role": "neutral",
+    "displayName": "Gris effacé"
+   },
+   "line-pewter": {
+    "role": "neutral",
+    "displayName": "Étain"
+   },
+   "rule-hairline": {
+    "role": "neutral",
+    "displayName": "Filet"
+   },
+   "accent-periwinkle": {
+    "role": "primary",
+    "displayName": "Pervenche",
+    "tonalRamp": [
+     "#1a1f3d",
+     "#262b4d",
+     "#3a4380",
+     "#5865b8",
+     "#7987e6",
+     "#9ba8ff",
+     "#c3cbff",
+     "#e6e9ff"
+    ]
+   },
+   "accent-strong": {
+    "role": "primary",
+    "displayName": "Pervenche vive"
+   },
+   "on-accent": {
+    "role": "primary",
+    "displayName": "Sur pervenche"
+   },
+   "accent-tint": {
+    "role": "primary",
+    "displayName": "Nuit de pervenche"
+   },
+   "success-lagoon": {
+    "role": "tertiary",
+    "displayName": "Lagune",
+    "tonalRamp": [
+     "#071a1d",
+     "#123136",
+     "#1c5058",
+     "#277a85",
+     "#37a1ae",
+     "#4fc3cf",
+     "#86d9e1",
+     "#c4eef2"
+    ]
+   },
+   "success-tint": {
+    "role": "tertiary",
+    "displayName": "Fond lagune"
+   },
+   "warning-amber": {
+    "role": "secondary",
+    "displayName": "Ambre",
+    "tonalRamp": [
+     "#1f1806",
+     "#38300f",
+     "#5c4a14",
+     "#8a6d1c",
+     "#b88f2a",
+     "#e0b04a",
+     "#edc878",
+     "#f7e3b8"
+    ]
+   },
+   "warning-tint": {
+    "role": "secondary",
+    "displayName": "Fond ambre"
+   },
+   "danger-coral": {
+    "role": "tertiary",
+    "displayName": "Corail",
+    "tonalRamp": [
+     "#200c0b",
+     "#3d1f1d",
+     "#6b302c",
+     "#a3463f",
+     "#d9665c",
+     "#ff8a80",
+     "#ffb2ab",
+     "#ffdcd8"
+    ]
+   },
+   "danger-tint": {
+    "role": "tertiary",
+    "displayName": "Fond corail"
+   },
+   "glass": {
+    "role": "neutral",
+    "displayName": "Verre"
+   },
+   "glass-edge": {
+    "role": "neutral",
+    "displayName": "Arête de verre"
+   },
+   "paper-day": {
+    "role": "neutral",
+    "displayName": "Papier de jour"
+   },
+   "plate-day": {
+    "role": "neutral",
+    "displayName": "Plaque de jour"
+   },
+   "ink-day": {
+    "role": "neutral",
+    "displayName": "Encre"
+   },
+   "ink-day-2": {
+    "role": "neutral",
+    "displayName": "Encre seconde"
+   }
+  },
+  "typographyMeta": {
+   "display": {
+    "displayName": "Display",
+    "purpose": "« Ton équipe », le grand titre du cockpit."
+   },
+   "headline": {
+    "displayName": "Headline",
+    "purpose": "Sections du cockpit."
+   },
+   "title": {
+    "displayName": "Title",
+    "purpose": "Nom d'une conversation, sur la carte et dans l'île."
+   },
+   "body": {
+    "displayName": "Body",
+    "purpose": "Résumés, conversation, champs."
+   },
+   "body-s": {
+    "displayName": "Body S",
+    "purpose": "Faces de cartes de l'île."
+   },
+   "label": {
+    "displayName": "Label",
+    "purpose": "Onglets, boutons, états, statistiques, en capitales."
+   },
+   "caption": {
+    "displayName": "Caption",
+    "purpose": "Métadonnées mono en minuscules, sans espacement."
+   }
+  },
+  "shadows": [
+   {
+    "name": "shadow-glass",
+    "value": "0 18px 44px -14px rgba(0,0,0,.72), 0 2px 6px rgba(0,0,0,.4)",
+    "purpose": "Plaques, recherche, cartes."
+   },
+   {
+    "name": "shadow-glass-s",
+    "value": "0 8px 18px -10px rgba(0,0,0,.7)",
+    "purpose": "Boutons, onglets, pastilles."
+   },
+   {
+    "name": "shadow-glass-pop",
+    "value": "0 32px 70px -22px rgba(0,0,0,.85), 0 3px 8px rgba(0,0,0,.5)",
+    "purpose": "Popup, carte agrandie."
+   }
+  ],
+  "motion": [
+   {
+    "name": "island-open",
+    "value": "spring 300ms",
+    "purpose": "Morphose de la fenêtre de l'île à l'ouverture."
+   },
+   {
+    "name": "island-fold",
+    "value": "spring 260ms",
+    "purpose": "Morphose au repli."
+   },
+   {
+    "name": "motion-ui",
+    "value": "150ms",
+    "purpose": "Contenu, survols, couleurs ; apparition retardée de 110 ms, sortie 100 ms."
+   },
+   {
+    "name": "press",
+    "value": "scale(.97) 150ms",
+    "purpose": "Pression des boutons de verre."
+   },
+   {
+    "name": "reduced-motion",
+    "value": "prefers-reduced-motion: reduce",
+    "purpose": "Morphose, réactions des identités et boucles coupées ; état final statique."
+   }
+  ],
+  "breakpoints": [
+   {
+    "name": "island-max",
+    "value": "800px"
+   },
+   {
+    "name": "cockpit-narrow",
+    "value": "900px"
+   }
+  ]
+ },
+ "components": [
+  {
+   "name": "Île repliée",
+   "kind": "custom",
+   "refersTo": "island-compact",
+   "description": "La pastille de verre au bord haut : qui t'attend, puis les mini-cartes.",
+   "html": "<div class=\"ds-compact\"><span class=\"ds-state\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" aria-hidden=\"true\"><path d=\"M12 3 2 21h20L12 3z\"/><path d=\"M12 10v5M12 18v.5\"/></svg>2 t'attendent</span><span class=\"ds-mini\"></span><span class=\"ds-mini ds-mini--b\"></span><span class=\"ds-mini ds-mini--c\"></span></div>",
+   "css": ".ds-compact{display:flex;align-items:center;gap:8px;width:320px;box-sizing:border-box;padding:8px 12px;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 18px -10px rgba(0,0,0,.7)}.ds-state{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#e0b04a;background:#38300f;border:1px solid #e0b04a;border-radius:999px}.ds-mini{margin-left:auto;width:22px;height:30px;border-radius:4px;background:linear-gradient(135deg,#3a4380,#1b1c20);border:1px solid rgba(255,255,255,.14)}.ds-mini+.ds-mini{margin-left:0}.ds-mini--b{background:linear-gradient(135deg,#277a85,#1b1c20)}.ds-mini--c{background:linear-gradient(135deg,#6b302c,#1b1c20)}"
+  },
+  {
+   "name": "Onglets de l'île",
+   "kind": "nav",
+   "refersTo": "tab-active",
+   "description": "Accueil, Envoyer un ordre, Nouvelle conversation : une pilule de verre, flèches entre onglets.",
+   "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Accueil</button><button role=\"tab\" aria-selected=\"false\">Envoyer un ordre</button><button role=\"tab\" aria-selected=\"false\">Nouvelle conversation</button></div>",
+   "css": ".ds-tabs{display:inline-flex;gap:2px;padding:4px;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px}.ds-tabs button{padding:9px 16px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae;background:transparent;border:0;border-radius:999px;cursor:pointer;transition:background-color .15s,color .15s}.ds-tabs button:hover{color:#ecece6}.ds-tabs button[aria-selected=\"true\"]{color:#ecece6;background:rgba(30,32,40,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 5px 12px -5px rgba(0,0,0,.4)}.ds-tabs button:focus-visible{outline:2px solid #ecece6;outline-offset:2px}"
+  },
+  {
+   "name": "Réponses rapides",
+   "kind": "button",
+   "refersTo": "quick-reply",
+   "description": "OK, GO, Non sous la carte qui attend.",
+   "html": "<div class=\"ds-quick\"><button>OK</button><button>GO</button><button>Non</button></div>",
+   "css": ".ds-quick{display:flex;gap:8px}.ds-quick button{height:32px;padding:0 16px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;cursor:pointer;transition:transform .2s cubic-bezier(.3,1.35,.45,1),box-shadow .2s}.ds-quick button:hover{box-shadow:0 8px 18px -10px rgba(0,0,0,.7)}.ds-quick button:active{transform:scale(.97)}.ds-quick button:focus-visible{outline:2px solid #ecece6;outline-offset:2px}"
+  },
+  {
+   "name": "Pastilles d'état",
+   "kind": "chip",
+   "refersTo": "status-pill-waiting",
+   "description": "Icône et mot, ambre pour ce qui attend, lagune pour terminé.",
+   "html": "<span class=\"ds-pill ds-pill--wait\">⚠ T'attend</span> <span class=\"ds-pill ds-pill--done\">✓ Terminé</span> <span class=\"ds-pill\">▶ Travaille</span>",
+   "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px}.ds-pill--wait{color:#e0b04a;background:#38300f;border-color:#e0b04a}.ds-pill--done{color:#4fc3cf;background:#123136;border-color:#4fc3cf}"
+  },
+  {
+   "name": "Bouton rond",
+   "kind": "button",
+   "refersTo": "icon-button",
+   "description": "Recherche, cockpit, sons, quitter : 32 px, icône seule, infobulle et nom accessible.",
+   "html": "<button class=\"ds-round\" aria-label=\"Rechercher\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg></button>",
+   "css": ".ds-round{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:50%;cursor:pointer;transition:transform .2s cubic-bezier(.3,1.35,.45,1)}.ds-round:active{transform:scale(.97)}.ds-round:focus-visible{outline:2px solid #ecece6;outline-offset:3px}"
+  },
+  {
+   "name": "Recherche",
+   "kind": "input",
+   "refersTo": "search-field",
+   "description": "Le champ de verre du cockpit et du lanceur, Ctrl+K.",
+   "html": "<label class=\"ds-search\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input placeholder=\"Rechercher dans toutes les conversations\"></label>",
+   "css": ".ds-search{display:flex;align-items:center;gap:12px;height:52px;padding:0 20px;color:#a5a8ae;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;box-shadow:0 18px 44px -14px rgba(0,0,0,.72)}.ds-search input{flex:1;font:400 15px/1.55 \"Instrument Sans\",system-ui,sans-serif;color:#ecece6;background:transparent;border:0;outline:0}.ds-search:focus-within{border-color:#ecece6}"
+  }
+ ],
+ "narrative": {
+  "northStar": "La Main de cartes",
+  "overview": "**Creative North Star: \"La Main de cartes\"**\n\nChaque conversation est une carte, et l'app est la main qui les tient. La carte porte tout ce qui distingue une conversation d'une autre : sa gravure générative (systems-generator, rendue en WebGPU), sa finition, sa rareté gagnée par le travail, son état en direct. Tout le reste de l'interface est la table : du verre acrylique de Windows, de la craie, des libellés de bord en mono, qui s'effacent derrière les cartes et le texte. On regarde les cartes ; on touche le verre.\n\nLe système est imposé : Liquid Paper 1.0.2 (`mod/assets/liquid-paper/`, copie du paquet `@code-my-life/liquid-paper`), variante Encre et Papier, thème Nuit (`data-theme=\"dark\"`). L'île change de thème toute seule selon le bureau derrière elle : Nuit sur un bureau sombre, Papier sur un bureau clair (lecture de quelques pixels de l'écran, avec hystérésis). Le verre n'est pas du CSS : c'est l'acrylique de Windows, et la fenêtre de l'île EST la forme qui se morphose.\n\nL'app vit au bord de l'attention : on travaille dans d'autres fenêtres, l'île porte l'urgence en haut de l'écran, le cockpit sert à faire le point. Le ton est donc calme et précis, sans décor, avec une seule promesse : personne n'attend en silence. Les composants sont **tactiles et discrets** : du verre qu'on a envie de toucher (pilules, ressort court, pression à 97 %), mais qui laisse la place aux cartes.",
+  "keyCharacteristics": [
+   "La carte holographique est l'unité de tout : dans l'île (pile), le cockpit (grandes cartes, mini-cartes de l'équipe) et le lanceur.",
+   "Verre acrylique du système sous tout ce qui flotte ; aucun `backdrop-filter` dans l'île.",
+   "Craie sur Nuit, ou encre sur Papier quand le bureau est clair, choisi par l'app et non par l'utilisateur.",
+   "Couleur réservée aux cartes et aux états (ambre qui attend, lagune livré, corail bloqué, pervenche en mission).",
+   "Serif éditorial pour les noms, sans-serif pour lire, mono capitales pour les commandes et les états.",
+   "Mouvement court et physique (ressort 260 à 300 ms pour le verre, 150 ms pour le contenu), coupé en mouvement réduit."
+  ],
+  "rules": [
+   {
+    "name": "The Cards Are Lit Rule",
+    "body": "La couleur vive vit dans les gravures des cartes. L'interface autour n'a que les quatre tons d'état, et seulement là où un état est dit.",
+    "section": "colors"
+   },
+   {
+    "name": "The Amber Means You Rule",
+    "body": "L'ambre veut dire « toi » : une question ou une permission qui attend. Il n'est jamais décoratif, jamais utilisé pour autre chose, et il reste visible île repliée.",
+    "section": "colors"
+   },
+   {
+    "name": "The Icon and Word Rule",
+    "body": "Un état se lit toujours par une icône et un mot (« T'ATTEND », « TERMINÉ », « TRAVAILLE ») : jamais par la couleur seule.",
+    "section": "colors"
+   },
+   {
+    "name": "The Measured Contrast Rule",
+    "body": "Sur l'acrylique, le contraste se mesure contre le bureau réel : encre à 11:1 au moins sur bureau sombre, 9,7:1 sur bureau clair (AA visé). Une teinte ou une opacité se règle par la mesure, pas à l'œil.",
+    "section": "colors"
+   },
+   {
+    "name": "The Three Voices Rule",
+    "body": "Un nom est en serif, une commande ou un état en mono capitales, une phrase à lire en sans-serif. Ne jamais les échanger.",
+    "section": "typography"
+   },
+   {
+    "name": "The Tracking Follows Case Rule",
+    "body": "L'espacement large (+0.12 à +0.14 em) n'existe qu'en CAPITALES. Le mono en minuscules garde son espacement naturel (`.caption`, ou +0.03 em pour `.spec`).",
+    "section": "typography"
+   },
+   {
+    "name": "The Urgency Order Rule",
+    "body": "Partout, ce qui attend passe en premier : section du haut dans le cockpit, carte du dessus dans la pile, pastille ambre dans l'île repliée.",
+    "section": "layout"
+   },
+   {
+    "name": "The Window Is the Glass Rule",
+    "body": "Dans l'île, le flou vient de Windows et la fenêtre a la forme exacte de la pastille ou de l'île ouverte. On ne simule pas le verre en CSS par-dessus.",
+    "section": "elevation"
+   }
+  ],
+  "dos": [
+   "Do passer par les jetons et composants de Liquid Paper (`--space-*`, `--radius-*`, `ep-*`) ; les seuls jetons locaux sont la teinte de conversation, `--motion-ui` et les réglages de verre de l'île.",
+   "Do faire de la carte holographique l'objet de chaque conversation, partout où elle apparaît.",
+   "Do dire chaque état par une icône et un mot, et garder l'ambre pour ce qui attend l'utilisateur.",
+   "Do mesurer les contrastes sur l'acrylique contre un bureau clair et un bureau sombre réels.",
+   "Do couper toute animation en mouvement réduit en gardant l'état final, et arrêter les boucles quand l'île est cachée.",
+   "Do donner un nom accessible et une infobulle à chaque bouton à icône seule, et garder Tab, les flèches et Échap dans l'île.",
+   "Do consigner tout nouvel écart au modèle Liquid Paper dans `README.fr.md`."
+  ],
+  "donts": [
+   "Don't poser de `backdrop-filter` dans l'île, ni d'`opacity` sur le bloc de verre : le verre est celui de Windows.",
+   "Don't colorer l'interface hors des quatre tons d'état : pas d'accent décoratif, pas de dégradé hors des cartes.",
+   "Don't espacer largement un libellé mono en minuscules ; l'espacement large est réservé aux capitales.",
+   "Don't voler le focus ni ouvrir l'île pour ce qui n'attend pas l'utilisateur.",
+   "Don't modifier les fichiers copiés de Liquid Paper (`mod/assets/liquid-paper/`) ni de systems-generator : on met à jour la copie depuis le paquet.",
+   "Don't mettre de tiret cadratin dans les textes de l'interface."
+  ]
+ }
+}
