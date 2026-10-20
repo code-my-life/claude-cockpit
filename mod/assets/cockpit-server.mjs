@@ -70,27 +70,42 @@ const hostSessionsDirsNow = (homeDir, env) => hostSessionsDirsOf(process.platfor
 const WSL_LIST_TIMEOUT_MS = 5000
 const WSL_LIST_REFRESH_MS = 30000
 
-// The WSL distros running now (Windows only), from `wsl.exe --list --running --quiet`.
+// The WSL distros running now (Windows only), from `wsl.exe --list --running --quiet`. Never
+// waits longer than WSL_LIST_TIMEOUT_MS: on a machine without WSL the command may not answer.
 const listRunningDistros = () => new Promise(resolve => {
   if (process.platform !== 'win32') return resolve([])
   const chunks = []
   let child
+  const done = distros => {
+    clearTimeout(timer)
+    resolve(distros)
+  }
+  const timer = setTimeout(() => {
+    child?.kill()
+    done([])
+  }, WSL_LIST_TIMEOUT_MS)
   try {
-    child = spawn('wsl.exe', ['--list', '--running', '--quiet'], { windowsHide: true, timeout: WSL_LIST_TIMEOUT_MS })
+    child = spawn('wsl.exe', ['--list', '--running', '--quiet'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] })
   } catch {
-    return resolve([])
+    return done([])
   }
   child.stdout.on('data', chunk => chunks.push(chunk))
-  child.on('error', () => resolve([]))
-  child.on('close', code => resolve(code === 0 ? runningDistrosOf(Buffer.concat(chunks)) : []))
+  child.on('error', () => done([]))
+  child.on('close', code => done(code === 0 ? runningDistrosOf(Buffer.concat(chunks)) : []))
 })
 
-// Asked again at most every WSL_LIST_REFRESH_MS: the index is refreshed every few seconds.
-const runningDistrosNow = async ctx => {
+// The last known list, asked again in the background at most every WSL_LIST_REFRESH_MS: the
+// session index never waits for wsl.exe.
+const runningDistrosNow = ctx => {
   const { wsl } = ctx.state
-  if (Date.now() - wsl.at < WSL_LIST_REFRESH_MS) return wsl.distros
-  wsl.at = Date.now()
-  wsl.distros = await ctx.runningDistros()
+  if (!wsl.isAsking && Date.now() - wsl.at >= WSL_LIST_REFRESH_MS) {
+    wsl.isAsking = true
+    wsl.at = Date.now()
+    void ctx.runningDistros()
+      .then(distros => { wsl.distros = distros })
+      .catch(() => {})
+      .finally(() => { wsl.isAsking = false })
+  }
   return wsl.distros
 }
 
@@ -120,6 +135,7 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
     isIndexing: false,
     remoteRepos: new Map(),
     lastReportedError: '',
+    wsl: { at: 0, distros: [], isAsking: false },
     searchIndex: { files: {} },
     searchRefresh: null,
     isSearchDirty: false,
@@ -290,10 +306,10 @@ const refreshSessionIndex = async ctx => {
   try {
     const scanned = (await Promise.all(ctx.hostSessionsDirs().map(dir => scanHostFiles(dir)))).flat()
     const refreshed = await refreshIndex(state.sessionIndex, scanned, readText)
-    const wslDirs = wslLiveDirsOf(sessionsOf(refreshed.index), await runningDistrosNow(ctx))
+    state.sessionIndex = refreshed.index
+    const wslDirs = wslLiveDirsOf(sessionsOf(refreshed.index), runningDistrosNow(ctx))
     const live = [...new Set((await Promise.all([ctx.liveSessionsDir, ...wslDirs].map(dir => readLiveEngineIds(dir)))).flat())]
     const liveKey = [...live].sort().join('|')
-    state.sessionIndex = refreshed.index
     const remotesChanged = await resolveRemoteRepos(ctx, state.sessionIndex)
     if (!refreshed.changed && !remotesChanged && liveKey === state.savedLiveKey) return
     saveIndex(ctx.cacheFile, state.sessionIndex)
