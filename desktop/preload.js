@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   setExpanded: (expanded, width, height, byHover, isPassive) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true),
   setToasts: (width, height) => ipcRenderer.send('island-toasts', width, height),
   islandPointer: isInside => ipcRenderer.send('island-pointer', isInside),
+  // The content window lets clicks through outside the island; the page captures them while over it.
+  setIslandCapture: isInside => ipcRenderer.send('island-capture', isInside === true),
+  // The glass window's morph, in the content window's coordinates: { from, to, ms, zeta, startedAt }.
+  onIslandGeometry: callback => ipcRenderer.on('island-geometry', (event, geometry) => callback(geometry)),
   islandEvent: () => ipcRenderer.send('island-event'),
   islandPinned: isPinned => ipcRenderer.send('island-pinned', isPinned),
   islandActivity: () => ipcRenderer.send('island-activity'),

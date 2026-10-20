@@ -133,10 +133,7 @@
       if (!ctx.motion.isStarted()) ctx.motion.start(target);
       else if (silent || ctx.motion.speed() === 0) ctx.motion.snap(target);
       else ctx.motion.retarget(target, isShrinking);
-      // The size goes to the app once the page has painted the outgoing content away (two frames), so the window never
-      // grows or shrinks around a stale picture of it.
-      if (previous !== phase && ctx.motion.speed() !== 0) win.requestAnimationFrame(() => win.requestAnimationFrame(() => pushExtent(S.phase, S.view)));
-      else pushExtent(phase, view);
+      pushExtent(phase, view);
       if (phase === 'open') startAges();
       ctx.living.mountVisible();
       if (phase === 'hidden') entities.pause(); else entities.resume();
@@ -271,6 +268,11 @@
     ctx.views.renderNewList();
     renderAll();
     go('hidden', 'home', { silent: true });
+    // Desktop app: the glass window morphs, this page draws the same shape (plan 001).
+    if (desktop && typeof desktop.onIslandGeometry === 'function') {
+      doc.documentElement.classList.add('island-split');
+      desktop.onIslandGeometry(geometry => ctx.motion.geometry(geometry));
+    }
 
     // Thème choisi par l'app selon le bureau derrière (Nuit ou Papier) : les jetons de l'île suivent.
     const setTheme = theme => { ctx.islandEl.dataset.theme = theme === 'light' ? 'light' : 'dark'; };

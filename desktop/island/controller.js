@@ -18,7 +18,7 @@ const realClock = {
 
 const areaOf = bounds => bounds.width * bounds.height
 
-const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, focusWindow = () => {}, isFullscreenActive = () => false, isScreenReaderActive = () => false, send, clock = realClock, schedule = null, motionScale = 1 }) => {
+const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, focusWindow = () => {}, isFullscreenActive = () => false, isScreenReaderActive = () => false, send, sendGeometry = () => {}, clock = realClock, schedule = null, motionScale = 1 }) => {
   let sizes = { compactWidth: DEFAULT_COMPACT.width, compactHeight: DEFAULT_COMPACT.height, openWidth: 0, openHeight: 0, toastWidth: 0, toastHeight: 0 }
   let appliedPhase = HIDDEN
   let hasReducedMotion = false
@@ -31,7 +31,8 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
     fsm.hover(isInside)
   }
   const frame = schedule || (run => clock.setTimer(run, FRAME_MS))
-  const morph = createMorph({ now: () => (clock.now ? clock.now() : Date.now()), schedule: frame, cancel: () => {}, apply: applyBounds })
+  // Every morph start goes to the page too: the glass window morphs, the page draws the same shape on the same clock.
+  const morph = createMorph({ now: () => (clock.now ? clock.now() : Date.now()), schedule: frame, cancel: () => {}, apply: applyBounds, onStart: sendGeometry })
 
   const spring = isGrowing => {
     const base = isGrowing ? OPEN_SPRING : CLOSE_SPRING

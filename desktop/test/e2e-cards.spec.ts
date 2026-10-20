@@ -40,6 +40,21 @@ const turnOver = async (page: Page, engineId: string) => {
   return card
 }
 
+// The face of a card shows only the request and its quick replies; everything else is in the enlarged card.
+const enlarge = async (page: Page, engineId: string) => {
+  const card = await turnOver(page, engineId)
+  if (!await card.evaluate(el => el.classList.contains('big'))) await card.locator('[data-testid="card-enlarge"]').click()
+  await expect(card).toHaveClass(/\bbig\b/)
+  return card
+}
+
+// Leaves the enlarged card, as Escape does.
+const shrink = async (page: Page) => {
+  if (await page.locator('.lane.cards sg-flip.big').count() === 0) return
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.lane.cards sg-flip.big')).toHaveCount(0)
+}
+
 const settledBox = async (locator: ReturnType<Page['locator']>) => {
   const seen: string[] = []
   await expect.poll(async () => {
@@ -167,18 +182,12 @@ test('B1: "Agrandir" enlarges the card; Escape and the backdrop close it; the bu
   await expect(card).not.toHaveClass(/\bbig\b/)
 })
 
-test('B2: "Voir la réponse exacte" opens the thread, aria-expanded follows', async () => {
+test('B2: the enlarged card shows the exact answer (the thread) at once; the face does not', async () => {
   const page = await openCockpit(cockpit.app)
-  const card = await turnOver(page, 'e2e-perm')
-  const exact = card.locator('[data-testid="card-exact-answer"]')
-  const thread = card.locator('[data-engine-thread="e2e-perm"]')
-  await expect(exact).toHaveAttribute('aria-expanded', 'false')
-  await exact.click()
-  await expect(exact).toHaveAttribute('aria-expanded', 'true')
-  await expect(thread).toContainText(LAST_MESSAGE)
-  await exact.click()
-  await expect(exact).toHaveAttribute('aria-expanded', 'false')
-  await expect(thread).toHaveCount(0)
+  const face = await turnOver(page, 'e2e-perm')
+  await expect(face.locator('[data-engine-thread="e2e-perm"]')).toBeHidden()
+  const card = await enlarge(page, 'e2e-perm')
+  await expect(card.locator('[data-engine-thread="e2e-perm"]')).toContainText(LAST_MESSAGE)
 })
 
 test('B3: "Replier" leaves the big format and the thread without turning the card over', async () => {
@@ -193,22 +202,19 @@ test('B3: "Replier" leaves the big format and the thread without turning the car
   await expect(card).toHaveAttribute('flipped', '')
 })
 
-test('B4: a click on a front button never turns the card over; the flip picto does', async () => {
+test('B4: a click on a face button never turns the card over; the turn-over button of the face does', async () => {
   const page = await openCockpit(cockpit.app)
   const card = await turnOver(page, 'e2e-perm')
-  await card.locator('[data-testid="card-exact-answer"]').click()
-  await expect(card).toHaveAttribute('flipped', '')
   await card.locator('[data-testid="card-enlarge"]').click()
+  await expect(card).toHaveClass(/\bbig\b/)
   await expect(card).toHaveAttribute('flipped', '')
   await page.keyboard.press('Escape')
   await expect(card).not.toHaveClass(/\bbig\b/)
-  // The picto lets the pointer through (pointer-events: none): a click there lands on the front, outside its body.
-  const picto = card.locator('.sg-flip__picto')
-  await picto.scrollIntoViewIfNeeded()
-  // Wait until the page has stopped scrolling and the card has settled (three equal positions in a row),
-  // then click where the picto is drawn.
-  const box = await settledBox(picto)
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(card).toHaveAttribute('flipped', '')
+  // The turn-over button sits in the face, next to "Agrandir".
+  const flip = card.locator('[data-action="flip"]')
+  await settledBox(flip)
+  await flip.click()
   await expect(card).not.toHaveAttribute('flipped', '')
 })
 
@@ -217,11 +223,12 @@ test('B5: terminal: one repository opens it; two show a menu; an unknown folder 
   const work = cockpit.fixtures.folders.work
   const launched = () => cockpit.terminalLaunches().map(launch => launch.cwd)
 
-  await (await turnOver(page, 'e2e-term-one')).locator('[data-testid="card-terminal"]').click()
+  await (await enlarge(page, 'e2e-term-one')).locator('[data-testid="card-terminal"]').click()
   await expect.poll(launched, { timeout: DATA_REFRESH_MS }).toContain(path.join(work, 'e2e-term-one', 'src'))
   await expect(toast(page, 'Terminal').first()).toBeVisible()
 
-  await (await turnOver(page, 'e2e-term-two')).locator('[data-testid="card-terminal"]').click()
+  await shrink(page)
+  await (await enlarge(page, 'e2e-term-two')).locator('[data-testid="card-terminal"]').click()
   const items = page.locator('.repo-menu .repo-item')
   await expect(items).toHaveCount(3)
   // By its shown name: a Windows path is full of backslashes, escape characters in a CSS selector.
@@ -229,7 +236,8 @@ test('B5: terminal: one repository opens it; two show a menu; an unknown folder 
   await expect.poll(launched).toContain(path.join(work, 'e2e-term-two', 'lib'))
 
   const before = launched().length
-  await (await turnOver(page, 'e2e-term-unknown')).locator('[data-testid="card-terminal"]').click()
+  await shrink(page)
+  await (await enlarge(page, 'e2e-term-unknown')).locator('[data-testid="card-terminal"]').click()
   await expect(toast(page, 'Terminal non ouvert')).toBeVisible()
   expect(launched()).toHaveLength(before)
 })
@@ -237,7 +245,7 @@ test('B5: terminal: one repository opens it; two show a menu; an unknown folder 
 test('B6: quick reply and reply field: the mod gets "reply" with the right engineId and text; the card goes on mission; the draft empties', async () => {
   const mod = await cockpit.startFakeMod()
   const page = await openCockpit(cockpit.app)
-  const card = await turnOver(page, 'e2e-perm')
+  const card = await enlarge(page, 'e2e-perm')
   const draft = card.locator('textarea[data-role="draft"]')
   await draft.fill('Vas-y, lance les tests')
   await card.locator('[data-action="send"]').click()
@@ -246,7 +254,8 @@ test('B6: quick reply and reply field: the mod gets "reply" with the right engin
   await expect(page.locator('#s-working [data-engine="e2e-perm"]').first()).toBeAttached()
   await expect(cardOf(page, 'e2e-perm').locator('textarea[data-role="draft"]')).toHaveValue('')
 
-  // A question answers with its own options: the button sends the option number.
+  // A question answers with its own options, on the face: the button sends the option number.
+  await shrink(page)
   const question = await turnOver(page, 'e2e-question')
   await expect(question.locator('[data-action="quick"][data-text="OK"]')).toHaveCount(0)
   await question.locator('[data-action="quick"][data-text="1"]').click()
@@ -255,7 +264,7 @@ test('B6: quick reply and reply field: the mod gets "reply" with the right engin
 
 test('B7: with no mod connected, sending shows "Non envoyé" and keeps the draft', async () => {
   const page = await openCockpit(cockpit.app)
-  const card = await turnOver(page, 'e2e-perm')
+  const card = await enlarge(page, 'e2e-perm')
   await card.locator('textarea[data-role="draft"]').fill('Réponse qui ne partira pas')
   await card.locator('[data-action="send"]').click()
   await expect(toast(page, 'Non envoyé')).toBeVisible()
@@ -267,18 +276,20 @@ test('B8: block with a reason, resume, put to rest: the mod gets park, unpark an
   const mod = await cockpit.startFakeMod()
   const page = await openCockpit(cockpit.app)
 
-  await (await turnOver(page, 'e2e-question')).locator('[data-action="park"][data-kind="blocked"]').click()
+  await (await enlarge(page, 'e2e-question')).locator('[data-action="park"][data-kind="blocked"]').click()
   await page.locator('.park-menu .park-input').fill('Attente du client')
   await page.locator('.park-menu .park-ok').click()
   const park = await mod.waitForOrder(o => o.type === 'park' && o.engineId === 'e2e-question')
   expect([park.kind, park.reason]).toEqual(['blocked', 'Attente du client'])
   await expect(toast(page, 'Bloquée')).toBeVisible()
 
-  await (await turnOver(page, 'e2e-blocked')).locator('[data-action="unpark"]').click()
+  await shrink(page)
+  await (await enlarge(page, 'e2e-blocked')).locator('[data-action="unpark"]').click()
   await mod.waitForOrder(o => o.type === 'unpark' && o.engineId === 'e2e-blocked')
   await expect(toast(page, 'Reprise')).toBeVisible()
 
-  await (await turnOver(page, 'e2e-delivered')).locator('[data-action="seen"]').click()
+  await shrink(page)
+  await (await enlarge(page, 'e2e-delivered')).locator('[data-action="seen"]').click()
   expect((await mod.waitForOrder(o => o.type === 'ack' && o.engineId === 'e2e-delivered')).seen).toBe(true)
   await expect(toast(page, 'Au repos')).toBeVisible()
 })
@@ -286,7 +297,7 @@ test('B8: block with a reason, resume, put to rest: the mod gets park, unpark an
 test('B9: a pasted image shows a thumbnail that can be removed; once sent, the order carries the saved image', async () => {
   const mod = await cockpit.startFakeMod()
   const page = await openCockpit(cockpit.app)
-  const card = await turnOver(page, 'e2e-perm')
+  const card = await enlarge(page, 'e2e-perm')
   await pasteImage(page, 'e2e-perm')
   await expect(card.locator('.thumb img')).toHaveCount(1)
   await card.locator('.thumb [data-action="remove-image"]').click()

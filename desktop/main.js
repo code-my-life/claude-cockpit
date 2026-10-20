@@ -67,6 +67,14 @@ const SECURE_WEB_PREFERENCES = { contextIsolation: true, nodeIntegration: false,
 const OFFLINE_PAGE = `data:text/html;charset=utf-8,${encodeURIComponent('<body style="margin:16px;background:#1b1c20;border-radius:24px;height:calc(100vh - 32px);display:flex;align-items:center;justify-content:center;font:500 11px/1 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae">Cockpit éteint : ouvre une conversation Claude</body>')}`
 
 let win = null
+// The island is two windows. The glass window carries the Windows acrylic and is the only one that morphs (nothing to
+// repaint, so it animates smoothly). The content window above it is transparent, at a fixed place and size, and never
+// resized during a morph: the page draws the same shape on the same clock (island-geometry), so its content is shown
+// all along the morph instead of after it.
+let glassWin = null
+let isIslandOffline = false
+const { SCREEN_MARGIN } = require('./bounds')
+const contentBoundsOf = area => ({ x: area.x + SCREEN_MARGIN, y: area.y, width: area.width - 2 * SCREEN_MARGIN, height: area.height })
 let cockpitWin = null
 let launcherWin = null
 let launcherHeight = LAUNCHER_MIN_HEIGHT
@@ -140,14 +148,14 @@ const setIslandTheme = theme => {
   if (win === null || win.isDestroyed()) return
   if (theme !== islandTheme) {
     islandTheme = theme
-    applyBlur(win, undefined, undefined, ISLAND_TINTS[theme])
+    if (glassWin !== null && !glassWin.isDestroyed()) applyBlur(glassWin, undefined, undefined, ISLAND_TINTS[theme])
   }
   win.webContents.send('island-theme', theme)
 }
 
 // Quelques pixels de l'écran de part et d'autre de l'île (GetPixel) : environ 50 ms, contre 350 ms pour une capture, et seulement hors morphose.
 const backdropLuminance = () => {
-  const bounds = win.getBounds()
+  const bounds = glassWin.getBounds()
   const display = screen.getDisplayMatching(bounds)
   const island = screen.dipToScreenRect(win, bounds)
   const area = screen.dipToScreenRect(win, display.bounds)
@@ -174,18 +182,28 @@ const sampleBackdrop = () => {
 // Le contrôleur d'île tient l'automate et la géométrie : la fenêtre épouse l'île et s'anime avec elle.
 const createIsland = () => createIslandController({
   getArea: workArea,
-  applyBounds: bounds => { if (win !== null) win.setBounds(bounds); if (process.env.DBG_BOUNDS) fs.appendFileSync(process.env.DBG_BOUNDS, Date.now() + ' ' + JSON.stringify(bounds) + ' ' + new Error().stack.split(String.fromCharCode(10)).slice(2, 5).map(x => x.slice(-70)).join(' < ') + String.fromCharCode(10)) },
+  applyBounds: bounds => { if (glassWin !== null && !glassWin.isDestroyed()) glassWin.setBounds(bounds); if (process.env.DBG_BOUNDS) fs.appendFileSync(process.env.DBG_BOUNDS, Date.now() + ' ' + JSON.stringify(bounds) + ' ' + new Error().stack.split(String.fromCharCode(10)).slice(2, 5).map(x => x.slice(-70)).join(' < ') + String.fromCharCode(10)) },
   motionScale: MOTION_SCALE,
   getCursor: () => screen.getCursorScreenPoint(),
   // Caché, l'île n'a plus de fenêtre : le bord haut est surveillé par sondage du curseur.
   setVisible: isVisible => {
     if (win === null) return
+    if (isVisible && glassWin !== null && !glassWin.isVisible()) glassWin.showInactive()
     if (isVisible && !win.isVisible()) win.showInactive()
     if (!isVisible && win.isVisible()) win.hide()
+    if (!isVisible && glassWin !== null && glassWin.isVisible()) glassWin.hide()
   },
   focusWindow: () => { if (win !== null) win.focus() },
   isFullscreenActive: () => fullscreenProbe.isActive(),
   isScreenReaderActive: () => app.isAccessibilitySupportEnabled(),
+  // The glass shapes in the content window's coordinates. The offline page has no geometry: its window follows the glass.
+  sendGeometry: ({ from, to, ms, zeta, startedAt }) => {
+    if (win === null || win.isDestroyed()) return
+    if (isIslandOffline) { win.setBounds(to); return }
+    const content = win.getBounds()
+    const local = rect => ({ x: rect.x - content.x, y: rect.y - content.y, width: rect.width, height: rect.height })
+    win.webContents.send('island-geometry', { from: local(from), to: local(to), ms, zeta, startedAt })
+  },
   send: (channel, payload, cause) => {
     if (win !== null && !win.isDestroyed()) win.webContents.send(channel, payload, cause)
     if (channel === 'island-state' && payload !== 'hidden') requestBackdropSample()
@@ -330,7 +348,7 @@ const registerIslandKeys = () => {
 const BOOT_SIZE = 1
 
 const createWindow = () => {
-  win = new BrowserWindow({
+  glassWin = new BrowserWindow({
     width: BOOT_SIZE,
     height: BOOT_SIZE,
     minWidth: BOOT_SIZE,
@@ -343,6 +361,26 @@ const createWindow = () => {
     maximizable: false,
     minimizable: false,
     fullscreenable: false,
+    focusable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    backgroundColor: CLEAR,
+    webPreferences: { ...SECURE_WEB_PREFERENCES },
+  })
+  glassWin.setIgnoreMouseEvents(true)
+  hasIslandBlur = applyBlur(glassWin, undefined, undefined, ISLAND_TINTS[islandTheme])
+  glassWin.setAlwaysOnTop(true, 'floating')
+  win = new BrowserWindow({
+    ...contentBoundsOf(workArea()),
+    parent: glassWin,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
     show: false,
@@ -351,8 +389,13 @@ const createWindow = () => {
     // Les sons servent justement quand on ne regarde pas : l'île cachée doit pouvoir les jouer sans geste préalable.
     webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: path.join(__dirname, 'preload.js') },
   })
-  hasIslandBlur = applyBlur(win, undefined, undefined, ISLAND_TINTS[islandTheme])
   win.setAlwaysOnTop(true, 'floating')
+  // Click-through outside the island; the page captures the pointer while it is over the island (island-capture).
+  win.setIgnoreMouseEvents(true, { forward: true })
+  const placeContent = () => { if (win !== null && !win.isDestroyed() && !isIslandOffline) win.setBounds(contentBoundsOf(workArea())) }
+  screen.on('display-metrics-changed', placeContent)
+  screen.on('display-added', placeContent)
+  screen.on('display-removed', placeContent)
   island = createIsland()
   setInterval(sampleBackdrop, BACKDROP_EVERY_MS)
   island.start()
@@ -360,6 +403,8 @@ const createWindow = () => {
   win.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
     releaseHold()
     if (!isMainFrame || code === ERR_ABORTED) return
+    isIslandOffline = true
+    win.setIgnoreMouseEvents(false)
     island.setOffline(true, OFFLINE_WIDTH, OFFLINE_HEIGHT)
     win.loadURL(OFFLINE_PAGE).catch(() => {})
     setTimeout(loadCockpit, RETRY_MS)
@@ -370,12 +415,21 @@ const createWindow = () => {
   win.webContents.on('render-process-gone', releaseHold)
   win.webContents.on('did-finish-load', () => {
     if (!win.webContents.getURL().startsWith(cockpitBase())) return
+    if (isIslandOffline) {
+      isIslandOffline = false
+      win.setBounds(contentBoundsOf(workArea()))
+      win.setIgnoreMouseEvents(true, { forward: true })
+    }
     win.webContents.send('island-theme', islandTheme)
     island.setOffline(false)
     win.webContents.send('island-state', island.phase())
   })
   win.webContents.session.on('will-download', event => event.preventDefault())
-  win.on('closed', () => { island.dispose(); island = null; win = null })
+  win.on('closed', () => {
+    island.dispose(); island = null; win = null
+    if (glassWin !== null && !glassWin.isDestroyed()) glassWin.destroy()
+    glassWin = null
+  })
   win.on('blur', () => island?.blur())
   loadCockpit()
 }
@@ -465,6 +519,8 @@ onTrusted('expanded', (event, expanded, width, height, byHover, isPassive) => {
 })
 
 onTrusted('island-pointer', (event, isInside) => island?.pointer(isInside === true))
+
+onTrusted('island-capture', (event, isInside) => { if (win !== null && !win.isDestroyed() && !isIslandOffline) win.setIgnoreMouseEvents(isInside !== true, { forward: true }) })
 
 onTrusted('island-event', () => island?.event())
 

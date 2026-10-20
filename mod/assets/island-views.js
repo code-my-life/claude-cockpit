@@ -29,6 +29,10 @@
     };
     // As on the cockpit cards: the state is a picto alone, its word in the tooltip and for screen readers.
     const tagHtml = row => { const tag = tagOf(row); return `<span class="${tag.cls} is-state" role="img" aria-label="${esc(tag.word)}" data-ep-tip="${esc(tag.word)}">${tag.lead}</span>`; };
+    // Rewrites a block only when its markup changed. A block holding mini cards must not be rebuilt on each render: a
+    // <sg-card> taken out of the page and put back starts again from scratch (canvas, text texture, WebGPU pipeline),
+    // about 25 ms each, which froze the page for some 300 ms when the island opened.
+    const setHtml = (el, html) => { if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; } };
     const setTag = (el, row, word) => { const tag = tagOf(row); el.className = tag.cls; el.innerHTML = `${tag.lead}${esc(word || tag.word)}`; };
     const canvasHtml = (row, size) => `<canvas class="ent" data-ent="${esc(row.engineId)}" data-size="${size}" data-state="${model.entityStateOf(row)}" aria-hidden="true"></canvas>`;
     // En cartes, une mini-carte (posée après le rendu par island-deck.js) remplace la petite entité.
@@ -147,7 +151,7 @@
       const all = model.othersOf(ctx.rows(), focusRow ? focusRow.engineId : null, 99);
       const more = all.length > OTHERS_SHOWN ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="cockpit">+${all.length - OTHERS_SHOWN} dans le cockpit</button>` : '';
       const empty = all.length === 0 ? '<p class="caption-s">Aucune autre conversation.</p>' : '';
-      $('#homePills').innerHTML = `<p class="ep-side-title">Autres conversations</p>${all.slice(0, OTHERS_SHOWN).map(pillHtml).join('')}${empty}${more}`;
+      setHtml($('#homePills'), `<p class="ep-side-title">Autres conversations</p>${all.slice(0, OTHERS_SHOWN).map(pillHtml).join('')}${empty}${more}`);
     };
 
     const railHtml = () => {
@@ -164,8 +168,8 @@
       const button = $('#compactBtn');
       if (!row) {
         sig.className = 'ep-tag';
-        sig.textContent = 'Personne au travail';
-        $('#cOthers').innerHTML = '';
+        setHtml(sig, 'Personne au travail');
+        setHtml($('#cOthers'), '');
         button.setAttribute('aria-label', 'Ouvrir l\'île : personne au travail');
         return;
       }
@@ -180,13 +184,13 @@
       ].filter(hand => hand.rows.length > 0);
       if (hands.length > 0) {
         sig.className = 'c-hands';
-        sig.innerHTML = hands.map(hand => `<span class="c-hand c-${hand.tone}" aria-hidden="true">${hand.rows.slice(0, HAND_SHOWN).map(other => headHtml(other, 22)).join('')}<span class="c-count">${hand.rows.length}</span></span>`).join('');
+        setHtml(sig, hands.map(hand => `<span class="c-hand c-${hand.tone}" aria-hidden="true">${hand.rows.slice(0, HAND_SHOWN).map(other => headHtml(other, 22)).join('')}<span class="c-count">${hand.rows.length}</span></span>`).join(''));
       } else {
         const tag = tagOf(row);
         sig.className = tag.cls;
-        sig.innerHTML = tag.lead;
+        setHtml(sig, tag.lead);
       }
-      $('#cOthers').innerHTML = '';
+      setHtml($('#cOthers'), '');
       const summary = hands.map(hand => `${hand.rows.length} ${hand.label[hand.rows.length > 1 ? 1 : 0]}`).join(', ');
       button.setAttribute('aria-label', `Ouvrir l'île : ${row.title}, ${summary || word}`);
     };
@@ -237,7 +241,7 @@
       $('#wNote').textContent = cannotReplyNote(row);
       $('#wOpen').hidden = can || ask !== null || !url;
       $('#wOpen').innerHTML = url ? `<button type="button" class="ep-btn ep-btn--primary" data-act="open">Ouvrir dans Claude ${icon('open')}</button>` : '';
-      $$('[data-rail]', layerEl('wait')).forEach(rail => { rail.innerHTML = railHtml(); });
+      $$('[data-rail]', layerEl('wait')).forEach(rail => setHtml(rail, railHtml()));
     };
 
     const renderOrder = () => {

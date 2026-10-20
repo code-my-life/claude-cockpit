@@ -6,12 +6,13 @@
   // trajet de la grande entité d'une place à l'autre. La page ne retient de la géométrie que la cible, pour la donner à l'app.
   const W_COMPACT = 320;
   const W_OPEN = 760;
-  const FADE_IN_MS = 220;
-  // The window is resized natively and the page always paints a few frames behind it: outgoing content is cut at once
-  // (never left frozen in a corner of the growing window), incoming content fades in early and grows with the shape.
-  const FADE_OUT_MS = 0;
-  const CONTENT_DELAY_MS = 40;
+  // Content inside the shape (plan 001): incoming 200 ms, outgoing 150 ms, both from the start of the morph, strong
+  // ease-out, from or to scale(0.96) at the top centre. The shape itself is drawn by geometry(), on the glass clock.
+  const FADE_IN_MS = 200;
+  const FADE_OUT_MS = 150;
+  const CONTENT_DELAY_MS = 0;
   const GROW_FROM = 0.96;
+  const SHRINK_LEAD_MS = 40;
   const CONTENT_DELAY_CLOSE_MS = 70;
   const SETTLE_DELAY_MS = 80;
   const SPRING_OPEN = { zeta: 0.72, ms: 300 };
@@ -147,10 +148,47 @@
     };
 
     const snap = target => { cur = { ...target }; tweens = {}; apply(); settle(); };
+
+    // The glass window morphs; the content window never resizes. The page draws the same shape on the same clock:
+    // the island box takes the larger of both shapes (its content is laid out once, at its final size), and a
+    // clip-path inset follows the glass spring, driven by Date.now() like the app's morph.
+    let shapeRaf = 0;
+    const px = value => `${Math.round(value)}px`;
+    const setBox = rect => {
+      islandEl.style.left = px(rect.x); islandEl.style.top = px(rect.y);
+      islandEl.style.width = px(rect.width); islandEl.style.height = px(rect.height);
+    };
+    const clipOf = (rect, box) => `inset(${px(rect.y - box.y)} ${px(box.x + box.width - rect.x - rect.width)} ${px(box.y + box.height - rect.y - rect.height)} ${px(rect.x - box.x)})`;
+    const geometry = ({ from, to, ms, zeta, startedAt }) => {
+      if (shapeRaf) { win.cancelAnimationFrame(shapeRaf); shapeRaf = 0; }
+      const rootStyle = doc.documentElement.style;
+      rootStyle.setProperty('--island-x', px(to.x)); rootStyle.setProperty('--island-y', px(to.y)); rootStyle.setProperty('--island-w', px(to.width));
+      const settleShape = () => { setBox(to); islandEl.style.clipPath = ''; };
+      if (!(ms > 0) || speed() === 0) { settleShape(); return; }
+      const x = Math.min(from.x, to.x), y = Math.min(from.y, to.y);
+      const box = { x, y, width: Math.max(from.x + from.width, to.x + to.width) - x, height: Math.max(from.y + from.height, to.y + to.height) - y };
+      setBox(box);
+      const ease = model.springEase({ zeta, ms }, ms);
+      // The page paints about two frames after Windows moves the glass. Growing, that lag keeps the content inside the
+      // glass; shrinking, it would leave content outside it, so the page runs ahead by those two frames.
+      const isShrinking = to.width * to.height < from.width * from.height;
+      const lead = isShrinking ? SHRINK_LEAD_MS : 0;
+      const step = () => {
+        const p = clamp01((Date.now() - startedAt + lead) / ms);
+        if (p >= 1) { shapeRaf = 0; settleShape(); return; }
+        const k = ease(p);
+        const lerp = (a, b) => a + (b - a) * k;
+        const width = lerp(from.width, to.width), height = lerp(from.height, to.height);
+        const centerX = to.x + to.width / 2;
+        islandEl.style.clipPath = clipOf({ x: centerX - width / 2, y: lerp(from.y, to.y), width, height }, box);
+        shapeRaf = win.requestAnimationFrame(step);
+      };
+      step();
+    };
     const start = target => { cur = { ...target }; apply(); };
 
     return {
-      targetFor, extentOf, heightOf, retarget, snap, start, speed, apply,
+      targetFor, extentOf, heightOf, retarget, snap, start, speed, apply, geometry,
       isStarted: () => cur !== null, heightNow: () => (cur ? cur.h : null), opacityOf: name => (cur ? cur[`o:${name}`] || 0 : 0),
       redraw: () => { if (cur) apply(); },
       rescaleHero: factor => {

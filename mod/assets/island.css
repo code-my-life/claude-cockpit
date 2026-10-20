@@ -189,3 +189,11 @@ html[data-island="hidden"] .island * { animation-play-state: paused !important; 
 .island .is-more .is-bubble { padding: var(--space-2) var(--space-3); border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); background: var(--glass-nested); font-size: 13px; line-height: 1.5; }
 .island .is-more .is-bubble.user { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .island .is-more p, .island .is-more ul, .island .is-more ol { margin: var(--space-1) 0; }
+
+/* Desktop app (plan 001): the content window is larger than the island and never resizes; the script places the island
+   box and clips it to the glass shape. Toasts sit under the island, within its width. */
+html.island-split .island { inset: auto; }
+/* With two windows, Windows already draws the rounded edge of the glass window: the page's own 1 px edge and inner
+   reflections no longer fall exactly on it and read as a second frame inside the glass. */
+html.island-split #island.ep-glass { border-color: transparent; box-shadow: none; }
+html.island-split body.island-mode .ep-toasts { left: calc(var(--island-x, 0px) + var(--space-2)); right: auto; top: calc(var(--island-y, 0px) + var(--dock-room)); width: calc(var(--island-w, 100vw) - var(--space-4)); }

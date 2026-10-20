@@ -16,7 +16,8 @@ const springEase = ({ zeta, ms }) => {
 
 const sameBounds = (first, second) => first !== null && second !== null && first.x === second.x && first.y === second.y && first.width === second.width && first.height === second.height
 
-const createMorph = ({ now, schedule, cancel, apply }) => {
+// onStart: told once when a morph starts (or a jump happens), so the page can draw the same shape on the same clock.
+const createMorph = ({ now, schedule, cancel, apply, onStart = () => {} }) => {
   let current = null
   let applied = null
   let running = false
@@ -34,6 +35,7 @@ const createMorph = ({ now, schedule, cancel, apply }) => {
     run += 1
     running = false
     current = { ...bounds }
+    onStart({ from: { ...bounds }, to: { ...bounds }, ms: 0, zeta: 1, startedAt: now() })
     emit(current)
   }
 
@@ -47,6 +49,7 @@ const createMorph = ({ now, schedule, cancel, apply }) => {
     const centerX = target.x + target.width / 2
     const ease = springEase({ zeta, ms })
     const startedAt = now()
+    onStart({ from: { ...from }, to: { ...target }, ms, zeta, startedAt })
     running = true
     const step = () => {
       if (token !== run) return
