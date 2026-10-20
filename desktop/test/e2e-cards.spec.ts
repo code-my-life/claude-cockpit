@@ -31,6 +31,9 @@ const cardOf = (page: Page, engineId: string) => page.locator(`sg-flip[data-engi
 const turnOver = async (page: Page, engineId: string) => {
   const card = cardOf(page, engineId)
   await expect(card).toBeVisible({ timeout: DATA_REFRESH_MS })
+  // Centred, so that neither this click nor the ones on its buttons scroll the card under the
+  // Windows drag strip, which swallows clicks at the top of the window.
+  await card.evaluate(el => el.scrollIntoView({ block: 'center' }))
   await card.locator('sg-card').click()
   await expect(card).toHaveAttribute('flipped', '')
   return card
