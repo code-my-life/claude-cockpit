@@ -323,6 +323,55 @@
     if (window.matchMedia) { try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", tw); } catch (e) { /* noop */ } }
   }
 
+  /* ------------------------------------------------------------------ mouvement
+     html[data-motion="off"] (EncrePapier.setMotion(false)) ou prefers-reduced-motion: reduce figent tout élément animé.
+     Suivi en direct : chaque élément s'inscrit et réévalue son état à chaque changement (attribut, préférence système,
+     onglet masqué). Un onglet masqué (document.hidden) suspend aussi les boucles, sans changer le réglage. */
+  function motionOff() { return reducedMotion() || (HAS_DOM && document.documentElement.getAttribute("data-motion") === "off"); }
+  function pageHidden() { return HAS_DOM && !!document.hidden; }
+  var motionWatchers = [];
+  function watchMotion(fn) { if (motionWatchers.indexOf(fn) < 0) motionWatchers.push(fn); }
+  function unwatchMotion(fn) { var i = motionWatchers.indexOf(fn); if (i >= 0) motionWatchers.splice(i, 1); }
+  function motionChanged() { motionWatchers.slice().forEach(function (f) { try { f(); } catch (e) { /* noop */ } }); }
+  /* Mémorise un réglage (« on » ou « off ») quand le stockage est disponible ; navigation privée ou stockage bloqué : rien. */
+  function store(key, v) { try { if (window.localStorage) window.localStorage.setItem(key, v); } catch (e) { /* noop */ } }
+  function stored(key) { try { return window.localStorage ? window.localStorage.getItem(key) : null; } catch (e) { return null; } }
+  /* Pose ou retire un attribut de réglage sur <html> : off pose data-*="off", on le retire. */
+  function setFlag(attr, on) { var r = document.documentElement; if (on) r.removeAttribute(attr); else r.setAttribute(attr, "off"); }
+  function setMotion(on) {
+    if (!HAS_DOM) return;
+    on = !!on; setFlag("data-motion", on); store("ep-motion", on ? "on" : "off"); syncSwitches();
+  }
+  function setGlass(on) {
+    if (!HAS_DOM) return;
+    on = !!on; setFlag("data-glass", on); store("ep-glass", on ? "on" : "off"); syncSwitches();
+  }
+  /* Interrupteurs branchés d'office : input[data-ep-motion] coché = mouvement actif ; input[data-ep-glass-reduce] coché = verre réduit.
+     Ils reflètent le réglage de la page (l'attribut), pas la préférence du système, qui s'applique en plus. */
+  function syncSwitches() {
+    if (!HAS_DOM) return;
+    var r = document.documentElement, m = r.getAttribute("data-motion") !== "off", g = r.getAttribute("data-glass") !== "off";
+    Array.prototype.forEach.call(document.querySelectorAll("input[data-ep-motion]"), function (i) { i.checked = m; });
+    Array.prototype.forEach.call(document.querySelectorAll("input[data-ep-glass-reduce]"), function (i) { i.checked = !g; });
+  }
+  if (HAS_DOM) {
+    /* réglages mémorisés : relus au chargement, avant la construction des éléments */
+    var sm = stored("ep-motion"), sg = stored("ep-glass");
+    if (sm === "off" || sm === "on") setFlag("data-motion", sm === "on");
+    if (sg === "off" || sg === "on") setFlag("data-glass", sg === "on");
+    try {
+      new MutationObserver(function () { motionChanged(); syncSwitches(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
+      new MutationObserver(syncSwitches).observe(document.documentElement, { attributes: true, attributeFilter: ["data-glass"] });
+    } catch (e) { /* noop */ }
+    if (window.matchMedia) { try { window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", motionChanged); } catch (e) { /* noop */ } }
+    document.addEventListener("visibilitychange", motionChanged);
+    document.addEventListener("change", function (e) {
+      var t = e.target; if (!t || !t.matches) return;
+      if (t.matches("input[data-ep-motion]")) setMotion(t.checked);
+      else if (t.matches("input[data-ep-glass-reduce]")) setGlass(!t.checked);
+    });
+  }
+
   /* --------------------------------------------------------- <ep-flow-field> */
   /* Canvas sans dépendance. Attributs : seed, mode (field|ribbons), density, scale, sep, hole, clear, warp,
      weight, animate (draw|none), paused, controls, fill, label. Couleur du trait = color du CSS (ink). */
@@ -351,6 +400,7 @@
       this._visible = true;
       this._themeFn = () => this._paintAll();
       watchTheme(this._themeFn);
+      this._mf = () => this._motion(); watchMotion(this._mf);
       this._build();
     }
     disconnectedCallback() {
@@ -358,6 +408,7 @@
       if (this._io) this._io.disconnect();
       cancelAnimationFrame(this._raf);
       var i = themeWatchers.indexOf(this._themeFn); if (i >= 0) themeWatchers.splice(i, 1);
+      unwatchMotion(this._mf);
       this._ready = false;
     }
     attributeChangedCallback(name) {
@@ -387,14 +438,14 @@
       this._k = this._canvas.width / o.w;
       this._loop = false;
       if (o.mode === "ribbons") {
-        this._loop = !reducedMotion() && this.getAttribute("animate") !== "none"; this._t = this._t || 0; this._last = 0;
+        this._loop = !motionOff() && this.getAttribute("animate") !== "none"; this._t = this._t || 0; this._last = 0;
         this._paintRibbons();
         if (this._loop && !this.paused) this._tick();
         return;
       }
       this._lines = flowLines({ w: o.w, h: o.h, seed: o.seed, count: Math.round(56000 * (o.w * o.h) / (600 * 750) * o.density), scale: o.scale, sep: o.sep, hole: o.hole, warp: o.warp, clear: o.clear });
       this._n = this._lines.length;
-      var anim = this.getAttribute("animate") !== "none" && !reducedMotion();
+      var anim = this.getAttribute("animate") !== "none" && !motionOff();
       this._p = anim ? 0 : 1; this._drawn = new Array(this._n).fill(0);
       this._clearCanvas();
       if (anim) { this._t0 = 0; this._loop = true; this._tick(); } else this._paintAll();
@@ -426,8 +477,20 @@
       var lines = ribbonLines({ w: o.w, h: o.h, seed: o.seed, count: Math.round(70 * o.density * Math.max(0.6, o.w / 600)), time: this._t || 0, clear: o.clear, scale: o.scale * 0.85 });
       c.beginPath(); lines.forEach(function (l) { c.moveTo(l[0][0], l[0][1]); for (var j = 1; j < l.length; j++) c.lineTo(l[j][0], l[j][1]); }); c.stroke();
     }
+    /* Mouvement coupé en cours de route : le tracé d'entrée se termine d'un coup, les rubans s'arrêtent ; rétabli : les rubans repartent. */
+    _motion() {
+      if (!this._ready || !this._o) return;
+      var off = motionOff();
+      if (this._o.mode === "ribbons") {
+        this._loop = !off && this.getAttribute("animate") !== "none";
+        if (this._loop) { this._last = 0; this._tick(); } else cancelAnimationFrame(this._raf);
+        return;
+      }
+      if (off && this._loop) { cancelAnimationFrame(this._raf); this._loop = false; this._p = 1; this._paintAll(); }
+      else if (this._loop) this._tick();
+    }
     _tick() {
-      if (!this._loop || this.paused || !this._visible) return;
+      if (!this._loop || this.paused || !this._visible || pageHidden()) return;
       cancelAnimationFrame(this._raf);
       this._raf = requestAnimationFrame((now) => {
         if (this._o.mode === "ribbons") {
@@ -465,9 +528,11 @@
       this._ro = new ResizeObserver(() => { clearTimeout(this._rt); this._rt = setTimeout(() => this._build(), 80); }); this._ro.observe(this);
       this._io = new IntersectionObserver((es) => { this._vis = es[0].isIntersecting; if (this._vis) this._tick(); }); this._io.observe(this); this._vis = true;
       this._tf = () => this._paint(); watchTheme(this._tf);
+      /* mouvement coupé : la relaxation se fige où elle en est ; rétabli : elle reprend */
+      this._mf = () => { if (motionOff()) cancelAnimationFrame(this._raf); else if (this._anim) this._tick(); }; watchMotion(this._mf);
       this._build();
     }
-    disconnectedCallback() { if (this._ro) this._ro.disconnect(); if (this._io) this._io.disconnect(); cancelAnimationFrame(this._raf); var i = themeWatchers.indexOf(this._tf); if (i >= 0) themeWatchers.splice(i, 1); this._ready = false; }
+    disconnectedCallback() { if (this._ro) this._ro.disconnect(); if (this._io) this._io.disconnect(); cancelAnimationFrame(this._raf); var i = themeWatchers.indexOf(this._tf); if (i >= 0) themeWatchers.splice(i, 1); unwatchMotion(this._mf); this._ready = false; }
     attributeChangedCallback(n) { if (!this._ready) return; if (n === "paused") { if (!this.paused) this._tick(); return; } clearTimeout(this._at); this._at = setTimeout(() => this._build(), 30); }
     get paused() { return this.hasAttribute("paused"); }
     set paused(v) { if (v) this.setAttribute("paused", ""); else this.removeAttribute("paused"); }
@@ -477,7 +542,7 @@
       var n = Math.round(attrNum(this, "cells", 60) * Math.max(0.6, Math.min(2, cw * ch / (300 * 375)))); n = Math.min(160, n);
       this._pts = voronoiSeeds(this.getAttribute("seed") == null ? 3 : this.getAttribute("seed"), n, cw, ch);
       this._steps = 0;
-      var anim = this.getAttribute("animate") !== "none" && !reducedMotion();
+      var anim = this._anim = this.getAttribute("animate") !== "none" && !motionOff();
       if (!anim) { for (var i = 0; i < 40; i++) relax(this._pts, cw, ch, 0.6); this._paint(); } else { this._paint(); this._tick(); }
     }
     _paint() {
@@ -490,7 +555,7 @@
       if (this.hasAttribute("dots")) this._pts.forEach(function (p) { c.beginPath(); c.arc(p[0], p[1], 1.6, 0, TAU); c.fill(); });
     }
     _tick() {
-      if (this.paused || !this._vis || this._steps > 160) return; cancelAnimationFrame(this._raf);
+      if (this.paused || !this._vis || this._steps > 160 || motionOff() || pageHidden()) return; cancelAnimationFrame(this._raf);
       this._raf = requestAnimationFrame(() => { var m = relax(this._pts, this._cw, this._ch, 0.14); this._steps++; this._paint(); if (m > 0.04) this._tick(); });
     }
     toSVG(opts) { return voronoiSVG(Object.assign({ w: this._cw, h: this._ch, seed: this.getAttribute("seed") || 3, cells: attrNum(this, "cells", 60), stroke: getComputedStyle(this).color }, opts || {})); }
@@ -643,6 +708,10 @@
 
   /* ------------------------------------------------ fond de page : flux et disque */
   /* o : w, h, seed, particles, trail (64), speed (1.05), disc [x, y, r] en px (ou null), preroll (300). */
+  /* Durée d'une tranche de préroulage d'ep-flow-bg : bien sous les 50 ms d'une tâche longue, même sur un téléphone lent. */
+  var WARM_SLICE_MS = 8;
+  /* ep-flow-type : calcul d'un tracé par tranches de 4 ms au plus par image, et titre figé après 15 s sans changement (attribut freeze). */
+  var FLOW_TYPE_SLICE_MS = 4, FLOW_TYPE_FREEZE_S = 15;
   function streamSim(o) {
     o = o || {};
     var W = o.w || 600, H = o.h || 750, seed = seedOf(o.seed == null ? 9 : o.seed), rand = rng(seed), n = noise8(seed + 14);
@@ -779,14 +848,29 @@
       if (getComputedStyle(this).position === "static") this.style.position = "relative";
       this._canvas = document.createElement("canvas"); this._canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";
       this.appendChild(this._canvas); this._aria();
-      this._ro = new ResizeObserver(() => { clearTimeout(this._rt); this._rt = setTimeout(() => this._build(), 80); }); this._ro.observe(this);
+      /* la première notification (à l'observation) et celles sans changement de taille ne relancent ni la construction ni le préroulage */
+      this._rw = this.clientWidth; this._rh = this.clientHeight;
+      this._ro = new ResizeObserver(() => {
+        if (this.clientWidth === this._rw && this.clientHeight === this._rh) return;
+        this._rw = this.clientWidth; this._rh = this.clientHeight;
+        clearTimeout(this._rt); this._rt = setTimeout(() => this._build(), 80);
+      }); this._ro.observe(this);
       this._io = new IntersectionObserver((es) => { this._vis = es[0].isIntersecting; if (this._vis) this._tick(); }); this._io.observe(this); this._vis = true;
       this._tf = () => this._paint(); watchTheme(this._tf);
+      this._mf = () => this._motion(); watchMotion(this._mf);
       this._build();
     }
     disconnectedCallback() {
       if (this._ro) this._ro.disconnect(); if (this._io) this._io.disconnect();
-      cancelAnimationFrame(this._raf); var i = themeWatchers.indexOf(this._tf); if (i >= 0) themeWatchers.splice(i, 1); this._ready = false;
+      cancelAnimationFrame(this._raf); clearTimeout(this._wt); var i = themeWatchers.indexOf(this._tf); if (i >= 0) themeWatchers.splice(i, 1); unwatchMotion(this._mf); this._ready = false;
+    }
+    /* Mouvement coupé (réglage, préférence système) : l'image courante reste, la boucle s'arrête ; rétabli : la simulation repart
+       d'où elle était, sans reconstruction. Onglet masqué : _tick s'arrête de lui-même et repart au retour. */
+    _motion() {
+      if (!this._ready || !this._sim) return;
+      var live = this.getAttribute("animate") !== "none" && !motionOff();
+      if (live !== this._live) { this._live = live; if (!live) { cancelAnimationFrame(this._raf); this._last = 0; this._paint(); } }
+      if (this._live) this._tick();
     }
     attributeChangedCallback(name) {
       if (!this._ready) return;
@@ -816,13 +900,31 @@
       cancelAnimationFrame(this._raf);
       var cw = this.clientWidth || 300, ch = this.clientHeight || cw * 1.25, W = Math.min(cw, 1600), H = W * ch / cw, dpr = Math.min(window.devicePixelRatio || 1, 2);
       this._canvas.width = Math.max(1, Math.round(cw * dpr)); this._canvas.height = Math.max(1, Math.round(ch * dpr)); this._k = this._canvas.width / W; this._W = W; this._H = H;
-      var live = this.getAttribute("animate") !== "none" && !reducedMotion();
-      this._sim = streamSim({ w: W, h: H, seed: this.getAttribute("seed") == null ? 9 : this.getAttribute("seed"), particles: attrNum(this, "particles", 0) || undefined, speed: attrNum(this, "speed", 1.05), trail: attrNum(this, "trail", 64), disc: this._disc(W, H), preroll: live ? 300 : 420 });
-      this._live = live; this._acc = 0; this._last = 0;
-      this._paint();
-      this.dispatchEvent(new CustomEvent("ep-ready", { detail: { particles: this._sim.n } }));
-      if (live) this._tick();
+      var live = this.getAttribute("animate") !== "none" && !motionOff();
+      /* préroulage (300 pas animé, 420 figé) découpé en tranches de WARM_SLICE_MS : plus de tâche longue au montage */
+      this._sim = streamSim({ w: W, h: H, seed: this.getAttribute("seed") == null ? 9 : this.getAttribute("seed"), particles: attrNum(this, "particles", 0) || undefined, speed: attrNum(this, "speed", 1.05), trail: attrNum(this, "trail", 64), disc: this._disc(W, H), preroll: 0 });
+      this._live = live; this._acc = 0; this._last = 0; this._warm = live ? 300 : 420;
+      this._warmUp();
     }
+    /* Prérôle la simulation par tranches courtes, une tâche par tranche : la page reste réactive pendant ce temps.
+       Première image après la première tranche, image finale à la fin ; même résultat qu'un préroulage d'un bloc
+       (même suite de pas pour un même seed). Un nouveau _build ou le retrait de l'élément annule les tranches restantes. */
+    _warmUp() {
+      var sim = this._sim, first = true;
+      clearTimeout(this._wt);
+      var slice = () => {
+        if (!this._ready || sim !== this._sim) return;
+        var t0 = performance.now();
+        while (this._warm > 0 && performance.now() - t0 < WARM_SLICE_MS) { sim.advance(); this._warm--; }
+        if (this._warm > 0) { if (first) this._paint(); first = false; this._wt = setTimeout(slice, 0); return; }
+        this._paint();
+        this.dispatchEvent(new CustomEvent("ep-ready", { detail: { particles: sim.n } }));
+        if (this._live) this._tick();
+      };
+      slice();
+    }
+    /* Termine le préroulage d'un coup (export SVG demandé avant la fin des tranches). */
+    _warmNow() { clearTimeout(this._wt); while (this._warm > 0) { this._sim.advance(); this._warm--; } }
     _colors() {
       var poster = this.getAttribute("tone") !== "paper", dark = isDark(), g = (n) => tokenOf(this, n), pick = (v, f) => g(v) || g(f);
       if (poster) return { ground: rgbOf(g("--ep-bg-ground") || (dark ? g("--paper-deep") : g("--ink"))), line: rgbOf(g("--ep-bg-line") || (dark ? g("--ink") : g("--paper"))), base: rgbOf(g("--ep-bg-disc") || (dark ? g("--ink") : g("--plate"))), poster: true };
@@ -868,7 +970,7 @@
       } else if (this._ema < 18.5 && q > 0 && t > (this._lock || 0) && this._n > 240) { this._q = q - 1; this._n = 0; this._ema = 0; }
     }
     _tick() {
-      if (!this._live || this.paused || !this._vis) { this._last = 0; return; }
+      if (!this._live || this.paused || !this._vis || this._warm > 0 || pageHidden()) { this._last = 0; return; }
       cancelAnimationFrame(this._raf);
       this._raf = requestAnimationFrame((now) => {
         this._govern(this._last ? now - this._last : 0);
@@ -879,6 +981,7 @@
       });
     }
     toSVG(opts) {
+      if (this._warm > 0) this._warmNow();
       var col = this._colors();
       return streamSVG(Object.assign({ sim: this._sim, ground: col.ground ? rgbStr(col.ground) : null, line: rgbStr(col.line), base: col.base, seed: this.getAttribute("seed") }, opts || {}));
     }
@@ -890,7 +993,7 @@
      size, max-size (220), line-height (.95), spacing, animate (drift | none), outline (.5), wrap (wrap | none), paused.
      La police par défaut est --font-display. Le texte reste dans le DOM pour les lecteurs d'écran. */
   var FlowType = HAS_DOM ? class extends HTMLElement {
-    static get observedAttributes() { return ["text", "seed", "font", "weight", "embolden", "size", "max-size", "line-height", "spacing", "density", "animate", "outline", "wrap", "paused", "fps"]; }
+    static get observedAttributes() { return ["text", "seed", "font", "weight", "embolden", "size", "max-size", "line-height", "spacing", "density", "animate", "outline", "wrap", "paused", "fps", "freeze"]; }
     connectedCallback() {
       if (this._ready) { this._build(); return; }
       /* le texte du contenu n'est pas encore analysé tant que la page se charge */
@@ -906,20 +1009,29 @@
       this._sr.style.cssText = "position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0";
       this._canvas = document.createElement("canvas"); this._canvas.setAttribute("aria-hidden", "true"); this._canvas.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;display:block";
       this.appendChild(this._sr); this.appendChild(this._canvas);
-      this._ro = new ResizeObserver(() => { clearTimeout(this._rt); this._rt = setTimeout(() => this._build(), 80); }); this._ro.observe(this);
+      /* la mise en page ne dépend que de la largeur, et l'élément fixe lui-même sa hauteur : seul un changement de largeur
+         la relance (avant, la hauteur posée par _layout la relançait aussitôt, une seconde mise en page complète) */
+      this._rw = this.clientWidth;
+      this._ro = new ResizeObserver(() => {
+        if (this.clientWidth === this._rw) return;
+        this._rw = this.clientWidth;
+        clearTimeout(this._rt); this._rt = setTimeout(() => this._build(), 80);
+      }); this._ro.observe(this);
       this._io = new IntersectionObserver((es) => { this._vis = es[0].isIntersecting; if (this._vis) this._tick(); }); this._io.observe(this); this._vis = true;
       this._tf = () => { var dk = isDark(); if (this._dk !== dk && !this.hasAttribute("density") && !this.hasAttribute("spacing")) this._build(); else this._paint(); }; watchTheme(this._tf);
+      this._mf = () => this._motion(); watchMotion(this._mf);
       this._build();
     }
     disconnectedCallback() {
       if (this._ro) this._ro.disconnect(); if (this._io) this._io.disconnect();
-      cancelAnimationFrame(this._raf); var i = themeWatchers.indexOf(this._tf); if (i >= 0) themeWatchers.splice(i, 1); this._ready = false;
+      cancelAnimationFrame(this._raf); this._job = null; var i = themeWatchers.indexOf(this._tf); if (i >= 0) themeWatchers.splice(i, 1); unwatchMotion(this._mf); this._ready = false;
     }
     attributeChangedCallback(name) {
       if (!this._ready) return;
       if (name === "text") { this._lines = String(this.getAttribute("text")).split("|").map(function (x) { return x.trim(); }).filter(Boolean); this._sr.textContent = this._lines.join(" "); }
-      if (name === "paused") { if (!this.paused) this._tick(); return; }
+      if (name === "paused") { if (!this.paused) { this._wake(); this._tick(); } return; }
       if (name === "fps") return;
+      if (name === "freeze") { this._wake(); this._tick(); return; }
       clearTimeout(this._at); this._at = setTimeout(() => this._build(), 30);
     }
     get paused() { return this.hasAttribute("paused"); }
@@ -984,7 +1096,7 @@
       var lay = document.createElement("canvas"); lay.width = this._canvas.width; lay.height = this._canvas.height;
       this._mask = mask; this._ring = ring; this._lay = lay; this._seeds = seeds;
       this._ns = 14; this._step = Math.max(1.8, size * 0.0125) * 20 / this._ns; this._F = 1.7 / size * 1.0; this._n1 = noise8(4711); this._n2 = noise8(917);
-      this._T = 9; this._live = this.getAttribute("animate") !== "none" && !reducedMotion(); this._last = 0;
+      this._T = 9; this._live = this.getAttribute("animate") !== "none" && !motionOff(); this._last = 0; this._wake();
       this._paint();
       this.dispatchEvent(new CustomEvent("ep-ready", { detail: { seeds: seeds.length / 2 } }));
       if (this._live) this._tick();
@@ -1001,10 +1113,12 @@
         }
       }
     }
-    /* Même tracé que _lines2, sans fonction de rappel par point (80 000 appels par image avant) : l'export SVG garde _lines2. */
-    _strokeLines(lc, T) {
+    /* Même tracé que _lines2, sans fonction de rappel par point (80 000 appels par image avant) : l'export SVG garde _lines2.
+       from et to (indices de graines, pas de 2) bornent le travail : une image peut se tracer en plusieurs tranches. */
+    _strokeLines(lc, T, from, to) {
       var ph = (T % 90) / 90 * TAU, ox = Math.cos(ph) * 1.7, oy = Math.sin(ph) * 1.7, F = this._F, F2 = F * 2.7, h = this._step, s, d, st, x, y, a, sd = this._seeds, n1 = this._n1, n2 = this._n2, ns = this._ns;
-      for (s = 0; s < sd.length; s += 2) {
+      var s0 = from || 0, s1 = to == null ? sd.length : Math.min(to, sd.length);
+      for (s = s0; s < s1; s += 2) {
         for (d = -1; d <= 1; d += 2) {
           x = sd[s]; y = sd[s + 1]; lc.moveTo(x, y);
           for (st = 0; st < ns; st++) {
@@ -1014,13 +1128,17 @@
         }
       }
     }
-    _paint() {
-      if (!this._o) return;
-      var o = this._o, c = this._canvas.getContext("2d"), lc = this._lay.getContext("2d"), k = o.k, ink = getComputedStyle(this).color || "#17181b", al = attrNum(this, "outline", 0.5);
+    /* Calque des lignes : effacé et réglé (encre, épaisseur) avant un tracé. */
+    _layBegin() {
+      var o = this._o, lc = this._lay.getContext("2d"), k = o.k, ink = getComputedStyle(this).color || "#17181b";
       lc.setTransform(1, 0, 0, 1, 0, 0); lc.globalCompositeOperation = "source-over"; lc.clearRect(0, 0, this._lay.width, this._lay.height);
-      lc.setTransform(k, 0, 0, k, 0, 0); lc.strokeStyle = ink; lc.lineWidth = Math.max(1.1, o.size * 0.006); lc.lineCap = "round"; lc.lineJoin = "round"; lc.beginPath();
-      this._strokeLines(lc, this._T);
-      lc.stroke();
+      lc.setTransform(k, 0, 0, k, 0, 0); lc.strokeStyle = ink; lc.lineWidth = Math.max(1.1, o.size * 0.006); lc.lineCap = "round"; lc.lineJoin = "round";
+      return { lc: lc, ink: ink };
+    }
+    /* Calque terminé : découpé par le masque des lettres, posé sur le canvas visible, puis le contour. Le canvas visible garde
+       l'image précédente tant que le calque n'est pas fini : un tracé en tranches ne montre jamais une image à moitié faite. */
+    _compose(ink) {
+      var c = this._canvas.getContext("2d"), lc = this._lay.getContext("2d"), al = attrNum(this, "outline", 0.5);
       lc.setTransform(1, 0, 0, 1, 0, 0); lc.globalCompositeOperation = "destination-in"; lc.drawImage(this._mask, 0, 0);
       c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, this._canvas.width, this._canvas.height); c.drawImage(this._lay, 0, 0);
       if (al > 0) {
@@ -1032,20 +1150,62 @@
         c.globalAlpha = al; c.drawImage(this._tint, 0, 0); c.globalAlpha = 1;
       }
     }
+    /* Image complète, d'un coup : premier affichage, thème, figé. Annule un tracé en tranches en cours. */
+    _paint() {
+      if (!this._o) return;
+      this._job = null;
+      var b = this._layBegin();
+      b.lc.beginPath(); this._strokeLines(b.lc, this._T); b.lc.stroke();
+      this._compose(b.ink);
+    }
+    /* Tracé en tranches : au plus FLOW_TYPE_SLICE_MS de calcul par image, le reste à l'image suivante. */
+    _work() {
+      var j = this._job, sd = this._seeds, t0 = performance.now(), lc = j.lc, s = j.s, CH = 24;
+      while (s < sd.length) {
+        lc.beginPath(); this._strokeLines(lc, j.T, s, s + CH); lc.stroke(); s += CH;
+        if (performance.now() - t0 >= FLOW_TYPE_SLICE_MS) break;
+      }
+      j.s = s;
+      if (s < sd.length) { j.cost += performance.now() - t0; return false; }
+      this._compose(j.ink); this._job = null;
+      j.cost += performance.now() - t0;
+      this._cost = this._cost ? this._cost * 0.6 + j.cost * 0.4 : j.cost;
+      return true;
+    }
+    /* Pause après un tracé : le calcul ne dépasse pas un quart du processeur avec fps (cadence plafonnée à fps),
+       et environ 15 % sans (au plus 9 images par seconde). Si la page entière tombe sous 30 images par seconde, la pause s'allonge. */
+    _rest(spent) {
+      var want = attrNum(this, "fps", 0), c = this._cost || 0;
+      var idle = want > 0 ? Math.max(1000 / want - spent, 3 * c) : Math.max(110 - spent, 5 * c);
+      if (this._fdt > 33) idle = Math.max(idle, 2.2 * this._fdt);
+      return idle;
+    }
+    /* Relance le délai au bout duquel le titre se fige (freeze, en secondes ; 0 = jamais). */
+    _wake() { this._until = 0; }
+    _motion() {
+      if (!this._ready || !this._o) return;
+      var live = this.getAttribute("animate") !== "none" && !motionOff();
+      if (live !== this._live) { this._live = live; if (!live) { cancelAnimationFrame(this._raf); if (this._job) this._paint(); } else this._wake(); }
+      if (pageHidden()) cancelAnimationFrame(this._raf); else if (this._live) { this._last = 0; this._tick(); }
+    }
     _tick() {
-      if (!this._live || this.paused || !this._vis) { this._rp = 0; return; }
+      if (!this._live || this.paused || !this._vis || pageHidden()) { this._rp = 0; return; }
       cancelAnimationFrame(this._raf);
       this._raf = requestAnimationFrame((now) => {
-        if (!this._last) this._last = now;
-        /* la cadence s'adapte au coût réel d'un tracé : jamais plus de ~15 % du temps du processeur */
-        /* fps="30" : cadence demandée, le tracé n'est plus bridé à ~15 % du processeur (cadence du kit : une image par rafraîchissement) */
-        var want = attrNum(this, "fps", 0), gap = want > 0 ? Math.max(1000 / want, 1.15 * (this._cost || 0)) : Math.max(110, 6 * (this._cost || 0));
-        /* le coût du tracé n'est pas tout dans cette fonction (la rastérisation suit) : si la page entière tombe sous 30 images par seconde, on espace les tracés */
+        if (!this._last) { this._last = now; this._nextAt = 0; }
+        /* cadence de la page entière : le coût du tracé n'est pas tout dans cette fonction (la rastérisation suit) */
         var fdt = this._rp ? Math.min(250, now - this._rp) : 0; this._rp = now; if (fdt) this._fdt = this._fdt ? this._fdt * 0.9 + fdt * 0.1 : fdt;
-        if (this._fdt > 33) gap = Math.max(gap, 2.2 * this._fdt);
-        if (now - this._last >= gap) {
+        /* un tracé en cours se poursuit avant tout le reste ; fini, il fixe la pause avant le suivant */
+        if (this._job) { var j = this._job; if (this._work()) this._nextAt = now + this._rest(now - j.t0); this._tick(); return; }
+        /* figé au bout de freeze secondes (15 par défaut) sans changement : plus aucune tâche, l'image reste */
+        var frz = attrNum(this, "freeze", FLOW_TYPE_FREEZE_S);
+        if (!this._until) this._until = now + frz * 1000;
+        if (frz > 0 && now >= this._until) { this._rp = 0; return; }
+        if (now >= (this._nextAt || 0)) {
+          /* la dérive suit le temps écoulé, quelle que soit la cadence obtenue */
           this._T += (now - this._last) / 1000; this._last = now;
-          var t0 = performance.now(); this._paint(); this._cost = this._cost ? this._cost * 0.6 + (performance.now() - t0) * 0.4 : performance.now() - t0;
+          var b = this._layBegin(); this._job = { T: this._T, s: 0, cost: 0, lc: b.lc, ink: b.ink, t0: now };
+          if (this._work()) this._nextAt = now + this._rest(0);
         }
         this._tick();
       });
@@ -1069,21 +1229,46 @@
   /* <<< flowx */
 
   /* ------------------------------------------------- comportements délégués */
+  /* Région des toasts : créée vide dès le chargement, pour que les lecteurs d'écran la connaissent avant le premier message
+     (une région live insérée en même temps que son contenu n'est souvent pas annoncée). */
   var toastHost = null;
+  function ensureToastHost() {
+    if (!HAS_DOM || !document.body) return null;
+    if (!toastHost || !document.body.contains(toastHost)) {
+      toastHost = document.querySelector("body > .ep-toasts") || document.createElement("div");
+      toastHost.className = "ep-toasts"; toastHost.setAttribute("role", "region"); toastHost.setAttribute("aria-label", "Notifications"); toastHost.setAttribute("aria-live", "polite");
+      if (!toastHost.parentNode) document.body.appendChild(toastHost);
+    }
+    return toastHost;
+  }
+  /* Toast : annoncé par la région (polie) ; une erreur (danger) porte role="alert" et ne se ferme jamais seule.
+     La fermeture automatique (6 s) se suspend tant que le pointeur est dessus ou que le focus clavier y est, et reprend
+     ensuite avec au moins 2 s. Si le toast avait le focus en disparaissant, le focus revient où il était avant d'y entrer. */
   function toast(o) {
     if (!HAS_DOM) return null; o = o || {};
-    if (!toastHost || !document.body.contains(toastHost)) {
-      toastHost = document.createElement("div"); toastHost.className = "ep-toasts"; toastHost.setAttribute("role", "region"); toastHost.setAttribute("aria-label", "Notifications"); document.body.appendChild(toastHost);
-    }
+    var host = ensureToastHost(); if (!host) return null;
     var tone = o.tone || "info", el = document.createElement("div");
-    el.className = "ep-toast ep-toast--" + tone; el.setAttribute("role", tone === "danger" ? "alert" : "status");
+    el.className = "ep-toast ep-toast--" + tone; if (tone === "danger") el.setAttribute("role", "alert");
     var label = { success: "Succès", warning: "Attention", danger: "Erreur", info: "Info" }[tone] || "Info";
     el.innerHTML = '<span class="ep-toast__icon" aria-hidden="true"></span><div class="ep-toast__body"><p class="ep-toast__title"><span class="ep-sr">' + label + " : </span>" + esc(o.title || label) + "</p>" + (o.message ? "<p class=\"ep-toast__msg\">" + esc(o.message) + "</p>" : "") + '</div><button type="button" class="ep-toast__close" aria-label="Fermer la notification">Fermer</button>';
-    var timer, dur = o.duration == null ? 6000 : o.duration;
-    function close() { clearTimeout(timer); if (el.parentNode) el.parentNode.removeChild(el); }
+    var timer = 0, dur = tone === "danger" ? 0 : (o.duration == null ? 6000 : o.duration), endAt = 0, left = dur, hover = false, focus = false;
+    var prev = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+    function close() {
+      clearTimeout(timer); timer = 0;
+      var had = el.contains(document.activeElement);
+      if (el.parentNode) el.parentNode.removeChild(el);
+      if (had && prev && prev.isConnected && prev.focus) prev.focus();
+    }
+    function arm(ms) { clearTimeout(timer); endAt = Date.now() + ms; timer = setTimeout(close, ms); }
+    function hold() { if (timer) { clearTimeout(timer); timer = 0; left = Math.max(0, endAt - Date.now()); } }
+    function resume() { if (dur > 0 && !hover && !focus && !timer && el.parentNode) arm(Math.max(2000, left)); }
     el.querySelector(".ep-toast__close").addEventListener("click", close);
-    if (dur > 0) { timer = setTimeout(close, dur); el.addEventListener("pointerenter", function () { clearTimeout(timer); }); el.addEventListener("pointerleave", function () { timer = setTimeout(close, 2000); }); }
-    toastHost.appendChild(el); return { element: el, close: close };
+    el.addEventListener("focusin", function (e) { if (!focus && e.relatedTarget && !el.contains(e.relatedTarget)) prev = e.relatedTarget; focus = true; hold(); });
+    el.addEventListener("focusout", function (e) { if (e.relatedTarget && el.contains(e.relatedTarget)) return; focus = false; resume(); });
+    el.addEventListener("pointerenter", function () { hover = true; hold(); });
+    el.addEventListener("pointerleave", function () { hover = false; resume(); });
+    if (dur > 0) arm(dur);
+    host.appendChild(el); return { element: el, close: close };
   }
   function activateTab(tab) {
     var list = tab.closest('[role="tablist"]'); if (!list) return;
@@ -1093,19 +1278,63 @@
       var id = t.getAttribute("aria-controls"), p = id && root.querySelector("#" + CSS.escape(id)); if (p) p.hidden = !on;
     });
   }
-  var tipEl = null;
+  /* Infobulle (data-ep-tip) : au survol et au focus. WCAG 1.4.13 : le pointeur peut passer de l'élément à l'infobulle sans
+     qu'elle disparaisse (sortie différée de TIP_LEAVE_MS, annulée en entrant dans l'infobulle), elle reste tant que l'élément
+     a le focus, et Échap la ferme en retirant aussi aria-describedby. */
+  var tipEl = null, tipFor = null, tipTimer = 0, TIP_LEAVE_MS = 150;
   function showTip(target) {
     var text = target.getAttribute("data-ep-tip"); if (!text) return;
-    if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "ep-tooltip"; tipEl.id = "ep-tooltip"; tipEl.setAttribute("role", "tooltip"); document.body.appendChild(tipEl); }
+    clearTimeout(tipTimer); tipTimer = 0;
+    if (!tipEl || !tipEl.isConnected) {
+      tipEl = document.createElement("div"); tipEl.className = "ep-tooltip"; tipEl.id = "ep-tooltip"; tipEl.setAttribute("role", "tooltip");
+      tipEl.style.pointerEvents = "auto"; /* survolable : le CSS d'origine la laisse traverser */
+      tipEl.addEventListener("pointerenter", function () { clearTimeout(tipTimer); tipTimer = 0; });
+      tipEl.addEventListener("pointerleave", function (e) { if (tipFor && !tipFor.contains(e.relatedTarget)) leaveTip(tipFor); });
+      document.body.appendChild(tipEl);
+    }
+    if (tipFor && tipFor !== target) tipFor.removeAttribute("aria-describedby");
+    tipFor = target;
     tipEl.textContent = text; tipEl.hidden = false; target.setAttribute("aria-describedby", "ep-tooltip");
     var r = target.getBoundingClientRect(), tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
     var left = Math.min(Math.max(8, r.left + r.width / 2 - tw / 2), window.innerWidth - tw - 8), top = r.top - th - 8;
     if (top < 8) top = r.bottom + 8;
     tipEl.style.left = left + window.scrollX + "px"; tipEl.style.top = top + window.scrollY + "px";
   }
-  function hideTip(target) { if (tipEl) tipEl.hidden = true; if (target) target.removeAttribute("aria-describedby"); }
+  function hideTip(target) {
+    clearTimeout(tipTimer); tipTimer = 0;
+    target = target || tipFor;
+    if (tipEl && (!target || target === tipFor)) { tipEl.hidden = true; tipFor = null; }
+    if (target) target.removeAttribute("aria-describedby");
+  }
+  /* Sortie du pointeur : différée, et sans effet si l'élément garde le focus clavier. */
+  function leaveTip(target) {
+    var a = document.activeElement, kb = false;
+    if (a && target.contains(a)) { try { kb = a.matches(":focus-visible"); } catch (e) { kb = true; } }
+    if (kb) return;
+    clearTimeout(tipTimer); tipTimer = setTimeout(function () { hideTip(target); }, TIP_LEAVE_MS);
+  }
+  /* Navigation mobile : un bouton [data-ep-nav-toggle] ouvre ou ferme l'élément visé par aria-controls (attribut data-open).
+     Échap ferme et rend le focus au bouton ; un lien choisi dans la liste ouverte la ferme. Le CSS cache le bouton au-dessus de 900 px. */
+  function navTarget(btn) { var id = btn.getAttribute("aria-controls"); return id ? document.getElementById(id) : null; }
+  function setNav(btn, open) {
+    var t = navTarget(btn);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (t) { if (open) t.setAttribute("data-open", ""); else t.removeAttribute("data-open"); }
+  }
+  function closeNavs(refocus) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ep-nav-toggle][aria-expanded="true"]'), function (b) {
+      var t = navTarget(b), a = document.activeElement, inside = a === b || (t && t.contains(a)) || a === document.body;
+      setNav(b, false);
+      if (refocus && inside && b.focus) b.focus();
+    });
+  }
   if (HAS_DOM) {
     document.addEventListener("click", function (e) {
+      var nt = e.target.closest && e.target.closest("[data-ep-nav-toggle]");
+      if (nt) { setNav(nt, nt.getAttribute("aria-expanded") !== "true"); return; }
+      /* un lien choisi dans une liste de navigation ouverte la referme */
+      var ln = e.target.closest && e.target.closest("a[href]");
+      if (ln) Array.prototype.forEach.call(document.querySelectorAll('[data-ep-nav-toggle][aria-expanded="true"]'), function (b) { var t = navTarget(b); if (t && t.contains(ln)) setNav(b, false); });
       var o = e.target.closest && e.target.closest("[data-ep-open]");
       if (o) { var d = document.querySelector(o.getAttribute("data-ep-open")); if (d && d.showModal && !d.open) { d.dataset.epReturn = ""; d.__epOpener = o; d.showModal(); } return; }
       var c = e.target.closest && e.target.closest("[data-ep-close]");
@@ -1127,12 +1356,17 @@
         if (e.key === "ArrowRight") n = tabs[(i + 1) % tabs.length]; else if (e.key === "ArrowLeft") n = tabs[(i - 1 + tabs.length) % tabs.length]; else if (e.key === "Home") n = tabs[0]; else if (e.key === "End") n = tabs[tabs.length - 1];
         if (n) { e.preventDefault(); n.focus(); activateTab(n); }
       }
-      if (e.key === "Escape") hideTip();
+      if (e.key === "Escape") { if (tipFor) hideTip(); closeNavs(true); }
     });
     document.addEventListener("pointerover", function (e) { var t = e.target.closest && e.target.closest("[data-ep-tip]"); if (t) showTip(t); });
-    document.addEventListener("pointerout", function (e) { var t = e.target.closest && e.target.closest("[data-ep-tip]"); if (t && !t.contains(e.relatedTarget)) hideTip(t); });
+    document.addEventListener("pointerout", function (e) { var t = e.target.closest && e.target.closest("[data-ep-tip]"); if (t && !t.contains(e.relatedTarget) && !(tipEl && tipEl.contains(e.relatedTarget))) leaveTip(t); });
     document.addEventListener("focusin", function (e) { var t = e.target.closest && e.target.closest("[data-ep-tip]"); if (t) showTip(t); });
     document.addEventListener("focusout", function (e) { var t = e.target.closest && e.target.closest("[data-ep-tip]"); if (t) hideTip(t); });
+    /* au chargement : région des toasts, interrupteurs de réglage, rôle des bascules écrites sans */
+    ready(function () {
+      ensureToastHost(); syncSwitches();
+      Array.prototype.forEach.call(document.querySelectorAll("[data-ep-toggle]:not([role])"), function (g) { g.setAttribute("role", "group"); });
+    });
   }
 
   /* ------------------------------------------------------------ API publique */
@@ -1151,14 +1385,15 @@
   }
 
   var api = {
-    version: "1.0.0",
+    /* remplacée au build par la version de package.json (design-system/build.js) */
+    version: "2.1.0",
     FlowField: FlowField, Voronoi: Voronoi, Mark: Mark, DataField: DataField, Chart: Chart, FlowBackground: FlowBackground, FlowType: FlowType,
     Dialog: { open: function (el) { if (typeof el === "string") el = document.querySelector(el); if (el && el.showModal && !el.open) el.showModal(); }, close: function (el) { if (typeof el === "string") el = document.querySelector(el); if (el && el.close) el.close(); } },
     Toast: toast, toast: toast,
     Tabs: { activate: activateTab }, Tooltip: { show: showTip, hide: hideTip },
     engine: { rng: rng, noise2: noise2, seedOf: seedOf, hashStr: hashStr, flowLines: flowLines, ribbonLines: ribbonLines, voronoiCells: voronoiCells, voronoiSeeds: voronoiSeeds, relax: relax, lorenzLine: lorenzLine, guillocheLines: guillocheLines, noise8: noise8, streamSim: streamSim },
     svg: { flow: flowSVG, voronoi: voronoiSVG, mark: markSVG, dataField: dataFieldSVG, stream: streamSVG, fromLines: svgOf, pathD: pathD },
-    setTheme: setTheme, loadFonts: loadFonts
+    setTheme: setTheme, loadFonts: loadFonts, setMotion: setMotion, setGlass: setGlass
   };
   if (HAS_DOM) {
     define("ep-flow-field", FlowField); define("ep-voronoi", Voronoi); define("ep-mark", Mark); define("ep-data-field", DataField); define("ep-chart", Chart); define("ep-flow-bg", FlowBackground); define("ep-flow-type", FlowType);
@@ -1193,7 +1428,7 @@
 
   /* Surfaces qui reçoivent la réfraction (le CSS leur donne la forme et la teinte). */
   var SELECTORS = [
-    ".ep-glass", "[data-glass]", ".ep-plate:not(.ep-plate--flat)", ".ep-dialog", ".ep-header", ".ep-sidebar", ".ep-table-wrap", ".ep-alert", ".ep-toast",
+    ".ep-glass", '[data-glass]:not([data-glass="off"])', ".ep-plate:not(.ep-plate--flat)", ".ep-dialog", ".ep-header", ".ep-sidebar", ".ep-table-wrap", ".ep-alert", ".ep-toast",
     ".ep-tooltip", ".ep-chart__tip", ".ep-player", ".ep-search", ".ep-btn", ".ep-input", ".ep-select", ".ep-textarea", ".ep-tag",
     ".ep-toggle", ".ep-tabs", ".ep-page", ".ep-range__thumb", ".ep-check input", ".ep-kbd", ".ep-pop"
   ].join(",");
@@ -1225,6 +1460,73 @@
     return (profCache[key] = { mag: mag, max: Math.min(max, 140) });
   }
 
+  /* Pixel neutre de la carte (128, 128, 128, 255 : aucun déplacement), lu dans l'ordre des octets de la plateforme. */
+  var NEUTRAL = new Uint32Array(new Uint8ClampedArray([128, 128, 128, 255]).buffer)[0];
+
+  /* ---------------------------------------------------------------- PNG
+     Écrit à la main, sans compression (blocs « stored » de deflate), à partir des pixels déjà calculés : passer par un
+     canvas imposait une copie vers le GPU puis une relecture synchrone (toDataURL comme toBlob), qui figeait la page.
+     Le navigateur décode ensuite l'image hors du fil principal. */
+  var CRC_TABLE = (function () {
+    var t = new Int32Array(256), c, n, k;
+    for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; }
+    return t;
+  })();
+  function crc32(bytes, from, to) {
+    var c = -1;
+    for (var i = from; i < to; i++) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+    return c ^ -1;
+  }
+  function adler32(bytes) {
+    var a = 1, b = 0, i = 0, n = bytes.length, end;
+    while (i < n) { /* 5552 octets au plus entre deux modulos : b reste sous 2^32 */
+      end = Math.min(i + 5552, n);
+      for (; i < end; i++) { a += bytes[i]; b += a; }
+      a %= 65521; b %= 65521;
+    }
+    return (b << 16 | a) >>> 0;
+  }
+  var STORED_MAX = 65535;
+  function png(w, h, rgba) {
+    var row = w * 4 + 1, raw = new Uint8Array(row * h), y, i;
+    for (y = 0; y < h; y++) raw.set(rgba.subarray(y * w * 4, (y + 1) * w * 4), y * row + 1); /* filtre 0 en tête de rangée */
+    var blocks = Math.max(1, Math.ceil(raw.length / STORED_MAX)), idat = 2 + raw.length + blocks * 5 + 4;
+    var out = new Uint8Array(8 + (12 + 13) + (12 + idat) + 12), p = 0;
+    function u32(v) { out[p++] = v >>> 24 & 255; out[p++] = v >>> 16 & 255; out[p++] = v >>> 8 & 255; out[p++] = v & 255; }
+    function chunk(type, length, write) {
+      u32(length);
+      var start = p;
+      for (var j = 0; j < 4; j++) out[p++] = type.charCodeAt(j);
+      write();
+      u32(crc32(out, start, p));
+    }
+    out.set([137, 80, 78, 71, 13, 10, 26, 10]); p = 8;
+    /* 8 bits par canal, RGBA, compression et filtres standard, sans entrelacement */
+    chunk("IHDR", 13, function () { u32(w); u32(h); out[p++] = 8; out[p++] = 6; out[p++] = 0; out[p++] = 0; out[p++] = 0; });
+    chunk("IDAT", idat, function () {
+      out[p++] = 0x78; out[p++] = 0x01;
+      for (i = 0; i < raw.length; i += STORED_MAX) {
+        var len = Math.min(STORED_MAX, raw.length - i);
+        out[p++] = i + len >= raw.length ? 1 : 0; /* dernier bloc */
+        out[p++] = len & 255; out[p++] = len >>> 8; out[p++] = ~len & 255; out[p++] = ~len >>> 8 & 255;
+        out.set(raw.subarray(i, i + len), p); p += len;
+      }
+      u32(adler32(raw));
+    });
+    chunk("IEND", 0, function () {});
+    return out;
+  }
+  function pngUrl(w, h, rgba) {
+    var bytes = png(w, h, rgba);
+    if (typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
+      return URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    }
+    var bin = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return "data:image/png;base64," + btoa(bin);
+  }
+
+  /* Cartes par forme, en cache. */
   var mapCache = {};
   function maps(w, h, r, bezel, surface, thick, ior, specW, reach) {
     var key = [w, h, r.toFixed(1), bezel.toFixed(1), surface, thick, ior, specW, reach].join("|");
@@ -1232,21 +1534,25 @@
     var prof = profile(surface, bezel, thick, ior), mag = prof.mag, sReal = Math.min(prof.max, bezel * reach);
     var k = Math.min(1, Math.sqrt(380000 / (w * h)));
     var cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k)), s = 1 / k;
-    var c1 = document.createElement("canvas"), c2 = document.createElement("canvas");
-    c1.width = c2.width = cw; c1.height = c2.height = ch;
-    var x1 = c1.getContext("2d"), x2 = c2.getContext("2d");
-    var im1 = x1.createImageData(cw, ch), im2 = x2.createImageData(cw, ch), d1 = im1.data, d2 = im2.data;
+    var d1 = new Uint8ClampedArray(cw * ch * 4), d2 = new Uint8ClampedArray(cw * ch * 4);
     var hw = w / 2, hh = h / 2, rx = hw - r, ry = hh - r, LX = -0.7071, LY = -0.7071;
     var x, y, px, py, dx, dy, qx, qy, nx, ny, sd, dist, t, fi, i0, i1, m, idx, len, dot, I, fall, a, b;
+    /* Seul le bord change quelque chose : au-delà de `band` du bord, la carte est neutre et le reflet transparent.
+       On remplit donc tout en neutre, puis on ne calcule que les rangées des coins (et du haut, du bas) en entier
+       et, ailleurs, les deux bandes de gauche et de droite. Résultat identique au calcul de chaque pixel. */
+    new Uint32Array(d1.buffer).fill(NEUTRAL);
+    var band = Math.max(bezel, specW + 1) + 2 * s, edge = Math.max(r, band) + 2 * s;
+    var xa = Math.min(cw, Math.ceil(band / s)), xb = Math.max(xa, cw - Math.ceil(band / s)), full;
     for (y = 0; y < ch; y++) {
+      py = (y + 0.5) * s; full = py < edge || py > h - edge;
       for (x = 0; x < cw; x++) {
-        px = (x + 0.5) * s; py = (y + 0.5) * s; dx = px - hw; dy = py - hh;
+        if (!full && x === xa && xb > xa) { x = xb - 1; continue; }
+        px = (x + 0.5) * s; dx = px - hw; dy = py - hh;
         qx = Math.abs(dx) - rx; qy = Math.abs(dy) - ry;
         if (qx > 0 && qy > 0) { len = Math.sqrt(qx * qx + qy * qy); nx = (dx < 0 ? -1 : 1) * qx / len; ny = (dy < 0 ? -1 : 1) * qy / len; sd = len - r; }
         else if (qx > qy) { nx = dx < 0 ? -1 : 1; ny = 0; sd = qx - r; }
         else { nx = 0; ny = dy < 0 ? -1 : 1; sd = qy - r; }
         dist = -sd; idx = (y * cw + x) * 4;
-        d1[idx] = 128; d1[idx + 1] = 128; d1[idx + 2] = 128; d1[idx + 3] = 255;
         if (dist > -1 && dist < bezel) {
           t = (dist < 0 ? 0 : dist) / bezel; fi = t * (N - 1); i0 = fi | 0; i1 = i0 + 1 > N - 1 ? N - 1 : i0 + 1;
           m = mag[i0] + (mag[i1] - mag[i0]) * (fi - i0);
@@ -1263,9 +1569,8 @@
         }
       }
     }
-    x1.putImageData(im1, 0, 0); x2.putImageData(im2, 0, 0);
     /* Déplacement maximal borné à reach x biseau : au-delà, le contenu vient de trop loin et le bord se hache (surtout sur une pastille de 30 px). */
-    return (mapCache[key] = { map: c1.toDataURL(), spec: c2.toDataURL(), scale: Math.min(prof.max, bezel * reach) * 2.008 });
+    return (mapCache[key] = { map: pngUrl(cw, ch, d1), spec: pngUrl(cw, ch, d2), scale: Math.min(prof.max, bezel * reach) * 2.008 });
   }
 
   /* --------------------------------------------------------------- filtres */
@@ -1332,6 +1637,10 @@
   function release(node) {
     node.style.removeProperty("--epg"); node.style.removeProperty("--epg-thumb");
   }
+  /* Retire du document les filtres SVG d'une surface (élément retiré, ou verre coupé) ; ils sont recréés au besoin. */
+  function dropFilters(rec) {
+    ["s", "t"].forEach(function (k) { if (rec[k] && defs) { var f = defs.querySelector("#" + rec[k]); if (f) defs.removeChild(f); } });
+  }
 
   /* Un élément à backdrop-filter est une « racine de fond » : ses enfants ne voient plus la page, seulement lui.
      Un contrôle posé dans un bloc de verre n'est donc pas réfracté : il reçoit un style de verre posé (data-glass-nested).
@@ -1343,7 +1652,11 @@
     var p = node.parentElement;
     return !!(p && p.closest("[data-glass-live]"));
   }
-  function enabled(node) { return !node.closest('[data-surface="paper"], [data-glass="off"]'); }
+  /* Transparence réduite : préférence du système (prefers-reduced-transparency) ou réglage de la page (html[data-glass="off"],
+     EncrePapier.setGlass(false)). Aucune carte de réfraction ni filtre SVG n'est alors construit ; ils le sont au retour. */
+  var reduceMq = window.matchMedia ? window.matchMedia("(prefers-reduced-transparency: reduce)") : null;
+  function glassReduced() { return !!(reduceMq && reduceMq.matches) || document.documentElement.getAttribute("data-glass") === "off"; }
+  function enabled(node) { return !glassReduced() && !node.closest('[data-surface="paper"], [data-glass="off"]'); }
 
   /* Un élément qui apparaît (dialogue ouvert, onglet affiché) est traité tout de suite ; un redimensionnement continu est regroupé sur 60 ms. */
   var ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(function (list) {
@@ -1364,7 +1677,7 @@
   function update(node) {
     var rec = entries.get(node);
     if (!rec) return;
-    if (!enabled(node)) { release(node); node.removeAttribute("data-glass-live"); node.removeAttribute("data-glass-thumb"); node.removeAttribute("data-glass-nested"); return; }
+    if (!enabled(node)) { release(node); dropFilters(rec); toRefract.delete(node); node.removeAttribute("data-glass-live"); node.removeAttribute("data-glass-thumb"); node.removeAttribute("data-glass-nested"); return; }
     if (rec.thumb) {
       /* même règle que les surfaces : pas de réfraction hors Chromium, ni dans un bloc de verre (racine de fond) */
       var inside = true; /* l'interrupteur a toujours la pastille posée */
@@ -1375,7 +1688,50 @@
     }
     if (isNested(node)) { release(node); node.removeAttribute("data-glass-live"); node.setAttribute("data-glass-nested", ""); return; }
     node.removeAttribute("data-glass-nested");
-    if (REFRACT && apply(node, null)) node.setAttribute("data-glass-live", "");
+    if (!REFRACT) return;
+    /* posé tout de suite : les contrôles placés dedans se savent imbriqués sans attendre la carte */
+    node.setAttribute("data-glass-live", "");
+    refractLater(node);
+  }
+
+  /* Une carte de réfraction coûte cher (une boucle par pixel, puis deux PNG) et une page en compte des dizaines au chargement :
+     calculées d'un bloc, elles figeaient la page plusieurs centaines de millisecondes sur mobile. On les calcule par tranches
+     de quelques millisecondes ; en attendant, le CSS applique le flou de repli (var(--epg, blur(...))). */
+  var REFRACT_SLICE_MS = 8, toRefract = new Set(), refractTimer = 0;
+  /* Une surface hors de l'écran attend d'en approcher (une demi-hauteur d'écran) : au chargement, seules les cartes
+     visibles sont calculées, et une surface masquée (dialogue fermé) ne l'est qu'à son ouverture. */
+  var nearView = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver(function (list) {
+    list.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      nearView.unobserve(e.target);
+      queueRefract(e.target);
+    });
+  }, { rootMargin: "50% 0px" }) : null;
+  function refractLater(node) {
+    /* observer à nouveau un élément déjà observé ne redonne pas de notification : on le retire d'abord */
+    if (nearView) { nearView.unobserve(node); nearView.observe(node); } else queueRefract(node);
+  }
+  function queueRefract(node) {
+    toRefract.add(node);
+    if (!refractTimer) refractTimer = setTimeout(refractSlice, 0);
+  }
+  function refractSlice() {
+    refractTimer = 0;
+    var end = performance.now() + REFRACT_SLICE_MS, it = toRefract.values(), step;
+    while (!(step = it.next()).done) {
+      toRefract.delete(step.value);
+      refract(step.value);
+      if (performance.now() >= end) break;
+    }
+    if (toRefract.size) refractTimer = setTimeout(refractSlice, 0);
+  }
+  function refract(node) {
+    /* l'élément a pu disparaître, passer sur papier ou dans un bloc de verre entre-temps */
+    if (!node.isConnected || !entries.has(node) || !node.hasAttribute("data-glass-live")) return;
+    if (apply(node, null)) return;
+    /* trop petit pour une carte (élément masqué) : pas de verre réfractant, et ses enfants ne sont plus imbriqués */
+    node.removeAttribute("data-glass-live");
+    scheduleScan();
   }
 
   var scanQueued = false;
@@ -1402,8 +1758,8 @@
     /* nettoyage des filtres dont l'élément a disparu */
     entries.forEach(function (rec, n) {
       if (n.isConnected) return;
-      entries.delete(n); if (ro) ro.unobserve(n);
-      ["s", "t"].forEach(function (k) { if (rec[k] && defs) { var f = defs.querySelector("#" + rec[k]); if (f) defs.removeChild(f); } });
+      entries.delete(n); if (ro) ro.unobserve(n); if (nearView) nearView.unobserve(n);
+      dropFilters(rec);
     });
     /* le statut « imbriqué » dépend de l'ordre : on le rafraîchit pour les éléments déjà connus, pastilles comprises */
     entries.forEach(function (rec, n) { if (n.isConnected && isNested(n) !== n.hasAttribute("data-glass-nested")) update(n); });
@@ -1430,7 +1786,8 @@
     if (!rng) return;
     rng.min = 0; rng.max = dur; rng.step = 1;
     if (tot) tot.textContent = fmtTime(dur);
-    function sync() { setRange(rng.closest(".ep-range")); if (cur) cur.textContent = fmtTime(+rng.value); }
+    /* aria-valuetext : la position se lit en temps (« 1:05 sur 3:34 »), pas en secondes brutes */
+    function sync() { setRange(rng.closest(".ep-range")); if (cur) cur.textContent = fmtTime(+rng.value); rng.setAttribute("aria-valuetext", fmtTime(+rng.value) + " sur " + fmtTime(dur)); }
     rng.addEventListener("input", sync); sync();
     if (play) play.addEventListener("click", function () { play.setAttribute("aria-pressed", play.getAttribute("aria-pressed") === "true" ? "false" : "true"); });
     players.push({ p: p, rng: rng, play: play, sync: sync, dur: dur });
@@ -1444,8 +1801,10 @@
   }, 1000);
 
   function initRanges(root) {
-    Array.prototype.forEach.call((root || document).querySelectorAll(".ep-range"), setRange);
-    Array.prototype.forEach.call((root || document).querySelectorAll("[data-ep-player]"), setupPlayer);
+    root = root || document;
+    var all = function (sel) { var l = Array.prototype.slice.call(root.querySelectorAll(sel)); if (root.matches && root.matches(sel)) l.unshift(root); return l; };
+    all(".ep-range").forEach(setRange);
+    all("[data-ep-player]").forEach(setupPlayer);
   }
 
   function init() {
@@ -1453,18 +1812,50 @@
     root.setAttribute("data-glass-mode", REFRACT ? "refract" : (HAS_BACKDROP ? "blur" : "flat"));
     ensureDefs(); scan(document); initRanges(document);
     if (typeof MutationObserver !== "undefined") {
+      /* Ajouts : seul le sous-arbre ajouté est parcouru ; retraits : le nettoyage ne passe que sur les surfaces connues. */
       new MutationObserver(function (muts) {
-        var hasEl = function (l) { return Array.prototype.some.call(l, function (n) { return n.nodeType === 1; }); };
-        var add = muts.some(function (m) { return !(defs && defs.parentNode && defs.parentNode.contains(m.target)) && (hasEl(m.addedNodes) || hasEl(m.removedNodes)); });
-        if (add) { scheduleScan(); initRanges(document); }
+        var inDefs = function (n) { return defs && defs.parentNode && defs.parentNode.contains(n); };
+        muts.forEach(function (m) {
+          if (inDefs(m.target)) return;
+          Array.prototype.forEach.call(m.addedNodes, function (n) { if (n.nodeType === 1) addedRoots.add(n); });
+          if (Array.prototype.some.call(m.removedNodes, function (n) { return n.nodeType === 1; })) removedSeen = true;
+        });
+        if (addedRoots.size || removedSeen) scheduleSubtreeScan();
       }).observe(document.body, { childList: true, subtree: true });
+      /* Réglages de surface : data-glass ou data-surface changé sur <html> (tout est revu) ou sur un conteneur (son sous-arbre). */
+      new MutationObserver(function (muts) {
+        if (muts.some(function (m) { return m.target === document.documentElement; })) { refreshAll(); return; }
+        muts.forEach(function (m) { refreshUnder(m.target); });
+      }).observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ["data-glass", "data-surface"] });
     }
+    if (reduceMq) { try { reduceMq.addEventListener("change", refreshAll); } catch (e) { /* noop */ } }
     document.addEventListener("input", function (e) { var w = e.target.closest && e.target.closest(".ep-range"); if (w) setRange(w); });
     function press(on) { return function (e) { var w = e.target.closest && e.target.closest(".ep-range"); if (w) { if (on) w.setAttribute("data-active", ""); else w.removeAttribute("data-active"); } if (!on) Array.prototype.forEach.call(document.querySelectorAll(".ep-range[data-active]"), function (x) { x.removeAttribute("data-active"); }); }; }
     document.addEventListener("pointerdown", press(true)); document.addEventListener("pointerup", press(false)); document.addEventListener("pointercancel", press(false));
-    /* un <dialog> ouvert change de taille et d'affichage : on laisse ResizeObserver agir, sauf si le navigateur n'émet rien */
-    document.addEventListener("toggle", scheduleScan, true);
-    document.addEventListener("click", function () { setTimeout(scheduleScan, 30); }, true);
+    /* Un <dialog> ou un <details> ouvert change de taille et d'affichage : ResizeObserver s'en charge, et on revoit son seul
+       sous-arbre au cas où le navigateur n'émet rien. Plus de parcours du document entier après chaque clic : les ajouts
+       passent par MutationObserver, les apparitions (onglet affiché, hidden retiré) par ResizeObserver. */
+    document.addEventListener("toggle", function (e) { if (e.target && e.target.nodeType === 1) refreshUnder(e.target); }, true);
+  }
+  var addedRoots = new Set(), removedSeen = false, subtreeQueued = false;
+  function scheduleSubtreeScan() {
+    if (subtreeQueued) return; subtreeQueued = true;
+    requestAnimationFrame(function () {
+      subtreeQueued = false;
+      var roots = Array.from(addedRoots); addedRoots.clear(); removedSeen = false;
+      /* un nœud dont un ancêtre est aussi dans la liste est déjà couvert */
+      roots = roots.filter(function (n) { return n.isConnected && !roots.some(function (o) { return o !== n && o.contains(n); }); });
+      if (!roots.length) roots = [null];
+      roots.forEach(function (n) { scan(n || document.createDocumentFragment()); if (n) initRanges(n); });
+    });
+  }
+  function refreshUnder(root) {
+    entries.forEach(function (rec, n) { if (n.isConnected && root.contains(n)) update(n); });
+    scan(root);
+  }
+  function refreshAll() {
+    entries.forEach(function (rec, n) { if (n.isConnected) update(n); });
+    scan(document);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 

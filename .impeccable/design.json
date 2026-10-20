@@ -178,11 +178,19 @@
    },
    "label": {
     "displayName": "Label",
-    "purpose": "Onglets, boutons, états, statistiques, en capitales."
+    "purpose": "Onglets, boutons, états, libellés, en sans-serif et casse de phrase."
+   },
+   "eyebrow": {
+    "displayName": "Eyebrow",
+    "purpose": "Sur-titre de groupe, seul texte en capitales (+0.07 em)."
    },
    "caption": {
     "displayName": "Caption",
-    "purpose": "Métadonnées mono en minuscules, sans espacement."
+    "purpose": "Métadonnées en sans-serif, chiffres tabulaires."
+   },
+   "figure": {
+    "displayName": "Figure",
+    "purpose": "Chiffres seuls, âges, chemins et code, en DM Mono."
    }
   },
   "shadows": [
@@ -247,7 +255,7 @@
    "refersTo": "island-compact",
    "description": "La pastille de verre au bord haut : qui t'attend, puis les mini-cartes.",
    "html": "<div class=\"ds-compact\"><span class=\"ds-state\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" aria-hidden=\"true\"><path d=\"M12 3 2 21h20L12 3z\"/><path d=\"M12 10v5M12 18v.5\"/></svg>2 t'attendent</span><span class=\"ds-mini\"></span><span class=\"ds-mini ds-mini--b\"></span><span class=\"ds-mini ds-mini--c\"></span></div>",
-   "css": ".ds-compact{display:flex;align-items:center;gap:8px;width:320px;box-sizing:border-box;padding:8px 12px;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 18px -10px rgba(0,0,0,.7)}.ds-state{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#e0b04a;background:#38300f;border:1px solid #e0b04a;border-radius:999px}.ds-mini{margin-left:auto;width:22px;height:30px;border-radius:4px;background:linear-gradient(135deg,#3a4380,#1b1c20);border:1px solid rgba(255,255,255,.14)}.ds-mini+.ds-mini{margin-left:0}.ds-mini--b{background:linear-gradient(135deg,#277a85,#1b1c20)}.ds-mini--c{background:linear-gradient(135deg,#6b302c,#1b1c20)}"
+   "css": ".ds-compact{display:flex;align-items:center;gap:8px;width:320px;box-sizing:border-box;padding:8px 12px;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 18px -10px rgba(0,0,0,.7)}.ds-state{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font:500 13px/1 \"Instrument Sans\",system-ui,sans-serif;color:#e0b04a;background:#38300f;border:1px solid #e0b04a;border-radius:999px}.ds-mini{margin-left:auto;width:22px;height:30px;border-radius:4px;background:linear-gradient(135deg,#3a4380,#1b1c20);border:1px solid rgba(255,255,255,.14)}.ds-mini+.ds-mini{margin-left:0}.ds-mini--b{background:linear-gradient(135deg,#277a85,#1b1c20)}.ds-mini--c{background:linear-gradient(135deg,#6b302c,#1b1c20)}"
   },
   {
    "name": "Onglets de l'île",
@@ -255,7 +263,7 @@
    "refersTo": "tab-active",
    "description": "Accueil, Envoyer un ordre, Nouvelle conversation : une pilule de verre, flèches entre onglets.",
    "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Accueil</button><button role=\"tab\" aria-selected=\"false\">Envoyer un ordre</button><button role=\"tab\" aria-selected=\"false\">Nouvelle conversation</button></div>",
-   "css": ".ds-tabs{display:inline-flex;gap:2px;padding:4px;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px}.ds-tabs button{padding:9px 16px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#a5a8ae;background:transparent;border:0;border-radius:999px;cursor:pointer;transition:background-color .15s,color .15s}.ds-tabs button:hover{color:#ecece6}.ds-tabs button[aria-selected=\"true\"]{color:#ecece6;background:rgba(30,32,40,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 5px 12px -5px rgba(0,0,0,.4)}.ds-tabs button:focus-visible{outline:2px solid #ecece6;outline-offset:2px}"
+   "css": ".ds-tabs{display:inline-flex;gap:2px;padding:4px;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px}.ds-tabs button{padding:9px 16px;font:500 13px/1 \"Instrument Sans\",system-ui,sans-serif;color:#a5a8ae;background:transparent;border:0;border-radius:999px;cursor:pointer;transition:background-color .15s,color .15s}.ds-tabs button:hover{color:#ecece6}.ds-tabs button[aria-selected=\"true\"]{color:#ecece6;background:rgba(30,32,40,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 5px 12px -5px rgba(0,0,0,.4)}.ds-tabs button:focus-visible{outline:2px solid #ecece6;outline-offset:2px}"
   },
   {
    "name": "Réponses rapides",
@@ -263,7 +271,7 @@
    "refersTo": "quick-reply",
    "description": "OK, GO, Non sous la carte qui attend.",
    "html": "<div class=\"ds-quick\"><button>OK</button><button>GO</button><button>Non</button></div>",
-   "css": ".ds-quick{display:flex;gap:8px}.ds-quick button{height:32px;padding:0 16px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;cursor:pointer;transition:transform .2s cubic-bezier(.3,1.35,.45,1),box-shadow .2s}.ds-quick button:hover{box-shadow:0 8px 18px -10px rgba(0,0,0,.7)}.ds-quick button:active{transform:scale(.97)}.ds-quick button:focus-visible{outline:2px solid #ecece6;outline-offset:2px}"
+   "css": ".ds-quick{display:flex;gap:8px}.ds-quick button{height:32px;padding:0 16px;font:500 13px/1 \"Instrument Sans\",system-ui,sans-serif;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px;cursor:pointer;transition:transform .2s cubic-bezier(.3,1.35,.45,1),box-shadow .2s}.ds-quick button:hover{box-shadow:0 8px 18px -10px rgba(0,0,0,.7)}.ds-quick button:active{transform:scale(.97)}.ds-quick button:focus-visible{outline:2px solid #ecece6;outline-offset:2px}"
   },
   {
    "name": "Pastilles d'état",
@@ -271,7 +279,7 @@
    "refersTo": "status-pill-waiting",
    "description": "Icône et mot, ambre pour ce qui attend, lagune pour terminé.",
    "html": "<span class=\"ds-pill ds-pill--wait\">⚠ T'attend</span> <span class=\"ds-pill ds-pill--done\">✓ Terminé</span> <span class=\"ds-pill\">▶ Travaille</span>",
-   "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font:500 11px/1 \"DM Mono\",monospace;letter-spacing:.12em;text-transform:uppercase;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px}.ds-pill--wait{color:#e0b04a;background:#38300f;border-color:#e0b04a}.ds-pill--done{color:#4fc3cf;background:#123136;border-color:#4fc3cf}"
+   "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font:500 13px/1 \"Instrument Sans\",system-ui,sans-serif;color:#ecece6;background:rgba(34,36,44,.40);border:1px solid rgba(255,255,255,.14);border-radius:999px}.ds-pill--wait{color:#e0b04a;background:#38300f;border-color:#e0b04a}.ds-pill--done{color:#4fc3cf;background:#123136;border-color:#4fc3cf}"
   },
   {
    "name": "Bouton rond",
@@ -292,13 +300,13 @@
  ],
  "narrative": {
   "northStar": "La Main de cartes",
-  "overview": "**Creative North Star: \"La Main de cartes\"**\n\nChaque conversation est une carte, et l'app est la main qui les tient. La carte porte tout ce qui distingue une conversation d'une autre : sa gravure générative (systems-generator, rendue en WebGPU), sa finition, sa rareté gagnée par le travail, son état en direct. Tout le reste de l'interface est la table : du verre acrylique de Windows, de la craie, des libellés de bord en mono, qui s'effacent derrière les cartes et le texte. On regarde les cartes ; on touche le verre.\n\nLe système est imposé : Liquid Paper 1.0.2 (`mod/assets/liquid-paper/`, copie du paquet `@code-my-life/liquid-paper`), variante Encre et Papier, thème Nuit (`data-theme=\"dark\"`). L'île change de thème toute seule selon le bureau derrière elle : Nuit sur un bureau sombre, Papier sur un bureau clair (lecture de quelques pixels de l'écran, avec hystérésis). Le verre n'est pas du CSS : c'est l'acrylique de Windows, et la fenêtre de l'île EST la forme qui se morphose.\n\nL'app vit au bord de l'attention : on travaille dans d'autres fenêtres, l'île porte l'urgence en haut de l'écran, le cockpit sert à faire le point. Le ton est donc calme et précis, sans décor, avec une seule promesse : personne n'attend en silence. Les composants sont **tactiles et discrets** : du verre qu'on a envie de toucher (pilules, ressort court, pression à 97 %), mais qui laisse la place aux cartes.",
+  "overview": "**Creative North Star: \"La Main de cartes\"**\n\nChaque conversation est une carte, et l'app est la main qui les tient. La carte porte tout ce qui distingue une conversation d'une autre : sa gravure générative (systems-generator, rendue en WebGPU), sa finition, sa rareté gagnée par le travail, son état en direct. Tout le reste de l'interface est la table : du verre acrylique de Windows, de la craie, des libellés de bord en mono, qui s'effacent derrière les cartes et le texte. On regarde les cartes ; on touche le verre.\n\nLe système est imposé : Liquid Paper 2.1.0 (`mod/assets/liquid-paper/`, copie du paquet `@code-my-life/liquid-paper`), variante Encre et Papier, thème Nuit (`data-theme=\"dark\"`). L'île change de thème toute seule selon le bureau derrière elle : Nuit sur un bureau sombre, Papier sur un bureau clair (lecture de quelques pixels de l'écran, avec hystérésis). Le verre n'est pas du CSS : c'est l'acrylique de Windows, et la fenêtre de l'île EST la forme qui se morphose.\n\nL'app vit au bord de l'attention : on travaille dans d'autres fenêtres, l'île porte l'urgence en haut de l'écran, le cockpit sert à faire le point. Le ton est donc calme et précis, sans décor, avec une seule promesse : personne n'attend en silence. Les composants sont **tactiles et discrets** : du verre qu'on a envie de toucher (pilules, ressort court, pression à 97 %), mais qui laisse la place aux cartes.",
   "keyCharacteristics": [
    "La carte holographique est l'unité de tout : dans l'île (pile), le cockpit (grandes cartes, mini-cartes de l'équipe) et le lanceur.",
    "Verre acrylique du système sous tout ce qui flotte ; aucun `backdrop-filter` dans l'île.",
    "Craie sur Nuit, ou encre sur Papier quand le bureau est clair, choisi par l'app et non par l'utilisateur.",
    "Couleur réservée aux cartes et aux états (ambre qui attend, lagune livré, corail bloqué, pervenche en mission).",
-   "Serif éditorial pour les noms, sans-serif pour lire, mono capitales pour les commandes et les états.",
+   "Serif éditorial pour les noms, sans-serif pour lire et pour les libellés, mono pour les chiffres, les chemins et le code.",
    "Mouvement court et physique (ressort 260 à 300 ms pour le verre, 150 ms pour le contenu), coupé en mouvement réduit."
   ],
   "rules": [
@@ -324,12 +332,12 @@
    },
    {
     "name": "The Three Voices Rule",
-    "body": "Un nom est en serif, une commande ou un état en mono capitales, une phrase à lire en sans-serif. Ne jamais les échanger.",
+    "body": "Un nom est en serif, une phrase, un libellé ou un état en sans-serif, un chiffre, un chemin ou du code en mono. Ne jamais les échanger.",
     "section": "typography"
    },
    {
     "name": "The Tracking Follows Case Rule",
-    "body": "L'espacement large (+0.12 à +0.14 em) n'existe qu'en CAPITALES. Le mono en minuscules garde son espacement naturel (`.caption`, ou +0.03 em pour `.spec`).",
+    "body": "L'espacement large (+0.07 em) n'existe que sur le sur-titre en CAPITALES. Tout le reste garde l'espacement naturel de sa police. Le CSS ne passe rien d'autre en capitales, et le texte source est en casse de phrase.",
     "section": "typography"
    },
    {
@@ -355,7 +363,7 @@
   "donts": [
    "Don't poser de `backdrop-filter` dans l'île, ni d'`opacity` sur le bloc de verre : le verre est celui de Windows.",
    "Don't colorer l'interface hors des quatre tons d'état : pas d'accent décoratif, pas de dégradé hors des cartes.",
-   "Don't espacer largement un libellé mono en minuscules ; l'espacement large est réservé aux capitales.",
+   "Don't remettre un libellé en mono ou en capitales : le mono est réservé aux chiffres et au code, les capitales au sur-titre.",
    "Don't voler le focus ni ouvrir l'île pour ce qui n'attend pas l'utilisateur.",
    "Don't modifier les fichiers copiés de Liquid Paper (`mod/assets/liquid-paper/`) ni de systems-generator : on met à jour la copie depuis le paquet.",
    "Don't mettre de tiret cadratin dans les textes de l'interface."

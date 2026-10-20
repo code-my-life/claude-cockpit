@@ -57,14 +57,24 @@ typography:
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "DM Mono, ui-monospace, SF Mono, Consolas, monospace"
-    fontSize: "11px"
+    fontFamily: "Instrument Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "13px"
     fontWeight: 500
-    lineHeight: 1
-    letterSpacing: ".12em"
+    lineHeight: 1.35
+  eyebrow:
+    fontFamily: "Instrument Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "12px"
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: ".07em"
   caption:
+    fontFamily: "Instrument Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.5
+  figure:
     fontFamily: "DM Mono, ui-monospace, SF Mono, Consolas, monospace"
-    fontSize: "11px"
+    fontSize: "12px"
     fontWeight: 400
     lineHeight: 1.4
 rounded:
@@ -148,9 +158,9 @@ components:
 
 **Creative North Star: "La Main de cartes"**
 
-Chaque conversation est une carte, et l'app est la main qui les tient. La carte porte tout ce qui distingue une conversation d'une autre : sa gravure générative (systems-generator, rendue en WebGPU), sa finition, sa rareté gagnée par le travail, son état en direct. Tout le reste de l'interface est la table : du verre acrylique de Windows, de la craie, des libellés de bord en mono, qui s'effacent derrière les cartes et le texte. On regarde les cartes ; on touche le verre.
+Chaque conversation est une carte, et l'app est la main qui les tient. La carte porte tout ce qui distingue une conversation d'une autre : sa gravure générative (systems-generator, rendue en WebGPU), sa finition, sa rareté gagnée par le travail, son état en direct. Tout le reste de l'interface est la table : du verre acrylique de Windows, de la craie, des libellés sobres en sans-serif, qui s'effacent derrière les cartes et le texte. On regarde les cartes ; on touche le verre.
 
-Le système est imposé : Liquid Paper 1.0.2 (`mod/assets/liquid-paper/`, copie du paquet `@code-my-life/liquid-paper`), variante Encre et Papier, thème Nuit (`data-theme="dark"`). L'île change de thème toute seule selon le bureau derrière elle : Nuit sur un bureau sombre, Papier sur un bureau clair (lecture de quelques pixels de l'écran, avec hystérésis). Le verre n'est pas du CSS : c'est l'acrylique de Windows, et la fenêtre de l'île EST la forme qui se morphose.
+Le système est imposé : Liquid Paper 2.1.0 (`mod/assets/liquid-paper/`, copie du paquet `@code-my-life/liquid-paper`), variante Encre et Papier, thème Nuit (`data-theme="dark"`). L'île change de thème toute seule selon le bureau derrière elle : Nuit sur un bureau sombre, Papier sur un bureau clair (lecture de quelques pixels de l'écran, avec hystérésis). Le verre n'est pas du CSS : c'est l'acrylique de Windows, et la fenêtre de l'île EST la forme qui se morphose.
 
 L'app vit au bord de l'attention : on travaille dans d'autres fenêtres, l'île porte l'urgence en haut de l'écran, le cockpit sert à faire le point. Le ton est donc calme et précis, sans décor, avec une seule promesse : personne n'attend en silence. Les composants sont **tactiles et discrets** : du verre qu'on a envie de toucher (pilules, ressort court, pression à 97 %), mais qui laisse la place aux cartes.
 
@@ -159,7 +169,7 @@ L'app vit au bord de l'attention : on travaille dans d'autres fenêtres, l'île 
 - Verre acrylique du système sous tout ce qui flotte ; aucun `backdrop-filter` dans l'île.
 - Craie sur Nuit, ou encre sur Papier quand le bureau est clair, choisi par l'app et non par l'utilisateur.
 - Couleur réservée aux cartes et aux états (ambre qui attend, lagune livré, corail bloqué, pervenche en mission).
-- Serif éditorial pour les noms, sans-serif pour lire, mono capitales pour les commandes et les états.
+- Serif éditorial pour les noms, sans-serif pour lire et pour les libellés, mono pour les chiffres, les chemins et le code.
 - Mouvement court et physique (ressort 260 à 300 ms pour le verre, 150 ms pour le contenu), coupé en mouvement réduit.
 
 ## Colors
@@ -197,22 +207,24 @@ Une palette froide et sourde, d'où ne ressortent que les cartes et quatre coule
 
 **Display Font:** Instrument Serif (avec Iowan Old Style, Georgia, serif)
 **Body Font:** Instrument Sans (avec system-ui, -apple-system, Segoe UI, sans-serif)
-**Label/Mono Font:** DM Mono (avec ui-monospace, SF Mono, Consolas, monospace)
+**Mono Font:** DM Mono (avec ui-monospace, SF Mono, Consolas, monospace), réservé aux chiffres et au code
 
-**Character:** Le serif nomme (l'équipe, une conversation, une carte), le mono commande et dit l'état, le sans-serif se lit. Trois voix, chacune à sa place.
+**Character:** Le serif nomme (l'équipe, une conversation, une carte), le sans-serif se lit et dit l'état, le mono compte (âges, messages, chemins, code). Trois voix, chacune à sa place.
 
 ### Hierarchy
 - **Display** (400, 40 à 56 px, interligne 1) : « Ton *équipe* », le seul grand titre du cockpit. L'horloge (34 px, chiffres tabulaires) l'accompagne.
 - **Headline** (400, 30 px) : les sections du cockpit (Attendent tes ordres, En mission, Mis de côté).
 - **Title** (400, 22 px ; 18 px dans la pile de l'île) : le nom d'une conversation, sur la carte et dans l'île.
 - **Body** (400, 15 px, interligne 1.55) : les résumés, la conversation, les champs. **Body S** (400, 13 px) : le corps des faces de cartes de l'île.
-- **Label** (500, 11 px, +0.12 em, CAPITALES) : onglets, boutons, pastilles d'état, statistiques.
-- **Caption** (400, 11 px, mono, sans espacement) : métadonnées en minuscules (âge, nombre de messages, chemin).
+- **Label** (500, 13 px, sans-serif, casse de phrase) : onglets, boutons, pastilles d'état, libellés de champ et de statistique.
+- **Eyebrow** (500, 12 px, sans-serif, +0.07 em, CAPITALES) : le seul texte en capitales, au-dessus d'un groupe (titre de dépôt, sous-titre de fiche).
+- **Caption** (400, 12 px, sans-serif, chiffres tabulaires) : métadonnées (nombre de messages, ligne de statistiques, fraîcheur).
+- **Figure** (400, 12 px, DM Mono) : chiffres seuls, âges, chemins, code.
 
 ### Named Rules
-**The Three Voices Rule.** Un nom est en serif, une commande ou un état en mono capitales, une phrase à lire en sans-serif. Ne jamais les échanger.
+**The Three Voices Rule.** Un nom est en serif, une phrase, un libellé ou un état en sans-serif, un chiffre, un chemin ou du code en mono. Ne jamais les échanger.
 
-**The Tracking Follows Case Rule.** L'espacement large (+0.12 à +0.14 em) n'existe qu'en CAPITALES. Le mono en minuscules garde son espacement naturel (`.caption`, ou +0.03 em pour `.spec`).
+**The Tracking Follows Case Rule.** L'espacement large (+0.07 em) n'existe que sur le sur-titre en CAPITALES. Tout le reste garde l'espacement naturel de sa police. Le CSS ne passe rien d'autre en capitales, et le texte source est en casse de phrase.
 
 ## Layout
 
@@ -265,7 +277,7 @@ Une barre de recherche en verre (« Rechercher dans toutes les conversations »)
 `<sg-card>` de systems-generator : gravure générative tirée de l'identifiant de la conversation (elle garde toujours la même), finition, rareté gagnée (commune, peu commune, rare, mythique), état en direct. Elle se retourne pour agir (`<sg-flip>`). Sa face avant contient toujours sa demande et ses réponses sans défiler.
 
 ### Pastilles d'état
-Pilule mono capitales avec icône : « ⚠ T'ATTEND » ambre, « ✓ TERMINÉ » lagune, « ▶ TRAVAILLE » sur verre, bloqué en corail.
+Pilule en sans-serif, casse de phrase, avec icône : « ⚠ T'attend » ambre, « ✓ Terminé » lagune, « ▶ Travaille » sur verre, bloqué en corail.
 
 ### Identités et sons
 Les entités génératives (`mod/assets/entity/`) et leurs réactions (attente, terminé, bloqué, survol, pression) ; les sons synthétisés par identité (appel, permission, terminé, erreur), coupables d'un geste. Règles précises dans `README.fr.md`.
@@ -284,7 +296,7 @@ Les entités génératives (`mod/assets/entity/`) et leurs réactions (attente, 
 ### Don't:
 - **Don't** poser de `backdrop-filter` dans l'île, ni d'`opacity` sur le bloc de verre : le verre est celui de Windows.
 - **Don't** colorer l'interface hors des quatre tons d'état : pas d'accent décoratif, pas de dégradé hors des cartes.
-- **Don't** espacer largement un libellé mono en minuscules ; l'espacement large est réservé aux capitales.
+- **Don't** remettre un libellé en mono ou en capitales : le mono est réservé aux chiffres et au code, les capitales au sur-titre.
 - **Don't** voler le focus ni ouvrir l'île pour ce qui n'attend pas l'utilisateur.
 - **Don't** modifier les fichiers copiés de Liquid Paper (`mod/assets/liquid-paper/`) ni de systems-generator : on met à jour la copie depuis le paquet.
 - **Don't** mettre de tiret cadratin dans les textes de l'interface.
