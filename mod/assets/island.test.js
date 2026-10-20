@@ -78,6 +78,23 @@ test('pinKindOf : ce qu on ne peut pas traiter depuis l ile n epingle pas', () =
   assert.equal(pinKindOf([{ status: 'permission' }, { status: 'external' }]), 'attention')
 })
 
+test('reply field markup contains arrow SVG paths and correct attributes', () => {
+  // This test will fail until the reply-field.js module is created and exports renderReplyField()
+  // The markup should match the mockup exactly
+  const { renderReplyField } = require('./reply-field');
+  const html = renderReplyField();
+  assert.match(html, /<form class="reply"[^>]*id="replyForm"/, 'should have form.reply with id=replyForm');
+  assert.match(html, /<input class="ep-input" id="replyInput" type="text" placeholder="R[eé]pondre.?" \/>/, 'should have input.ep-input with id=replyInput and placeholder');
+  assert.match(html, /<button class="send" type="submit" aria-label="Envoyer">/, 'should have button.send with correct attributes');
+  assert.match(html, /<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">/, 'should have SVG with correct attributes');
+  assert.match(html, /<path d="M5 12h13" \/>/, 'should have first arrow path');
+  assert.match(html, /<path d="M13 6l6 6-6 6" \/>/, 'should have second arrow path');
+  assert.doesNotMatch(html, /ep-btn--primary/, 'should not have ep-btn--primary class');
+  // Button should not have disc background or fill styles (SVG fill="none" is correct)
+  assert.doesNotMatch(html, /<button[^>]*style="[^"]*background/, 'button should not have background style');
+  assert.doesNotMatch(html, /<button[^>]*class="[^"]*fill/, 'button should not have fill class');
+});
+
 test('annonce : singulier, pluriel, rien quand personne n attend', () => {
   assert.equal(announcementOf(1), '1 conversation t\'attend');
   assert.equal(announcementOf(3), '3 conversations t\'attendent');
