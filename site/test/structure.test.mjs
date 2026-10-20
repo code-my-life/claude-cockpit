@@ -90,3 +90,14 @@ test('site pages expose every section and theme derived from the mockup (EN and 
   const navENRegex = /<a[^>]*href="fr\/"[^>]*hreflang="fr"[^>]*lang="fr"/;
   assert.ok(navENRegex.test(enContent), "EN page should have FR link");
 });
+// #68: everything under the hero sits in one glass block, the hero stays on the page background
+test('the content block under the hero is a Liquid Paper glass block (mockup, EN and FR)', () => {
+  for (const file of [mockupPath, enFile, frFile]) {
+    const html = fs.readFileSync(file, 'utf-8');
+    const sibling = html.match(/<section id="download"[\s\S]*?<\/section>\s*<div class="([^"]*)"/);
+    assert.ok(sibling, `${file}: #download should be followed by a div`);
+    const classes = sibling[1].split(/\s+/);
+    assert.ok(classes.includes('ep-wrap'), `${file}: the block under the hero should keep ep-wrap`);
+    assert.ok(classes.includes('ep-glass'), `${file}: the block under the hero should carry ep-glass`);
+  }
+});
