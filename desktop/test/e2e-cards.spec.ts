@@ -116,7 +116,9 @@ test('B1: "Agrandir" enlarges the card; Escape and the backdrop close it; the la
   await expect(card).not.toHaveClass(/\bbig\b/)
   await enlarge.click()
   await expect(card).toHaveClass(/\bbig\b/)
-  await page.locator('.backdrop').click({ position: { x: 5, y: 5 } })
+  // A click outside the card lands on the backdrop, which covers the page.
+  await expect(page.locator('.backdrop')).toBeAttached()
+  await page.mouse.click(5, 5)
   await expect(card).not.toHaveClass(/\bbig\b/)
 })
 
@@ -177,7 +179,8 @@ test('B5: terminal: one repository opens it; two show a menu; an unknown folder 
   await (await turnOver(page, 'e2e-term-two')).locator('[data-testid="card-terminal"]').click()
   const items = page.locator('.repo-menu .repo-item')
   await expect(items).toHaveCount(3)
-  await page.locator(`.repo-menu .repo-item[data-folder="${path.join(work, 'e2e-term-two', 'lib')}"]`).click()
+  // By its shown name: a Windows path is full of backslashes, escape characters in a CSS selector.
+  await items.filter({ has: page.locator('.repo-name', { hasText: /^lib$/ }) }).click()
   await expect.poll(launched).toContain(path.join(work, 'e2e-term-two', 'lib'))
 
   const before = launched().length
