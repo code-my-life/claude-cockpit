@@ -1,6 +1,6 @@
 # 003 — Deck card transition within budget, one source for the island springs
 
-- **Status**: TODO
+- **Status**: DONE (awaiting /review-animations)
 - **Commit**: c996d6e
 - **Severity**: LOW
 - **Category**: Easing & duration, Cohesion & tokens

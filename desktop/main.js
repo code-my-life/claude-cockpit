@@ -513,8 +513,8 @@ onTrusted('compact-size', (event, width, height) => island?.setCompactSize(Math.
 
 onTrusted('island-toasts', (event, width, height) => island?.setToasts(Number(width), Number(height)))
 
-onTrusted('expanded', (event, expanded, width, height, byHover, isPassive) => {
-  island?.setExpanded(expanded === true, Math.round(Number(width)), Math.round(Number(height)), byHover === true)
+onTrusted('expanded', (event, expanded, width, height, byHover, isPassive, isInstant) => {
+  island?.setExpanded(expanded === true, Math.round(Number(width)), Math.round(Number(height)), byHover === true, isInstant === true)
   if (expanded === true && isPassive !== true && win !== null) win.focus()
 })
 

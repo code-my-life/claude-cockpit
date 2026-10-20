@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   // Échelle de la morphose (1 sauf mise au point, posée par le lanceur) : la page cale ses fondus dessus.
   motionScale: Number(process.env.COCKPIT_ISLAND_SLOW) || 1,
   setCompactSize: (width, height) => ipcRenderer.send('compact-size', width, height),
-  setExpanded: (expanded, width, height, byHover, isPassive) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true),
+  setExpanded: (expanded, width, height, byHover, isPassive, isInstant) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true, isInstant === true),
   setToasts: (width, height) => ipcRenderer.send('island-toasts', width, height),
   islandPointer: isInside => ipcRenderer.send('island-pointer', isInside),
   // The content window lets clicks through outside the island; the page captures them while over it.

@@ -12,9 +12,15 @@
   const FADE_OUT_MS = 150;
   const CONTENT_DELAY_MS = 0;
   const GROW_FROM = 0.96;
+  // Two frames of the real display (measured), 40 ms before the first measure.
+  const SHRINK_LEAD_FRAMES = 2;
   const SHRINK_LEAD_MS = 40;
+  // Reduced motion: no movement, no scale, but the content still fades (gentler, not zero).
+  const REDUCED_FADE_MS = 150;
   const CONTENT_DELAY_CLOSE_MS = 70;
   const SETTLE_DELAY_MS = 80;
+  // The source of truth for the springs is desktop/bounds.js (OPEN_SPRING, CLOSE_SPRING): the shape follows the values
+  // sent with island-geometry. These copies only drive the page's own tweens (and the page without the desktop app).
   const SPRING_OPEN = { zeta: 0.72, ms: 300 };
   const SPRING_CLOSE = { zeta: 0.9, ms: 260 };
   const SLOT_PX = { compact: 32, home: 96, wait: 64, order: 64, new: 64, park: 64 };
@@ -85,12 +91,13 @@
       heroEl.style.transform = `translate(${cur.hx}px, ${cur.hy}px) scale(${cur.hs})`;
       heroEl.style.opacity = cur.ho;
       $('#hdr').style.opacity = cur.oh;
-      $('#hdr').style.transform = `scale(${GROW_FROM + (1 - GROW_FROM) * cur.oh})`;
+      const grow = value => (reduceQuery.matches ? 'none' : `scale(${GROW_FROM + (1 - GROW_FROM) * value})`);
+      $('#hdr').style.transform = grow(cur.oh);
       $('#hdr').style.visibility = cur.oh < 0.01 ? 'hidden' : 'visible';
       for (const name of ctx.LAYERS) {
         const el = ctx.layerEl(name);
         el.style.opacity = cur[`o:${name}`];
-        el.style.transform = `scale(${GROW_FROM + (1 - GROW_FROM) * cur[`o:${name}`]})`;
+        el.style.transform = grow(cur[`o:${name}`]);
         el.style.visibility = cur[`o:${name}`] < 0.01 ? 'hidden' : 'visible';
       }
       // Les toasts se posent sous l'île, où qu'elle en soit de sa morphose.
@@ -99,6 +106,7 @@
     };
 
     const tweenOf = (key, to, isShrinking, t0, k) => {
+      if (isFadeKey(key) && k === 0) return { from: cur[key], to, t0, delay: 0, dur: REDUCED_FADE_MS, ease: springs.fade };
       if (isFadeKey(key)) {
         const appearing = to > cur[key];
         const delay = appearing ? (isShrinking ? CONTENT_DELAY_CLOSE_MS : CONTENT_DELAY_MS) : 0;
@@ -153,6 +161,13 @@
     // the island box takes the larger of both shapes (its content is laid out once, at its final size), and a
     // clip-path inset follows the glass spring, driven by Date.now() like the app's morph.
     let shapeRaf = 0;
+    // The display's frame time, measured once from 20 animation frames (60 Hz: 16.7 ms, 144 Hz: 6.9 ms).
+    let frameMs = 0;
+    (() => {
+      const stamps = [];
+      const sample = time => { stamps.push(time); if (stamps.length < 21) win.requestAnimationFrame(sample); else { const gaps = stamps.slice(1).map((t, i) => t - stamps[i]).sort((a, b) => a - b); frameMs = gaps[Math.floor(gaps.length / 2)]; } };
+      if (typeof win.requestAnimationFrame === 'function') win.requestAnimationFrame(sample);
+    })();
     const px = value => `${Math.round(value)}px`;
     const setBox = rect => {
       islandEl.style.left = px(rect.x); islandEl.style.top = px(rect.y);
@@ -172,7 +187,7 @@
       // The page paints about two frames after Windows moves the glass. Growing, that lag keeps the content inside the
       // glass; shrinking, it would leave content outside it, so the page runs ahead by those two frames.
       const isShrinking = to.width * to.height < from.width * from.height;
-      const lead = isShrinking ? SHRINK_LEAD_MS : 0;
+      const lead = isShrinking ? (frameMs > 0 ? SHRINK_LEAD_FRAMES * frameMs : SHRINK_LEAD_MS) : 0;
       const step = () => {
         const p = clamp01((Date.now() - startedAt + lead) / ms);
         if (p >= 1) { shapeRaf = 0; settleShape(); return; }

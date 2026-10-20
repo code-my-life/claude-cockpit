@@ -1,6 +1,6 @@
 # 002 — Open the island from the keyboard without animation, focus at once
 
-- **Status**: TODO
+- **Status**: DONE (awaiting /review-animations)
 - **Commit**: c996d6e
 - **Severity**: HIGH
 - **Category**: Purpose & frequency

@@ -34,9 +34,11 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
   // Every morph start goes to the page too: the glass window morphs, the page draws the same shape on the same clock.
   const morph = createMorph({ now: () => (clock.now ? clock.now() : Date.now()), schedule: frame, cancel: () => {}, apply: applyBounds, onStart: sendGeometry })
 
+  // A keyboard open asks for no morph: the next placement jumps (plan 002).
+  let isInstant = false
   const spring = isGrowing => {
     const base = isGrowing ? OPEN_SPRING : CLOSE_SPRING
-    return { ms: hasReducedMotion ? 0 : base.ms * motionScale, zeta: base.zeta }
+    return { ms: hasReducedMotion || isInstant ? 0 : base.ms * motionScale, zeta: base.zeta }
   }
 
   // Le survol rapporté par la page ne vient que de mousemove et mouseleave : une fenêtre qui rétrécit sous un curseur immobile
@@ -125,11 +127,13 @@ const createIslandController = ({ getArea, getCursor, applyBounds, setVisible, f
       sizes = { ...sizes, compactWidth: width, compactHeight: height }
       resize()
     },
-    setExpanded(isOpen, width, height, byHover = false) {
+    setExpanded(isOpen, width, height, byHover = false, instant = false) {
+      isInstant = isOpen && instant === true
       if (isOpen) sizes = { ...sizes, openWidth: width, openHeight: height }
       if (isOpen) fsm.open(byHover === true)
       else fsm.fold()
       if (isOpen) resize()
+      isInstant = false
     },
     // Les toasts : de la place en plus sous l'île, sans toucher à l'automate.
     setToasts(width, height) {
