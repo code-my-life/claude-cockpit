@@ -205,6 +205,46 @@ async function comparePngs(browser: Browser, a: Buffer, b: Buffer, anchorsA: num
   }
 }
 
+// Decode a PNG in a browser page and return the RGB of its top-left pixel
+async function firstPixel(browser: Browser, png: Buffer): Promise<[number, number, number]> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    return await page.evaluate(async url => {
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('PNG decode failed'));
+        img.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r, g, b] as [number, number, number];
+    }, `data:image/png;base64,${png.toString('base64')}`);
+  } finally {
+    await context.close();
+  }
+}
+
+// Scroll a page point to the middle of the viewport, then return its pixel and the element under it
+async function probe(browser: Browser, page: Page, x: number, y: number) {
+  const { innerHeight } = await page.evaluate(() => ({ innerHeight: window.innerHeight }));
+  await page.evaluate(top => window.scrollTo({ top, behavior: 'instant' }), Math.max(0, y - innerHeight / 2));
+  const scrollY = await page.evaluate(() => window.scrollY);
+  const vy = y - scrollY;
+  const target = await page.evaluate(([px, py]) => {
+    const el = document.elementFromPoint(px, py);
+    if (!el) return 'none';
+    return el.matches('main, section, .ep-wrap') ? 'background' : `${el.tagName.toLowerCase()}.${el.className}`;
+  }, [x, vy]);
+  const shot = await page.screenshot({ clip: { x, y: vy, width: 1, height: 1 } });
+  return { rgb: await firstPixel(browser, shot), target };
+}
+
 let dist: { server: Server; origin: string };
 let mockup: { server: Server; origin: string };
 
@@ -355,4 +395,44 @@ test.describe('Site structure visual comparison', () => {
       await context.close();
     }
   });
+
+  // #68: the page background layer (#cc-bg) must show behind the hero, in the side margins,
+  // and blurred through the glass content block. The layer is painted magenta and its canvas
+  // hidden, so the test depends neither on the generator nor on reduced motion.
+  const BG_CSS = '#cc-bg{background:#ff00ff!important} #cc-bg canvas{visibility:hidden!important}';
+  const magenta = ([r, g, b]: number[]) => r > 200 && b > 200 && g < 40;
+  const throughGlass = ([r, g]: number[]) => r > 120 && r < 245 && g < 60;
+  for (const { width, height } of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    for (const [name, origin, route] of [
+      ['mockup', () => mockup.origin, '/'],
+      ['site EN', () => dist.origin, '/'],
+      ['site FR', () => dist.origin, '/fr/index.html'],
+    ] as const) {
+      test(`page background shows behind the hero and around the content block at ${width} (${name})`, async ({ browser }) => {
+        const { context, page } = await openPage(browser, width, height);
+        try {
+          await page.goto(`${origin()}${route}`, { waitUntil: 'domcontentloaded' });
+          await page.addStyleTag({ content: BG_CSS });
+          const geo = await page.evaluate(() => {
+            const pageRect = (el: Element) => {
+              const r = el.getBoundingClientRect();
+              return { top: r.top + window.scrollY, left: r.left + window.scrollX };
+            };
+            const block = document.querySelector('main > div.ep-wrap')!;
+            return { hero: pageRect(document.getElementById('download')!), block: pageRect(block) };
+          });
+          const hero = await probe(browser, page, 8, geo.hero.top + 32);
+          const margin = await probe(browser, page, 3, geo.block.top + 200);
+          const inside = await probe(browser, page, geo.block.left + 8, geo.block.top + 40);
+          console.log(`MEASURE bg ${width} ${name} hero=${hero.rgb} margin=${margin.rgb} inside=${inside.rgb}`);
+          expect([hero.target, margin.target, inside.target]).toEqual(['background', 'background', 'background']);
+          expect(magenta(hero.rgb), `hero pixel ${hero.rgb}`).toBe(true);
+          expect(magenta(margin.rgb), `side margin pixel ${margin.rgb}`).toBe(true);
+          expect(throughGlass(inside.rgb), `glass block pixel ${inside.rgb}`).toBe(true);
+        } finally {
+          await context.close();
+        }
+      });
+    }
+  }
 });

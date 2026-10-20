@@ -67,6 +67,11 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 @media (max-width:560px){
   .cc-grid-4,.cc-grid-3,.cc-grid-2,.cc-track{grid-template-columns:minmax(0,1fr)}
 }
+/* #68: the page background (#cc-bg) shows through: only body paints the paper */
+body > .ep-root{background:none}
+#download{padding-bottom:var(--space-16)}
+main > .ep-wrap.ep-glass{border-radius:var(--radius-glass);padding-block:var(--space-4) var(--space-16);margin-bottom:var(--space-12)}
+@media (max-width:900px){main > .ep-wrap.ep-glass{margin-inline:var(--space-3)}}
 </style>
 
 </head>
@@ -108,7 +113,7 @@ html{scroll-padding-top:calc(var(--bar-height) + var(--space-8))}
 </div>
 </section>
 
-<div class="ep-wrap">
+<div class="ep-wrap ep-glass">
 <section class="cc-section" aria-labelledby="h-waiting">
 <h2 id="h-waiting" class="h2">Waiting for your orders</h2>
 <p class="ep-lede">The cockpit sorts your conversations by what they need from you. Turn a card over to read the plain summary and answer.</p>
