@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { createCockpitServer } from './cockpit-server.mjs'
+import { hostSessionsDirsOf } from './terminal.mjs'
 
 const call = (port, method, route, { headers = {}, body } = {}) =>
   new Promise((resolve, reject) => {
@@ -126,5 +127,37 @@ test('the island scripts and the living entities are served from the assets fold
     }
   } finally {
     await cockpit.close()
+  }
+})
+
+test('the session index never waits for the list of running WSL distros', async () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-wsl-'))
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-wsl-home-'))
+  const env = { XDG_CONFIG_HOME: path.join(home, '.config'), APPDATA: path.join(home, 'AppData', 'Roaming'), LOCALAPPDATA: path.join(home, 'AppData', 'Local') }
+  // The Desktop sessions folder of the system running the test.
+  const sessions = path.join(hostSessionsDirsOf(process.platform, home, env)[0], 'account', 'org')
+  fs.mkdirSync(sessions, { recursive: true })
+  fs.writeFileSync(path.join(sessions, 'local_w.json'), JSON.stringify({ sessionId: 'local_w', cliSessionId: 'engine-w', title: 'Session Desktop', cwd: home, lastActivityAt: 1, isArchived: false }))
+  const project = path.join(home, '.claude', 'projects', 'p')
+  fs.mkdirSync(project, { recursive: true })
+  fs.writeFileSync(path.join(project, 'engine-w.jsonl'), `${JSON.stringify({ type: 'user', message: { role: 'user', content: 'mot marqueurwsl' }, timestamp: new Date().toISOString(), cwd: home })}\n`)
+  let asked = 0
+  // As wsl.exe on a machine where it never answers.
+  const runningDistros = () => { asked += 1; return new Promise(() => {}) }
+  const cockpit = createCockpitServer({ rootDir, port: 0, sink: () => {}, homeDir: home, env, token: 'tok', runningDistros })
+  try {
+    const port = await cockpit.listen()
+    let hostId = null
+    for (let attempt = 0; attempt < 30 && hostId === null; attempt++) {
+      const response = await call(port, 'GET', '/search?q=marqueurwsl', { headers: { 'x-cockpit-token': 'tok' } })
+      hostId = JSON.parse(response.text).results?.[0]?.hostId ?? null
+      if (hostId === null) await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    assert.equal(hostId, 'local_w')
+    assert.equal(asked, 1)
+  } finally {
+    await cockpit.close()
+    fs.rmSync(rootDir, { recursive: true, force: true })
+    fs.rmSync(home, { recursive: true, force: true })
   }
 })

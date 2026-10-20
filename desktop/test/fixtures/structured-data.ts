@@ -70,17 +70,30 @@ export const DESKTOP_SEARCH = { engineId: 'e2e-desktop-search', sessionId: 'host
 export const desktopSessionsBaseOf = (env: NodeJS.ProcessEnv, platform = process.platform): string =>
   platform === 'win32' ? path.join(env.LOCALAPPDATA!, 'Packages', 'Claude_e2etest', 'LocalCache', 'Roaming') : env.XDG_CONFIG_HOME!
 
-export const writeDesktopSearchSession = (home: string, sessionsBase: string, cwd: string, now = Date.now()) => {
-  const sessions = path.join(sessionsBase, 'Claude', 'claude-code-sessions', 'e2e-account', 'e2e-org')
+type DesktopSpec = { engineId: string, sessionId: string, title: string, word: string }
+
+// A Claude Desktop session file in `sessionsDir`, and its transcript holding the spec's word.
+export const writeDesktopSession = (home: string, sessionsDir: string, cwd: string, spec: DesktopSpec, now = Date.now()) => {
+  const sessions = path.join(sessionsDir, 'e2e-account', 'e2e-org')
   fs.mkdirSync(sessions, { recursive: true })
-  fs.writeFileSync(path.join(sessions, `${DESKTOP_SEARCH.engineId}.json`), JSON.stringify({
-    sessionId: DESKTOP_SEARCH.sessionId, cliSessionId: DESKTOP_SEARCH.engineId, title: DESKTOP_SEARCH.title, cwd, lastActivityAt: now, isArchived: false,
+  fs.writeFileSync(path.join(sessions, `${spec.engineId}.json`), JSON.stringify({
+    sessionId: spec.sessionId, cliSessionId: spec.engineId, title: spec.title, cwd, lastActivityAt: now, isArchived: false,
   }))
-  const project = path.join(home, '.claude', 'projects', 'e2e-desktop')
+  const project = path.join(home, '.claude', 'projects', `e2e-${spec.engineId}`)
   fs.mkdirSync(project, { recursive: true })
   const at = new Date(now).toISOString()
-  fs.writeFileSync(path.join(project, `${DESKTOP_SEARCH.engineId}.jsonl`), [
-    { type: 'user', message: { role: 'user', content: `Retrouve le ${DESKTOP_SEARCH.word} dans le cockpit` }, timestamp: at, cwd },
+  fs.writeFileSync(path.join(project, `${spec.engineId}.jsonl`), [
+    { type: 'user', message: { role: 'user', content: `Retrouve le ${spec.word} dans le cockpit` }, timestamp: at, cwd },
     { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'Trouvé.' }] }, timestamp: at, cwd },
   ].map(line => JSON.stringify(line)).join('\n') + '\n')
 }
+
+export const writeDesktopSearchSession = (home: string, sessionsBase: string, cwd: string, now = Date.now()) =>
+  writeDesktopSession(home, path.join(sessionsBase, 'Claude', 'claude-code-sessions'), cwd, DESKTOP_SEARCH, now)
+
+// D7: Claude Desktop now keeps its sessions under LOCALAPPDATA/Claude-Data/claude_<package id> on
+// Windows; the classic config folder elsewhere.
+export const DESKTOP_DATA_SEARCH = { engineId: 'e2e-desktop-data', sessionId: 'host-e2e-desktop-data', title: 'Conversation Desktop de Claude-Data', word: 'marqueurclaudedata' }
+
+export const desktopDataSessionsDirOf = (env: NodeJS.ProcessEnv, platform = process.platform): string =>
+  platform === 'win32' ? path.join(env.LOCALAPPDATA!, 'Claude-Data', 'claude_e2etest', 'claude-code-sessions') : path.join(env.XDG_CONFIG_HOME!, 'Claude', 'claude-code-sessions')

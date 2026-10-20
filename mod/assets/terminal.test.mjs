@@ -46,3 +46,14 @@ test('on Windows MSIX packages starting with Claude_ add extra folders', () => {
   ]
   assert.deepEqual(hostSessionsDirsOf('win32', home, env, packageNames), expected)
 })
+
+test('on Windows Claude Desktop data folders starting with claude_ add their sessions folder', () => {
+  const home = path.join(path.sep, 'home', 'x')
+  const env = { APPDATA: path.join(path.sep, 'roaming'), LOCALAPPDATA: path.join(path.sep, 'local') }
+  const expected = [
+    path.join(path.sep, 'roaming', 'Claude', 'claude-code-sessions'),
+    path.join(path.sep, 'local', 'Claude-Data', 'claude_pzs8sxrjxfjjc', 'claude-code-sessions'),
+  ]
+  assert.deepEqual(hostSessionsDirsOf('win32', home, env, [], ['claude_pzs8sxrjxfjjc', 'other']), expected)
+  assert.deepEqual(hostSessionsDirsOf('linux', home, {}, [], ['claude_pzs8sxrjxfjjc']), [path.join(home, '.config', 'Claude', 'claude-code-sessions')])
+})

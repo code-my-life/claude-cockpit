@@ -94,6 +94,7 @@ export const extractHostSession = text => {
     prs,
     ticket: ticketOf(branches, title),
     priorEngineIds: priorEngineIdsOf(data.priorCliSessionIds, data.cliSessionId),
+    wslDistro: isRecord(data.wslConfig) ? textOrNull(data.wslConfig.distro) : null,
   }
 }
 
@@ -201,9 +202,34 @@ export const sessionsOf = index => {
 
 export const saveSessionList = (file, index, live, remotes = new Map()) => {
   const sessions = sessionsOf(index)
-  const hosts = sessions.map(({ priorEngineIds, ...session }) => ({ ...session, repo: session.prs[0]?.repo ?? remotes.get(session.gitCommonDir) ?? null }))
+  const hosts = sessions.map(({ priorEngineIds, wslDistro, ...session }) => ({ ...session, repo: session.prs[0]?.repo ?? remotes.get(session.gitCommonDir) ?? null }))
   const payload = JSON.stringify({ live, hosts })
   writeAtomically(file, payload)
+}
+
+// A Claude Desktop session run in WSL writes its live file in the Linux home of the distro, which
+// Windows reads through \\wsl.localhost. Only for running distros: reading the share boots a stopped one.
+const LINUX_HOME = /^\/(home\/[^/]+|root)(?:\/|$)/
+
+export const wslLiveDirsOf = (sessions, runningDistros) => {
+  const running = new Set(runningDistros)
+  const dirs = new Set()
+  for (const session of sessions) {
+    if (session.wslDistro === null || session.wslDistro === undefined || !running.has(session.wslDistro)) continue
+    const home = LINUX_HOME.exec(session.cwd)
+    if (home === null) continue
+    dirs.add(path.win32.join('\\\\wsl.localhost', session.wslDistro, ...home[1].split('/'), '.claude', 'sessions'))
+  }
+  return [...dirs]
+}
+
+// The distro names printed by `wsl.exe --list --running --quiet`, one per line: UTF-16LE from
+// Windows, UTF-8 when WSL_UTF8 is set or when run from inside WSL.
+const isUtf16 = bytes => bytes.length >= 2 && bytes.filter((byte, index) => index % 2 === 1 && byte === 0).length * 2 >= bytes.length / 2
+
+export const runningDistrosOf = output => {
+  const text = Buffer.isBuffer(output) ? output.toString(isUtf16(output) ? 'utf16le' : 'utf8') : String(output)
+  return text.replace(/\uFEFF|\0/g, '').split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0)
 }
 
 export const readLiveEngineIds = async dir => {

@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { attachScreenshot, launchCockpit, openIsland, probe, windowWhere, type Cockpit } from './harness'
 import { askPermission, permissionDecision } from './fake-mod'
-import { DESKTOP_SEARCH } from './fixtures/structured-data'
+import { DESKTOP_DATA_SEARCH, DESKTOP_SEARCH } from './fixtures/structured-data'
 
 const DATA_REFRESH_MS = 10_000
 // The server indexes the transcripts on the first search: up to 20 s by design (conversations.html).
@@ -210,4 +210,13 @@ test('D6: a Claude Desktop conversation (MSIX install on Windows) is found by th
   await expect(row).toHaveCount(1, { timeout: FIRST_SEARCH_MS })
   await expect(row).toContainText(DESKTOP_SEARCH.title)
   await expect(row).toHaveAttribute('href', `claude://claude.ai/epitaxy/${DESKTOP_SEARCH.sessionId}`)
+})
+
+test('D7: a Claude Desktop conversation kept in Claude-Data (Windows) is found by the launcher with its Desktop title and link', async () => {
+  const launcher = await showLauncher()
+  await launcher.locator('#search-input').fill(DESKTOP_DATA_SEARCH.word)
+  const row = launcher.locator('#search-results a.search-row')
+  await expect(row).toHaveCount(1, { timeout: FIRST_SEARCH_MS })
+  await expect(row).toContainText(DESKTOP_DATA_SEARCH.title)
+  await expect(row).toHaveAttribute('href', `claude://claude.ai/epitaxy/${DESKTOP_DATA_SEARCH.sessionId}`)
 })

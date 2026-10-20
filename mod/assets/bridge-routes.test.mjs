@@ -144,8 +144,9 @@ test('when the hub conversation drops off the line, the peer becomes the hub at 
     const peerWaiting = bridge('GET', `/bridge/v1/orders?bridgeId=${peer.bridgeId}&wait=5000`)
     const dropped = http.request({ host: '127.0.0.1', port, method: 'GET', path: `/bridge/v1/orders?bridgeId=${host.bridgeId}&wait=5000`, headers: { host: `127.0.0.1:${port}`, authorization: `Bearer ${secret}` } })
     dropped.on('error', () => {})
-    dropped.end()
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // Cut once the server holds the hub's wait: a fixed 100 ms from the start lost the race on a busy CI runner.
+    await new Promise(resolve => dropped.end(resolve))
+    await new Promise(resolve => setTimeout(resolve, 300))
     dropped.destroy()
     const { json: promoted } = await peerWaiting
     assert.equal(promoted.role, 'hub')

@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { FakeMod, linkFileOf, readLink } from './fake-mod'
-import { buildFixtures, conversationsDataOf, desktopSessionsBaseOf, writeDesktopSearchSession, type Fixtures, type Row } from './fixtures/structured-data'
+import { buildFixtures, conversationsDataOf, DESKTOP_DATA_SEARCH, desktopDataSessionsDirOf, desktopSessionsBaseOf, writeDesktopSearchSession, writeDesktopSession, type Fixtures, type Row } from './fixtures/structured-data'
 
 const DESKTOP_DIR = path.join(__dirname, '..')
 const FIXTURE_HOME = path.join(__dirname, 'fixtures', 'home')
@@ -52,6 +52,9 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   const desktopFolder = path.join(fixtures.folders.work, 'e2e-desktop-search')
   fs.mkdirSync(desktopFolder, { recursive: true })
   writeDesktopSearchSession(home, desktopSessionsBaseOf(env), desktopFolder)
+  const dataFolder = path.join(fixtures.folders.work, DESKTOP_DATA_SEARCH.engineId)
+  fs.mkdirSync(dataFolder, { recursive: true })
+  writeDesktopSession(home, desktopDataSessionsDirOf(env), dataFolder, DESKTOP_DATA_SEARCH)
   const removeRoot = () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   const app = await electron.launch({
     args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
