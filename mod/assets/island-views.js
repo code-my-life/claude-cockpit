@@ -5,6 +5,7 @@
   // sont fixes (island-shell.js) et jamais réécrits : seuls leurs textes et leurs listes changent ici.
   const OTHERS_SHOWN = 4;
   const RAIL_SHOWN = 3;
+  const HAND_SHOWN = 3;
   const FOLDER_LIST_MAX = 120;
   const PARK_KINDS = {
     blocked: { title: 'Bloquée par…', ok: 'Marquer bloquée', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
@@ -14,18 +15,20 @@
 
   const createViews = ctx => {
     const { S, model, helpers, desktop, feed, $, $$, layerEl } = ctx;
-    const { esc, icon, markdown, ageOf, activityOf, awaitingOf, statsLineOf, openUrlOf, folderOf, isServer, quickReplies } = helpers;
+    const { esc, icon, markdown, ageOf, activityOf, awaitingOf, statsLineOf, openUrlOf, folderOf, isServer, quickRepliesOf } = helpers;
     const activityLabel = row => upperFirst(activityOf(row)[1]);
     // Infobulle Encre et Papier (data-ep-tip) : les boutons à icône seule disent leur nom au survol et au focus.
     const tipOf = label => `data-ep-tip="${esc(label)}" aria-label="${esc(label)}"`;
-    const iconButton = (act, label, glyph, extra = '') => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--icon ep-btn--sm" data-act="${act}" ${tipOf(label)} ${extra}>${icon(glyph)}</button>`;
     const smallButton = (act, label, glyph, extra = '') => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="${act}" ${extra}>${icon(glyph)} ${label}</button>`;
 
     const tagOf = row => {
       const sig = model.signalOf(row);
-      return { cls: `ep-tag${sig.tone ? ` ep-tag--${sig.tone}` : ''}`, lead: sig.tone ? '' : icon(sig.icon), word: sig.word };
+      // As on the cockpit cards, only a permission is amber with its warning picto; a question shows its own.
+      const tone = sig.kind === model.KIND_WAIT && row.status !== 'permission' ? '' : sig.tone;
+      return { cls: `ep-tag${tone ? ` ep-tag--${tone}` : ''}`, lead: tone ? '' : icon(sig.icon), word: sig.word };
     };
-    const tagHtml = row => { const tag = tagOf(row); return `<span class="${tag.cls}">${tag.lead}${esc(tag.word)}</span>`; };
+    // As on the cockpit cards: the state is a picto alone, its word in the tooltip and for screen readers.
+    const tagHtml = row => { const tag = tagOf(row); return `<span class="${tag.cls} is-state" role="img" aria-label="${esc(tag.word)}" data-ep-tip="${esc(tag.word)}">${tag.lead}</span>`; };
     const setTag = (el, row, word) => { const tag = tagOf(row); el.className = tag.cls; el.innerHTML = `${tag.lead}${esc(word || tag.word)}`; };
     const canvasHtml = (row, size) => `<canvas class="ent" data-ent="${esc(row.engineId)}" data-size="${size}" data-state="${model.entityStateOf(row)}" aria-hidden="true"></canvas>`;
     // En cartes, une mini-carte (posée après le rendu par island-deck.js) remplace la petite entité.
@@ -91,11 +94,23 @@
       return `<div class="col">${plain}</div><div class="col">${threadHtml(row)}<div class="ep-cluster">${detailsToolsOf(row)}</div></div>`;
     };
 
-    const metaLine = row => `<span class="caption-s" data-age="${row.updatedAt}">${esc(ageOf(row.updatedAt))}${esc(row.stats ? ` · ${statsLineOf(row)}` : '')}</span>`;
+    const metaLine = row => `<span class="caption-s" data-age="${row.updatedAt}">${esc(ageOf(row.updatedAt))}</span>`;
 
     const renderDetails = row => {
       const box = $('#details');
       const step = diffStepOf(row);
+      // In cards, "Agrandir" enlarges the top card itself, as in the cockpit window: the details and a step's diff
+      // fill the card (#cardMore), never a block under the deck.
+      if (ctx.cards) {
+        box.hidden = true;
+        box.innerHTML = '';
+        const isBig = Boolean((S.details || step) && row);
+        ctx.islandEl.classList.toggle('is-card-big', isBig);
+        const more = $('#cardMore');
+        more.hidden = !isBig;
+        more.innerHTML = isBig ? (step ? diffHtml(step) : detailsHtml(row)) : '';
+        return;
+      }
       box.hidden = !((S.details || step) && row);
       box.innerHTML = step ? diffHtml(step) : (S.details && row ? detailsHtml(row) : '');
     };
@@ -114,6 +129,12 @@
         target.innerHTML = '<h2 class="h4">Personne au travail</h2><p class="body-s">Aucune conversation ne bouge pour l\'instant. Lance-en une depuis l\'onglet « Nouvelle conversation ».</p>';
         return;
       }
+      // In cards, the top card follows the cockpit card face: state and age on the top line, then the title and
+      // the request; "Agrandir" (the details) sits in the foot of the card, next to the turn-over button.
+      if (ctx.cards) {
+        target.innerHTML = `<div class="is-meta is-head">${tagHtml(row)}${metaLine(row)}</div><h2 class="h4">${esc(row.title)}</h2>${bodyOf(row)}<div class="is-acts">${primaryOf(row)}</div>`;
+        return;
+      }
       const isPermissionOrExternal = row.status === 'permission' || row.status === 'external';
       const toggle = isPermissionOrExternal ? '' : `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="details" aria-expanded="${S.details}" aria-controls="details">Détails</button>`;
       target.innerHTML = `<h2 class="h4">${esc(row.title)}</h2><div class="is-meta">${tagHtml(row)}${metaLine(row)}</div>${bodyOf(row)}<div class="is-acts">${primaryOf(row)}${toggle}</div>`;
@@ -121,17 +142,12 @@
 
     const pillHtml = row => `<a href="#" class="ep-side-link is-head" data-pick="${esc(row.engineId)}">${headHtml(row, 24)}<span class="pn">${esc(row.title)}</span>${tagHtml(row)}</a>`;
 
-    const toolsHtml = () => {
-      const sounds = `<button type="button" class="ep-btn ep-btn--ghost ep-btn--icon ep-btn--sm" data-act="sounds" aria-pressed="${S.sounds}" ${tipOf(`Alertes sonores : ${S.sounds ? 'activées' : 'coupées'}`)}>${icon('volume')}</button>`;
-      return `<div class="is-tools" role="group" aria-label="Outils de l'île">${isServer ? iconButton('search', 'Rechercher dans les conversations', 'search') : ''}${iconButton('cockpit', 'Ouvrir le cockpit complet', 'expand')}${desktop ? sounds : ''}${desktop ? iconButton('quit', 'Quitter Claude Cockpit', 'x') : ''}</div>`;
-    };
-
     const renderPills = () => {
       const focusRow = ctx.focus();
       const all = model.othersOf(ctx.rows(), focusRow ? focusRow.engineId : null, 99);
       const more = all.length > OTHERS_SHOWN ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="cockpit">+${all.length - OTHERS_SHOWN} dans le cockpit</button>` : '';
       const empty = all.length === 0 ? '<p class="caption-s">Aucune autre conversation.</p>' : '';
-      $('#homePills').innerHTML = `<p class="ep-side-title">Autres conversations</p>${all.slice(0, OTHERS_SHOWN).map(pillHtml).join('')}${empty}${more}${toolsHtml()}`;
+      $('#homePills').innerHTML = `<p class="ep-side-title">Autres conversations</p>${all.slice(0, OTHERS_SHOWN).map(pillHtml).join('')}${empty}${more}`;
     };
 
     const railHtml = () => {
@@ -154,9 +170,25 @@
         return;
       }
       const word = model.compactWordOf(ctx.rows());
-      setTag(sig, row, word);
-      $('#cOthers').innerHTML = model.othersOf(ctx.rows(), row.engineId, RAIL_SHOWN).map(other => headHtml(other, 22)).join('');
-      button.setAttribute('aria-label', `Ouvrir l'île : ${row.title}, ${word}`);
+      // Side by side, a small hand of cards per state, fanned, each with only its count: what waits (amber), what is
+      // on a mission, what is blocked. No sentence. With no hand at all, the urgent conversation's picto alone.
+      const sorted = model.byUrgency(ctx.rows());
+      const hands = [
+        { tone: 'wait', label: ['t\'attend', 't\'attendent'], rows: sorted.filter(model.isWaiting) },
+        { tone: 'work', label: ['en mission', 'en mission'], rows: sorted.filter(other => !model.isWaiting(other) && model.kindOf(other) === model.KIND_WORK) },
+        { tone: 'stuck', label: ['bloquée', 'bloquées'], rows: sorted.filter(other => model.kindOf(other) === model.KIND_STUCK) },
+      ].filter(hand => hand.rows.length > 0);
+      if (hands.length > 0) {
+        sig.className = 'c-hands';
+        sig.innerHTML = hands.map(hand => `<span class="c-hand c-${hand.tone}" aria-hidden="true">${hand.rows.slice(0, HAND_SHOWN).map(other => headHtml(other, 22)).join('')}<span class="c-count">${hand.rows.length}</span></span>`).join('');
+      } else {
+        const tag = tagOf(row);
+        sig.className = tag.cls;
+        sig.innerHTML = tag.lead;
+      }
+      $('#cOthers').innerHTML = '';
+      const summary = hands.map(hand => `${hand.rows.length} ${hand.label[hand.rows.length > 1 ? 1 : 0]}`).join(', ');
+      button.setAttribute('aria-label', `Ouvrir l'île : ${row.title}, ${summary || word}`);
     };
 
     const kindLabelOf = row => {
@@ -198,8 +230,9 @@
       $('#wQuote').textContent = awaitingOf(row) || 'Regarde où en est cette conversation.';
       renderPermission(row, ask);
       $('#replyForm').hidden = !can;
-      $('#wQuick').hidden = !can;
-      $('#wQuick').innerHTML = can ? quickReplies.map(text => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="quick" data-text="${esc(text)}">${esc(text)}</button>`).join('') : '';
+      const replies = can ? quickRepliesOf(row) : [];
+      $('#wQuick').hidden = replies.length === 0;
+      $('#wQuick').innerHTML = replies.map(reply => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="quick" data-engine="${esc(row.engineId)}" data-text="${esc(reply.text)}">${esc(reply.label)}</button>`).join('');
       $('#wNote').hidden = can || ask !== null;
       $('#wNote').textContent = cannotReplyNote(row);
       $('#wOpen').hidden = can || ask !== null || !url;
@@ -244,7 +277,7 @@
       const row = ctx.focus();
       const ask = model.permissionOf(S.permissions, S.permId === null ? '' : (S.permissions.find(entry => entry.requestId === S.permId) || {}).engineId);
       if (ask !== null && !$('#wPerm').hidden) $('#wHold').textContent = model.holdNoteOf(ask.deadlineAt, Date.now());
-      for (const el of $$('[data-age]')) el.textContent = `${ageOf(Number(el.dataset.age), Date.now())}${row && row.stats ? ` · ${statsLineOf(row)}` : ''}`;
+      for (const el of $$('[data-age]')) el.textContent = ageOf(Number(el.dataset.age), Date.now());
     };
 
     return {

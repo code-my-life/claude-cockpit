@@ -23,10 +23,10 @@
 html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, color-mix(in srgb, var(--plate) 94%, transparent)); }
 .island[data-hidden="true"] { pointer-events: none; visibility: hidden; }
 .island .stage { position: absolute; top: 0; left: 50%; width: 760px; height: 100%; margin-left: -380px; }
-.island .layer { position: absolute; top: 0; left: 0; width: 760px; }
+.island .layer { position: absolute; top: 0; left: 0; width: 760px; transform-origin: 50% 0; }
 .island .layer[inert] { pointer-events: none; }
 .island .is-body { padding: var(--space-4); }
-.island .hdr { position: absolute; top: 0; left: 0; width: 760px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-2); }
+.island .hdr { transform-origin: 50% 0; position: absolute; top: 0; left: 0; width: 760px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-2); }
 
 /* L'identité de la conversation focalisée : une seule, qui voyage entre les vues. */
 .island .hero { position: absolute; left: 0; top: 0; width: 32px; height: 32px; transform-origin: 0 0; pointer-events: none; z-index: 2; }
@@ -40,6 +40,19 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .l-compact { left: 220px; width: 320px; }
 .island .compact { appearance: none; margin: 0; width: 320px; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: none; border: 0; border-radius: var(--radius-pill); cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
 .island .compact .ep-tag { margin-right: auto; }
+/* The folded island: a small hand of mini cards per state, fanned, each with its count alone in a disc of its colour
+   (amber waits, accent on a mission, coral blocked). */
+.island .compact .c-hands { margin-right: auto; display: inline-flex; align-items: center; gap: var(--space-3); padding-left: var(--space-2); }
+.island .compact .c-hand { display: inline-flex; align-items: center; }
+.island .compact .c-hand .mini-slot { margin-left: -9px; transform: rotate(var(--fan, 0deg)); transform-origin: 50% 120%; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45)); }
+.island .compact .c-hand .mini-slot:first-child { margin-left: 0; }
+.island .compact .c-hand .mini-slot:nth-child(1) { --fan: -7deg; }
+.island .compact .c-hand .mini-slot:nth-child(2) { --fan: 0deg; }
+.island .compact .c-hand .mini-slot:nth-child(3) { --fan: 7deg; }
+.island .compact .c-count { margin-left: var(--space-1); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--hand-tone); color: var(--paper); font: 500 12px/20px var(--font-mono); font-variant-numeric: tabular-nums; text-align: center; }
+.island .compact .c-wait { --hand-tone: var(--warning); }
+.island .compact .c-work { --hand-tone: var(--accent); }
+.island .compact .c-stuck { --hand-tone: var(--danger); }
 .island .compact .others { display: flex; gap: var(--space-1); }
 .island .compact:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
 
@@ -52,7 +65,14 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .pile[hidden] { display: none; }
 .island .pile .conv-card { position: absolute; left: 0; right: 0; top: 0; transform: translate(0, var(--y, 0)) scale(var(--s, 1)); transition: transform .4s cubic-bezier(.2,.8,.2,1), opacity .4s; }
 .island .pile .conv-card.is-peek { transform: translate(0, calc(var(--y, 0) + 56px)) scale(var(--s, 1)); }
-.island .pile .conv-card [data-body] { display: grid; gap: var(--space-2); align-content: start; overflow: auto; overscroll-behavior: contain; font-size: 13px; }
+.island .pile .conv-card [data-body] { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; font-size: 13px; inset: var(--space-3); padding: var(--space-4); border-radius: var(--radius-glass-s); background: color-mix(in srgb, var(--paper) 86%, transparent); }
+/* As on the cockpit cards and the GitHub page: no scroll in the face, the turn-over button inside it. */
+.island .pile .conv-card [data-front] > .sg-flip__picto { display: none; }
+.island .pile .conv-card [data-body] > .card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+.island .pile .conv-card [data-body] .is-head { justify-content: space-between; }
+/* The state is already the picto of the top line: the alert keeps only the request. */
+.island .pile .conv-card [data-body] .ep-alert__title { display: none; }
+.island .card-flip-icon { width: 18px; height: 18px; }
 .island .pile .conv-card [data-body] .is-card-text { min-height: 0; }
 .island .pile .conv-card [data-body] .is-card-text .h4 { font-size: 18px; }
 .island .pile .conv-card [data-body] .clamp { -webkit-line-clamp: 3; font-size: 13px; }
@@ -109,8 +129,6 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .side .ep-side-link { padding-block: var(--space-1); min-width: 0; }
 .island .side .ep-side-link .ep-tag { white-space: nowrap; }
 .island .side .ep-side-link span.pn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.island .side .is-tools { display: flex; justify-content: flex-end; gap: var(--space-1); padding-top: var(--space-2); }
-.island .is-tools [aria-pressed="false"] { color: var(--ink-faint); }
 
 /* c. T'attend, vues simples */
 .island .alert { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; column-gap: var(--space-4); align-items: start; }
@@ -147,3 +165,27 @@ html[data-island="hidden"] .island * { animation-play-state: paused !important; 
 
 /* Le flou est celui du système (acrylique) : aucun backdrop-filter dans la page (inutile, et coûteux à chaque image d'une entité animée). */
 .island, .island * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+
+/* The search of the island, always shown between the tabs and the deck: a field with its picto. */
+.island .l-home .is-search { margin: 0 0 var(--space-4); }
+/* Liquid Paper lays a light, ink-coloured shadow under its fields, search and tabs (bundle.css). Subtle on its scene,
+   it turns into a white haze on the Windows acrylic of the island: the island controls keep only the inner edge of
+   the glass, at rest, on hover and on focus. The search takes the edge of the tabs. */
+.island :is(.ep-tabs, .ep-toggle, .ep-search, .ep-input, .ep-select, .ep-textarea), .island :is(.ep-tabs, .ep-toggle, .ep-search, .ep-input, .ep-select, .ep-textarea):is(:hover, :focus, :focus-within) { box-shadow: var(--glass-inset) !important; }
+.island .is-search .ep-search { border-color: var(--glass-edge) !important; }
+
+/* "Agrandir" enlarges the top card in place, as in the cockpit window: the deck alone, a wider card (it keeps
+   the proportions of a card), the details inside it. Only this card's face scrolls when enlarged. */
+.island.cards.is-card-big .home { grid-template-columns: minmax(0, 1fr); }
+.island.is-card-big #homePills { display: none; }
+.island.is-card-big .pile { width: min(460px, 100%); margin: 0 auto; }
+.island.is-card-big .pile .conv-card.is-below { visibility: hidden; }
+.island.is-card-big .pile .conv-card:not(.is-below) [data-body] { overflow: auto; overscroll-behavior: contain; }
+.island .is-more { display: grid; gap: var(--space-2); }
+.island .is-more[hidden] { display: none; }
+.island .is-more .col { display: grid; gap: var(--space-2); align-content: start; min-width: 0; }
+.island .is-more .is-plain { font-size: 13px; line-height: 1.5; }
+.island .is-more .is-thread { display: grid; gap: var(--space-1); }
+.island .is-more .is-bubble { padding: var(--space-2) var(--space-3); border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); background: var(--glass-nested); font-size: 13px; line-height: 1.5; }
+.island .is-more .is-bubble.user { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.island .is-more p, .island .is-more ul, .island .is-more ol { margin: var(--space-1) 0; }

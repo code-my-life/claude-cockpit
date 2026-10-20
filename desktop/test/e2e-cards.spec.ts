@@ -27,14 +27,15 @@ test.afterEach(async ({}, testInfo) => {
 
 const cardOf = (page: Page, engineId: string) => page.locator(`sg-flip[data-engine="${engineId}"]`)
 
-// A card shows its back first: turn it over, as a user does, to reach the buttons of the front.
+// A waiting card arrives face up; any other shows its back first: turn it over, as a user does, to
+// reach the buttons of the front.
 const turnOver = async (page: Page, engineId: string) => {
   const card = cardOf(page, engineId)
   await expect(card).toBeVisible({ timeout: DATA_REFRESH_MS })
   // Centred, so that neither this click nor the ones on its buttons scroll the card under the
   // Windows drag strip, which swallows clicks at the top of the window.
   await card.evaluate(el => el.scrollIntoView({ block: 'center' }))
-  await card.locator('sg-card').click()
+  if (!await card.evaluate(el => el.hasAttribute('flipped'))) await card.locator('sg-card').click()
   await expect(card).toHaveAttribute('flipped', '')
   return card
 }
@@ -108,13 +109,27 @@ test('A4: with another page version, the island shows the update notice', async 
   await attachScreenshot(testInfo, island, 'A4-avis')
 })
 
-test('B1: "Agrandir" enlarges the card; Escape and the backdrop close it; the label reads "Réduire"', async () => {
+test('A5: a waiting card arrives face up with its request and replies; a card on mission shows its back', async () => {
+  const page = await openCockpit(cockpit.app)
+  const question = cardOf(page, 'e2e-question')
+  await expect(question).toHaveAttribute('flipped', '', { timeout: DATA_REFRESH_MS })
+  await expect(question.locator('.card-ask')).toContainText('Plein écran ou île seule ?')
+  await expect(question.locator('[data-action="quick"]')).toHaveText(['1. Plein écran', '2. Île seule'])
+  // As on the GitHub page: a focused card turns over with Enter.
+  const working = cardOf(page, 'e2e-working')
+  await expect(working).not.toHaveAttribute('flipped', '')
+  await working.focus()
+  await page.keyboard.press('Enter')
+  await expect(working).toHaveAttribute('flipped', '')
+})
+
+test('B1: "Agrandir" enlarges the card; Escape and the backdrop close it; the button then reads "Réduire"', async () => {
   const page = await openCockpit(cockpit.app)
   const card = await turnOver(page, 'e2e-perm')
   const enlarge = card.locator('[data-testid="card-enlarge"]')
   await enlarge.click()
   await expect(card).toHaveClass(/\bbig\b/)
-  await expect(enlarge).toContainText('Réduire')
+  await expect(enlarge).toHaveAttribute('aria-label', 'Réduire')
   await page.keyboard.press('Escape')
   await expect(card).not.toHaveClass(/\bbig\b/)
   await enlarge.click()
@@ -206,8 +221,11 @@ test('B6: quick reply and reply field: the mod gets "reply" with the right engin
   await expect(page.locator('#s-working [data-engine="e2e-perm"]').first()).toBeAttached()
   await expect(cardOf(page, 'e2e-perm').locator('textarea[data-role="draft"]')).toHaveValue('')
 
-  await (await turnOver(page, 'e2e-question')).locator('[data-action="quick"][data-text="OK"]').click()
-  expect((await mod.waitForOrder(o => o.type === 'reply' && o.engineId === 'e2e-question')).text).toBe('OK')
+  // A question answers with its own options: the button sends the option number.
+  const question = await turnOver(page, 'e2e-question')
+  await expect(question.locator('[data-action="quick"][data-text="OK"]')).toHaveCount(0)
+  await question.locator('[data-action="quick"][data-text="1"]').click()
+  expect((await mod.waitForOrder(o => o.type === 'reply' && o.engineId === 'e2e-question')).text).toBe('1')
 })
 
 test('B7: with no mod connected, sending shows "Non envoyé" and keeps the draft', async () => {

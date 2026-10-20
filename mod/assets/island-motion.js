@@ -6,9 +6,12 @@
   // trajet de la grande entité d'une place à l'autre. La page ne retient de la géométrie que la cible, pour la donner à l'app.
   const W_COMPACT = 320;
   const W_OPEN = 760;
-  const FADE_IN_MS = 150;
-  const FADE_OUT_MS = 100;
-  const CONTENT_DELAY_MS = 110;
+  const FADE_IN_MS = 220;
+  // The window is resized natively and the page always paints a few frames behind it: outgoing content is cut at once
+  // (never left frozen in a corner of the growing window), incoming content fades in early and grows with the shape.
+  const FADE_OUT_MS = 0;
+  const CONTENT_DELAY_MS = 40;
+  const GROW_FROM = 0.96;
   const CONTENT_DELAY_CLOSE_MS = 70;
   const SETTLE_DELAY_MS = 80;
   const SPRING_OPEN = { zeta: 0.72, ms: 300 };
@@ -23,7 +26,19 @@
 
   const createMotion = ctx => {
     const { win, doc, desktop, model, reduceQuery, $, islandEl, heroEl, stageEl } = ctx;
-    const springs = { open: model.springEase(SPRING_OPEN, SPRING_OPEN.ms), close: model.springEase(SPRING_CLOSE, SPRING_CLOSE.ms), fade: p => 1 - (1 - p) * (1 - p) };
+    // Strong ease-out, cubic-bezier(0.23, 1, 0.32, 1), for the incoming content.
+  const easeOut = p => {
+    // x(t) = 3·0.23·t(1−t)² + 3·0.32·t²(1−t) + t³, solved for t by Newton; y(t) with both control points at 1.
+    let t = p;
+    for (let i = 0; i < 8; i++) {
+      const x = 0.69 * t * (1 - t) ** 2 + 0.96 * t * t * (1 - t) + t ** 3 - p;
+      const dx = 0.69 * ((1 - t) ** 2 - 2 * t * (1 - t)) + 0.96 * (2 * t * (1 - t) - t * t) + 3 * t * t;
+      if (Math.abs(dx) < 1e-6) break;
+      t = Math.min(1, Math.max(0, t - x / dx));
+    }
+    return 3 * t * (1 - t) ** 2 + 3 * t * t * (1 - t) + t ** 3;
+  };
+  const springs = { open: model.springEase(SPRING_OPEN, SPRING_OPEN.ms), close: model.springEase(SPRING_CLOSE, SPRING_CLOSE.ms), fade: easeOut };
     let cur = null;
     let tweens = {};
     let raf = 0;
@@ -69,10 +84,12 @@
       heroEl.style.transform = `translate(${cur.hx}px, ${cur.hy}px) scale(${cur.hs})`;
       heroEl.style.opacity = cur.ho;
       $('#hdr').style.opacity = cur.oh;
+      $('#hdr').style.transform = `scale(${GROW_FROM + (1 - GROW_FROM) * cur.oh})`;
       $('#hdr').style.visibility = cur.oh < 0.01 ? 'hidden' : 'visible';
       for (const name of ctx.LAYERS) {
         const el = ctx.layerEl(name);
         el.style.opacity = cur[`o:${name}`];
+        el.style.transform = `scale(${GROW_FROM + (1 - GROW_FROM) * cur[`o:${name}`]})`;
         el.style.visibility = cur[`o:${name}`] < 0.01 ? 'hidden' : 'visible';
       }
       // Les toasts se posent sous l'île, où qu'elle en soit de sa morphose.

@@ -25,3 +25,23 @@ test('the waiting phrase agrees with its count', () => {
   assert.equal(words.waitingPhraseOf(3), '3 conversations t\'attendent');
   assert.equal(words.waitingPhraseOf(2, false), '2 t\'attendent');
 });
+
+test('a question with numbered options answers with them; without options, no quick reply', () => {
+  const asked = row('done', 'question');
+  asked.summary.text = 'Deux pistes :\n1. Garder **le cache**\n2. Tout recalculer\n\n**Laquelle choisis-tu ?**';
+  assert.deepEqual(words.quickRepliesOf(asked), [{ label: '1. Garder le cache', text: '1' }, { label: '2. Tout recalculer', text: '2' }]);
+  const open = row('done', 'question');
+  open.summary.text = 'Quel nom veux-tu pour la branche ?';
+  assert.deepEqual(words.quickRepliesOf(open), []);
+  assert.deepEqual(words.quickRepliesOf(row('permission')).map(reply => reply.text), ['OK', 'GO', 'Non']);
+  assert.deepEqual(words.quickRepliesOf(row('done', 'delivered')).map(reply => reply.text), ['OK', 'GO', 'Non']);
+});
+
+test('options must be numbered from 1 without a gap, and long ones are cut', () => {
+  assert.deepEqual(words.optionsOf('2. B\n3. C'), []);
+  assert.deepEqual(words.optionsOf('1. A'), []);
+  const long = words.optionsOf(`1. ${'a'.repeat(60)}\n2) court`);
+  assert.equal(long[0].label.length, 40);
+  assert.ok(long[0].label.endsWith('…'));
+  assert.deepEqual(long[1], { label: 'court', text: '2' });
+});

@@ -83,6 +83,7 @@ const makeModel = () => ({
   signalOf: row => ({ kind: 'wait', word: 'attend', icon: 'alert', tone: 'warning' })
 // evidence removed
 ,
+  isWaiting: isWait,
   compactWordOf: rows => rows.some(isWait) ? "T'attend" : 'Personne au travail',
   entityStateOf: () => 'working',
   othersOf: (rows, id, n) => rows.filter(r => r.engineId !== id).slice(0, n),
@@ -115,7 +116,7 @@ const setup = () => {
     host,
     model,
     entities: makeEntities(),
-    helpers: { isServer: true, ageOf: () => '0', folderOf: () => null, esc: s => s, icon: () => '', markdown: () => '', activityOf: () => ['', ''], awaitingOf: () => '', statsLineOf: () => '', openUrlOf: () => '#', quickReplies: [], tintOf: () => '' },
+    helpers: { isServer: true, ageOf: () => '0', folderOf: () => null, esc: s => s, icon: () => '', markdown: () => '', activityOf: () => ['', ''], awaitingOf: () => '', statsLineOf: () => '', openUrlOf: () => '#', quickRepliesOf: () => [], tintOf: () => '' },
     actions: { reply: async () => true },
     desktop: null,
     announce: msg => announceCalls.push(msg),

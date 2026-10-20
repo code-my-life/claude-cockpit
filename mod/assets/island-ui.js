@@ -133,7 +133,10 @@
       if (!ctx.motion.isStarted()) ctx.motion.start(target);
       else if (silent || ctx.motion.speed() === 0) ctx.motion.snap(target);
       else ctx.motion.retarget(target, isShrinking);
-      pushExtent(phase, view);
+      // The size goes to the app once the page has painted the outgoing content away (two frames), so the window never
+      // grows or shrinks around a stale picture of it.
+      if (previous !== phase && ctx.motion.speed() !== 0) win.requestAnimationFrame(() => win.requestAnimationFrame(() => pushExtent(S.phase, S.view)));
+      else pushExtent(phase, view);
       if (phase === 'open') startAges();
       ctx.living.mountVisible();
       if (phase === 'hidden') entities.pause(); else entities.resume();

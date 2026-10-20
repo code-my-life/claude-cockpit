@@ -219,10 +219,11 @@ const guardNavigation = target => {
   })
 }
 
-const cockpitUrlOf = section => (section === 'search' ? `${cockpitUrl()}#recherche` : cockpitUrl())
+// The search of the island opens its results in the cockpit window: #recherche=<words>.
+const cockpitUrlOf = (section, query = '') => (section === 'search' ? `${cockpitUrl()}#recherche${query ? `=${encodeURIComponent(query)}` : ''}` : cockpitUrl())
 
-const openCockpitWindow = section => {
-  const target = cockpitUrlOf(section)
+const openCockpitWindow = (section, query = '') => {
+  const target = cockpitUrlOf(section, query)
   if (cockpitWin !== null) {
     if (cockpitWin.isMinimized()) cockpitWin.restore()
     cockpitWin.focus()
@@ -440,7 +441,7 @@ const readyUpdateVersion = () => {
 
 const refreshTrayMenu = () => {
   if (tray === null) return
-  const actions = { 'install-update': () => updater?.install(), 'open-cockpit': () => openCockpitWindow(null), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-island': toggleIsland, autostart: toggleAutostart, 'toggle-sounds': toggleSounds, quit: () => app.quit() }
+  const actions = { 'install-update': () => updater?.install(), 'open-cockpit': () => openCockpitWindow(null), search: () => openCockpitWindow('search'), 'open-browser': openInBrowser, 'install-mod': () => openWizard(SECURE_WEB_PREFERENCES), 'show-island': showIsland, 'toggle-island': toggleIsland, autostart: toggleAutostart, 'toggle-sounds': toggleSounds, quit: () => app.quit() }
   const state = { isIslandVisible: win !== null && win.isVisible(), isAutostart: app.getLoginItemSettings().openAtLogin, areSoundsOn: areSoundsOn(), canOpenInBrowser: embeddedServer !== null, canInstallMod: !isModInstalled(), updateVersion: readyUpdateVersion() }
   const template = trayMenuOf(state).map(item => (item.id === undefined ? item : { ...item, click: () => { actions[item.id](); refreshTrayMenu() } }))
   tray.setContextMenu(Menu.buildFromTemplate(template))
@@ -478,7 +479,7 @@ onTrusted('island-escape', () => island?.escape())
 onTrusted('island-hold', (event, isHeld) => island?.setHeld(isHeld === true))
 onTrusted('island-motion', (event, isReduced) => island?.setMotion(isReduced === true))
 
-onTrusted('open-cockpit', (event, section) => openCockpitWindow(section === 'search' ? 'search' : null))
+onTrusted('open-cockpit', (event, section, query) => openCockpitWindow(section === 'search' ? 'search' : null, typeof query === 'string' ? query.trim().slice(0, 200) : ''))
 
 onTrusted('open-link', (event, url) => openOutside(String(url)))
 

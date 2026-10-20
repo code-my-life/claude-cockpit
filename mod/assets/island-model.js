@@ -163,7 +163,7 @@
   };
 
   const api = {
-    ACTIVE_STATUSES, KIND_WAIT, KIND_DONE, KIND_WORK, KIND_STUCK, kindOf, shownOf, byUrgency, signalOf, waitingOf, waitingIdsOf, compactWordOf,
+    ACTIVE_STATUSES, isWaiting: words.isWaiting, KIND_WAIT, KIND_DONE, KIND_WORK, KIND_STUCK, kindOf, shownOf, byUrgency, signalOf, waitingOf, waitingIdsOf, compactWordOf,
     entityStateOf, focusOf, othersOf, newWaitOf, canReply, permissionOf, canDecide, isDecisionArmed, waitOrderOf, holdNoteOf, PERMISSION_ARM_MS, createFeed, springEase, createHoverIntent,
   };
 

@@ -23,7 +23,7 @@ test('the tray icon is an ink ring: drawn on the ring, clear in the corners and 
 test('the tray menu offers to open, show the team, start with the session and quit', () => {
   const menu = trayMenuOf({ isIslandVisible: true, isAutostart: false })
   const labels = menu.filter(item => item.label).map(item => item.label)
-  assert.deepEqual(labels, ['Ouvrir le cockpit', "Afficher l'île", "Masquer l'île", 'Lancer au démarrage', 'Couper les sons', 'Quitter'])
+  assert.deepEqual(labels, ['Ouvrir le cockpit', 'Rechercher dans les conversations', "Afficher l'île", "Masquer l'île", 'Lancer au démarrage', 'Couper les sons', 'Quitter'])
 })
 
 test('the tray menu follows the state of the team and of the start with the session', () => {

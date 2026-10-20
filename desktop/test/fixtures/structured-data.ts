@@ -39,7 +39,8 @@ export const buildFixtures = (root: string, configBase: string, now = Date.now()
   const termTwo = dir('e2e-term-two')
   const rows: Row[] = [
     row('e2e-perm', 'Migration de la base clients', 'permission', 2, {}, undefined, 'Autoriser npm test ?'),
-    row('e2e-question', 'Choix de la mise en page', 'done', 3, {}, 'question', 'Plein écran ou île seule ?'),
+    // The summary numbers the options, as the mod asks it to: the quick replies are these options.
+    { ...row('e2e-question', 'Choix de la mise en page', 'done', 3, {}, 'question', 'Plein écran ou île seule ?'), summary: { ...summaryOf(at(3), 'question', 'Plein écran ou île seule ?'), text: 'Deux mises en page possibles :\n1. Plein écran\n2. Île seule\n\n**Plein écran ou île seule ?**' } },
     row('e2e-delivered', 'Jetons du thème', 'done', 4, {}, 'delivered', ''),
     row('e2e-working', 'Graphe des dépôts', 'tool', 1, { tool: 'Bash' }),
     row('e2e-blocked', 'Test instable', 'blocked', 50, { park: parkOf('blocked', 'Attente client', at(50)) }),

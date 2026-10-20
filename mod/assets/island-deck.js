@@ -40,7 +40,52 @@
         S.focusId = el.dataset.engine;
         ctx.ui.switchView('home', { by: 'click' });
       }, true);
+      // Turned to its back by the user (flip button or click), the top card stays so until turned again.
+      el.addEventListener('sg-flip', event => {
+        if (el.dataset.pageFlip) return;
+        if (event.detail.flipped) delete el.dataset.userBack; else el.dataset.userBack = '1';
+      });
       el.dataset.wired = '1';
+    };
+
+    const turnByPage = (el, flipped) => { el.dataset.pageFlip = '1'; el.flip(flipped); delete el.dataset.pageFlip; };
+
+    // As on the cockpit cards, the foot of the face holds "Agrandir" (the details) and the turn-over button, inside the
+    // face so its margin is even all round.
+    const FOOT = () => `<div class="card-foot" data-card-foot><button type="button" class="ep-btn ep-btn--ghost ep-btn--icon ep-btn--sm" data-act="details" aria-controls="details" aria-label="Agrandir" data-ep-tip="Agrandir">${helpers.icon('expand')}</button>${FLIP_BUTTON}</div>`;
+    const FLIP_BUTTON = '<button type="button" class="ep-btn ep-btn--ghost ep-btn--icon ep-btn--sm card-flip" data-card-flip aria-label="Retourner la carte" data-ep-tip="Retourner la carte"><svg class="card-flip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"/><path d="M15 8h2a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3v-1"/><path d="M18 16l2 2-2 2"/></svg></button>';
+
+    // The foot of a card face, created once per card and kept last.
+    const footOf = el => {
+      const body = el.querySelector('[data-body]');
+      let foot = body.querySelector(':scope > [data-card-foot]');
+      if (!foot) {
+        body.insertAdjacentHTML('beforeend', FOOT());
+        foot = body.lastElementChild;
+        foot.querySelector('[data-card-flip]').addEventListener('click', () => el.flip(!el.flipped));
+      }
+      if (foot !== body.lastElementChild) body.append(foot);
+      return foot;
+    };
+
+    // Every card of the deck shows the same face as a cockpit card: state picto and age on the top line, the title and
+    // the request. The top card hosts the live island nodes instead; the cards below draw this face themselves.
+    const tagOf = row => {
+      const sig = model.signalOf(row);
+      const tone = sig.kind === model.KIND_WAIT && row.status !== 'permission' ? '' : sig.tone;
+      return `<span class="ep-tag${tone ? ` ep-tag--${tone}` : ''} is-state" role="img" aria-label="${helpers.esc(sig.word)}" data-ep-tip="${helpers.esc(sig.word)}">${tone ? '' : helpers.icon(sig.icon)}</span>`;
+    };
+    const ownFaceOf = row => {
+      const ask = helpers.awaitingOf(row) || model.signalOf(row).word;
+      return `<div class="is-meta is-head">${tagOf(row)}<span class="caption-s">${helpers.esc(helpers.ageOf(row.updatedAt, Date.now()))}</span></div><h2 class="h4">${helpers.esc(row.title)}</h2><p class="body-s clamp">${helpers.esc(ask)}</p>`;
+    };
+    const drawOwnFace = (el, row) => {
+      const body = el.querySelector('[data-body]');
+      let own = body.querySelector(':scope > [data-own-face]');
+      if (!own) { own = root.document.createElement('div'); own.dataset.ownFace = ''; own.className = 'is-card-text'; body.prepend(own); }
+      const html = ownFaceOf(row);
+      if (own.dataset.html !== html) { own.innerHTML = html; own.dataset.html = html; }
+      footOf(el);
     };
 
     // La face avant de la carte du dessus reçoit les nœuds existants : le texte d'accueil, et les formulaires de l'attente.
@@ -56,6 +101,18 @@
         if (!waits && keep && alert.parentElement !== keep) keep.append(alert);
       }
       body.classList.toggle('is-waiting', Boolean(waits));
+      const more = $('#cardMore');
+      if (more && more.parentElement !== body) body.append(more);
+      else if (more && more !== body.lastElementChild) body.append(more);
+      const own = body.querySelector(':scope > [data-own-face]');
+      if (own) own.remove();
+      const foot = footOf(top);
+      const expand = foot.querySelector('[data-act="details"]');
+      const label = S.details ? 'Réduire' : 'Agrandir';
+      expand.setAttribute('aria-expanded', String(Boolean(S.details)));
+      expand.setAttribute('aria-label', label);
+      expand.dataset.epTip = label;
+      expand.innerHTML = helpers.icon(S.details ? 'collapse' : 'expand');
     };
 
     // Les mini-cartes des pastilles et de l'état réduit : une par conversation et par taille, gardées d'un rendu à l'autre.
@@ -103,7 +160,7 @@
         const expected = i === 0 ? pile.firstElementChild : stackEls[i - 1].nextElementSibling;
         if (expected !== el) pile.insertBefore(el, expected);
         stackEls.push(el);
-        if (i === 0) { hostFront(el, row); el.flip(true); } else el.flip(false);
+        if (i === 0) { hostFront(el, row); if (!el.dataset.userBack) turnByPage(el, true); } else { delete el.dataset.userBack; drawOwnFace(el, row); turnByPage(el, true); }
       });
       for (const el of [...pile.querySelectorAll(':scope > sg-flip')]) if (!seen.has(el.dataset.engine)) el.remove();
       pile.hidden = stack.length === 0;

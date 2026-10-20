@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ton équipe</title>
+<script>
+  // The island page must never show the cockpit header, even for the time the page script takes to load.
+  if (new URLSearchParams(location.search).has('island')) document.documentElement.classList.add('island-mode');
+</script>
 <!--SEED-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,8 +84,26 @@
   .lane.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: var(--space-4); align-items: start; }
   .lane.cards.lane-plate { padding: var(--space-3); }
   .lane.cards .empty { grid-column: 1 / -1; }
-  .conv-card-body { display: flex; flex-direction: column; gap: var(--space-2); overflow: auto; overscroll-behavior: contain; font-size: 13px; }
-  .conv-card-body .card-kind { font-size: 10px; }
+  .conv-card-body { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; font-size: 13px; padding: var(--space-4); border-radius: var(--radius-glass-s); background: color-mix(in srgb, var(--paper) 86%, transparent); }
+  .lane.cards .sg-flip__body { inset: var(--space-3); }
+  .lane.cards [data-front] > .sg-flip__picto { display: none; }
+  .card-flip-icon { width: 18px; height: 18px; }
+  .conv-card-body .card-state { padding: 5px 6px; }
+  /* Without WebGPU the back is drawn as HTML, which the shader would have un-mirrored: once turned over,
+     its text would show backwards through the face. Only that fallback text is hidden, never the canvas. */
+  .lane.cards sg-flip[flipped] sg-card[data-fallback] .sg-card__fallback { visibility: hidden; transition: visibility 0s .2s; }
+  .conv-card-body .card-more { display: none; }
+  .conv-card-body .card-ask > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+  .conv-card-body .card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .lane.cards sg-flip.big .conv-card-body { overflow: auto; overscroll-behavior: contain; }
+  .lane.cards sg-flip.big .conv-card-body .card-more { display: flex; flex-direction: column; gap: var(--space-2); }
+  .lane.cards sg-flip.big .conv-card-body .card-ask > span { -webkit-line-clamp: unset; }
+  .conv-card-body .card-kind { font-size: 12px; }
+  /* As on the GitHub page: a hidden face is out of sight and out of the tab order; the paper of the face
+     keeps the engraving faintly visible without letting the mirrored text of the back show through. */
+  .lane.cards sg-flip:not([flipped]) [data-front] { visibility: hidden; transition: visibility 0s .35s; }
+  .lane.cards sg-flip[flipped] [data-front] { visibility: visible; }
+  .lane.cards sg-flip:focus-visible { outline: 2px solid var(--focus); outline-offset: var(--space-1); }
   .conv-card-body .conv-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .conv-card-body .card-ask { font-size: 14px; line-height: 1.4; }
   .conv-card-body .card-quick, .conv-card-body .card-body { padding: 0; gap: var(--space-2); }
@@ -195,8 +217,13 @@
   .card.big > * { flex: none; }
   .card.big > .card-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   .card.big .thread { max-height: none; overflow: visible; }
-  .lane.cards sg-flip.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: var(--z-bar); width: auto; height: auto; aspect-ratio: auto; }
+  /* Enlarged: a bigger card, not a full-screen sheet; it keeps the proportions of a card. */
+  .lane.cards sg-flip.big { position: fixed; inset: 0; margin: auto; z-index: var(--z-bar); width: min(460px, calc(100vw - 2 * var(--space-6))); height: min(640px, calc(100vh - 2 * var(--space-6))); aspect-ratio: auto; }
   .lane.cards sg-flip.big .conv-card-body .thread { max-height: none; overflow: visible; }
+  /* A plate holding the enlarged card (team view, En mission, Mis de côté) would keep it under the backdrop and,
+     through its backdrop-filter, place it against the plate instead of the window. While the card is enlarged
+     the plate, blurred under the backdrop anyway, drops its own glass so it no longer holds the card. */
+  .ep-plate:has(sg-flip.big) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; isolation: auto !important; z-index: auto !important; }
 
   .pop { animation: pop 420ms cubic-bezier(0.3, 1.35, 0.45, 1); }
   @keyframes pop { 0% { transform: scale(0.85); } 100% { transform: scale(1); } }
@@ -274,7 +301,7 @@
   html.os-glass .ep-scene__bg { display: none; }
   .drag-strip { display: none; }
   html.os-glass:not(.island-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
-  body.island-mode .wrap { display: none; }
+  body.island-mode .wrap, html.island-mode .wrap { display: none; }
   body.island-mode .zone { display: block; }
   /* L'île a sa feuille (island.css). --motion-ui est la durée standard du modèle ; le ressort de la forme (300 / 260 ms) est dans island-ui.js. */
   :root { --motion-ui: 150ms; }
@@ -434,7 +461,6 @@
   const ZOOM_MIN = 1;
   const ZOOM_MAX = 1.3;
   const ZOOM_STEP = 0.05;
-  const QUICK_REPLIES = ['OK', 'GO', 'Non'];
 
   const ACTIVE_STATUSES = ['thinking', 'writing', 'tool', 'working'];
   const WORDS = window.CockpitStatusWords;
@@ -673,6 +699,9 @@
 
   // "Voir l'agent au repos", "Voir les 3 agents au repos".
   const restToggleLabelOf = (count, isOpen) => (count === 1 ? `${isOpen ? 'Masquer' : 'Voir'} l'agent au repos` : `${isOpen ? 'Masquer' : 'Voir'} les ${count} agents au repos`);
+
+  const FLIP_ICON = '<svg class="card-flip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"/><path d="M15 8h2a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3v-1"/><path d="M18 16l2 2-2 2"/></svg>';
+  const quickButtonsOf = row => WORDS.quickRepliesOf(row).map(reply => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${escapeHtml(reply.text)}">${escapeHtml(reply.label)}</button>`).join('');
 
   const PARK_KINDS = {
     blocked: { ...WORDS.PARK_WORDS.blocked, title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
@@ -981,7 +1010,7 @@
           <div class="group">
             ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
             ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal" data-testid="card-terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
+            ${inCard ? '' : `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>`}
             ${feedbackHtml}
           </div>
           <div class="group">
@@ -1005,7 +1034,7 @@
     const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
     const canOrder = isServer && !row.isCurrent;
     const quick = !isOpen && canOrder ? `<div class="card-quick">
-        ${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}
+        ${quickButtonsOf(row)}
         <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm order" data-action="toggle">Donner un ordre…</button>
         ${feedbackHtml}
       </div>` : '';
@@ -1171,19 +1200,27 @@
     const [actIcon, actLabel] = activityOf(row);
     const bonus = ageBonus(row, now);
     const head = isWaiting
-      ? `<span class="card-kind" style="color: ${info.color}">${iconOf(info.icon)} ${info.label}</span><span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}">${escapeHtml(bonus.label)}</span>`
+      ? `${row.status === 'permission' ? `<span class="ep-tag ep-tag--warning card-state" role="img" aria-label="${info.label}" title="${info.label}"></span>` : `<span class="ep-tag card-state" role="img" aria-label="${info.label}" title="${info.label}">${iconOf(info.icon)}</span>`}<span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}" data-short="" title="${escapeHtml(bonus.label)}">${escapeHtml(formatAge(row.updatedAt, now))}</span>`
       : `<span class="mrow-activity trunc">${iconOf(section === 'parked' ? park.icon : actIcon)} ${escapeHtml(section === 'parked' ? park.label : actLabel)}</span><span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span>`;
     const askStale = row.summary && row.summary.updatedAt !== row.updatedAt ? ' stale' : '';
     const ask = isWaiting ? `<span class="card-ask${askStale}">${iconOf('arrow')}<span>${inlineMarkdown(awaitingOf(row) || 'Regarde où en est cet agent.')}</span></span>` : '';
     const canOrder = isServer && !row.isCurrent;
-    const quick = isWaiting && canOrder ? `<div class="card-quick">${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>` : '';
+    const replies = isWaiting && canOrder ? quickButtonsOf(row) : '';
+    const quick = replies ? `<div class="card-quick">${replies}</div>` : '';
     const openUrl = openUrlOf(row);
     const tools = [
       openUrl ? `<a href="${escapeHtml(openUrl)}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '',
       isServer && isWaiting ? `<button type="button" class="${ICON_BUTTON}" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : '',
       section === 'parked' && isServer ? `<button type="button" class="ep-btn ep-btn--sm resume" data-action="unpark">${iconOf('arrow')} Reprendre</button>` : parkButtons(row),
     ].join('');
-    return `<div class="conv-card-head">${head}</div>${ask}${renderContext(row, { limit: 3 })}${quick}${renderCardBody(row, { inCard: true })}<div class="card-side">${tools}</div>`;
+    const isBig = state.bigId === row.engineId;
+    // The face shows the minimum (state, age, request, quick replies) and never scrolls; the rest only
+    // shows in the enlarged view. The turn-over button sits in the face, so its margin is even all round.
+    const foot = `<div class="card-foot">
+        <button type="button" class="${ICON_BUTTON}" data-action="big" data-testid="card-enlarge" aria-label="${isBig ? 'Réduire' : 'Agrandir'}" title="${isBig ? 'Réduire' : 'Agrandir'}">${iconOf(isBig ? 'collapse' : 'expand')}</button>
+        ${isBig ? '' : `<button type="button" class="${ICON_BUTTON} card-flip" data-action="flip" aria-label="Retourner la carte" title="Retourner la carte">${FLIP_ICON}</button>`}
+      </div>`;
+    return `<div class="conv-card-head">${head}</div>${ask}${quick}<div class="card-more">${renderContext(row, { limit: 3 })}${renderCardBody(row, { inCard: true })}<div class="card-side">${tools}</div></div>${foot}`;
   };
 
   // Ce que le dos d'une carte dit d'une conversation : mot d'état, âge, dossier, état de l'entité à graver.
@@ -1193,13 +1230,30 @@
     return { isWaiting: section === 'waiting', word, age: formatAge(row.updatedAt, now), folder: folderOf(row.cwd) };
   };
 
+  // A waiting card arrives face up (audit 2026-10-20, P1 n° 4): its request and its replies show without
+  // turning it over. Turned by the page, not by the user, it does not count as a card being read.
+  const turnByPage = (el, flipped) => {
+    el.dataset.pageFlip = '1';
+    el.flip(flipped);
+    delete el.dataset.pageFlip;
+  };
+
   const renderCardLane = (lane, rows, now) => {
     lane.classList.add('cards');
     window.CockpitCards.renderLane(lane, rows, row => cardInfoOf(row, now), row => renderCardFront(row, now));
+    const sectionOf = new Map(rows.map(row => [row.engineId, sectionIdOf(row.status)]));
     for (const el of lane.querySelectorAll(':scope > sg-flip[data-engine]')) {
       const isBig = state.bigId === el.dataset.engine;
       el.classList.toggle('big', isBig);
       if (isBig) el.flip(true);
+      const isWaiting = sectionOf.get(el.dataset.engine) === 'waiting';
+      if (isWaiting && el.dataset.faceUp !== '1') {
+        el.dataset.faceUp = '1';
+        turnByPage(el, true);
+      } else if (!isWaiting && el.dataset.faceUp === '1') {
+        delete el.dataset.faceUp;
+        if (!isBig && !state.expanded.has(el.dataset.engine)) turnByPage(el, false);
+      }
     }
   };
 
@@ -1342,8 +1396,8 @@
     const feedback = state.feedback.get(row.engineId);
     const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
     const headline = zone === 'waiting' ? `${iconOf('arrow')}<span>${inlineMarkdown(face.bubble)}</span>` : `${iconOf(face.icon)}<span>${escapeHtml(face.bubble)}</span>`;
-    const quick = canOrder && zone === 'waiting'
-      ? `<div class="t-quick">${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>`
+    const quick = canOrder && zone === 'waiting' && quickButtonsOf(row)
+      ? `<div class="t-quick">${quickButtonsOf(row)}</div>`
       : '';
     const composer = row.isCurrent
       ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
@@ -1766,7 +1820,8 @@
     for (const pill of document.querySelectorAll('.age-pill[data-updated]')) {
       const updatedAt = Number(pill.dataset.updated);
       const bonus = ageBonus({ updatedAt }, now);
-      pill.textContent = bonus.label;
+      // On a card face the pill only shows the age; the bonus is in its tooltip.
+      if (pill.hasAttribute('data-short')) { pill.textContent = formatAge(updatedAt, now); pill.title = bonus.label; } else pill.textContent = bonus.label;
       pill.classList.remove('ep-tag--info', 'ep-tag--warning', 'ep-tag--danger');
       if (bonus.tone) pill.classList.add(bonus.tone);
     }
@@ -2058,10 +2113,15 @@
     input.select();
   };
 
+  // #recherche focuses the search; #recherche=<words> (sent by the island) also runs it.
   const focusSearchFromHash = () => {
-    if (location.hash !== '#recherche') return;
+    const match = /^#recherche(?:=(.*))?$/.exec(location.hash);
+    if (!match) return;
     focusSearch();
     history.replaceState(null, '', `${location.pathname}${location.search}`);
+    let query = '';
+    try { query = decodeURIComponent(match[1] || '').trim(); } catch { query = ''; }
+    if (query) { document.getElementById('search-input').value = query; runSearch(query); }
   };
 
   const setFeedback = (engineId, text, isError = false) => {
@@ -2286,6 +2346,7 @@
     if (action === 'park') { const row = rowOf(engineId); if (row) showParkMenu(button, row, button.dataset.kind); }
     if (action === 'unpark') unpark(engineId);
     if (action === 'big') toggleBig(engineId);
+    if (action === 'flip') { const card = holder.closest('sg-flip'); if (card) card.flip(!card.flipped); }
     if (action === 'exact') {
       if (state.exactThreads.has(engineId)) {
         state.exactThreads.delete(engineId);
@@ -2308,9 +2369,17 @@
   });
 
   // Une carte retournée se lit : elle compte comme dépliée (l'ordre des sections reste figé pendant la lecture).
+  // Keyboard, as on the GitHub page: a focused card turns over with Enter or Space.
+  document.addEventListener('keydown', event => {
+    if (event.target.matches && event.target.matches('.lane.cards > sg-flip[data-engine]') && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      event.target.flip(!event.target.flipped);
+    }
+  });
+
   document.addEventListener('sg-flip', event => {
     const engineId = event.target.dataset ? event.target.dataset.engine : null;
-    if (!engineId) return;
+    if (!engineId || event.target.dataset.pageFlip) return;
     if (event.detail.flipped) state.expanded.add(engineId); else state.expanded.delete(engineId);
   });
 
@@ -2418,9 +2487,9 @@
   // L'île : le modèle, les entités vivantes, l'interface et l'hôte qui parle à l'app. Les actions sont celles du cockpit.
   const startIsland = () => {
     const helpers = {
-      esc: escapeHtml, icon: iconOf, markdown: renderMarkdown, ageOf: (updatedAt, now = Date.now()) => `il y a ${formatAge(updatedAt, now)}`,
+      esc: escapeHtml, icon: iconOf, markdown: renderMarkdown, ageOf: (updatedAt, now = Date.now()) => formatAge(updatedAt, now),
       activityOf, awaitingOf, statsLineOf, tintOf: engineId => (window.CockpitIdentity ? window.CockpitIdentity.tintOf(engineId) : ''),
-      openUrlOf, folderOf, isServer, quickReplies: QUICK_REPLIES,
+      openUrlOf, folderOf, isServer, quickRepliesOf: WORDS.quickRepliesOf,
     };
     const actions = {
       reply: async (engineId, text, images) => {
@@ -2447,7 +2516,7 @@
         showReward('Nouvelle conversation', `${folderOf(folders[0])} : appuie sur Entrée dans Claude`, 'info');
         return '';
       },
-      openCockpit: section => { if (desktop) desktop.openCockpit(section === 'search' ? 'search' : undefined); else window.open(section === 'search' ? '/#recherche' : '/', 'cockpit'); },
+      openCockpit: (section, query = '') => { if (desktop) desktop.openCockpit(section === 'search' ? 'search' : undefined, query); else window.open(section === 'search' ? `/#recherche${query ? `=${encodeURIComponent(query)}` : ''}` : '/', 'cockpit'); },
       setSounds: toggleSounds,
       quit: () => { if (desktop) desktop.quit(); },
       decide: async (requestId, decision) => {

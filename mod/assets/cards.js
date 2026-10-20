@@ -101,6 +101,8 @@
     const el = root.document.createElement('sg-flip');
     el.className = 'conv-card';
     el.dataset.engine = row.engineId;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
     const back = root.document.createElement('sg-card');
     setAttrs(back, attrs);
     const front = root.document.createElement('div');
@@ -110,7 +112,11 @@
     return el;
   };
 
-  const syncCard = (el, row, info) => { setAttrs(el.querySelector('sg-card'), backAttrsOf(row, info)); return el; };
+  const syncCard = (el, row, info) => {
+    setAttrs(el.querySelector('sg-card'), backAttrsOf(row, info));
+    setAttrs(el, { 'aria-label': `${row.title}, ${info.word}, appuie pour retourner la carte` });
+    return el;
+  };
 
   const cardIn = (container, row, info) => {
     const known = container.querySelector(`:scope > sg-flip[data-engine="${CSS.escape(row.engineId)}"]`);
