@@ -22,9 +22,10 @@ export const terminalCandidatesOf = (platform, cwd) => {
   return LINUX_TERMINALS.map(([command, argsOf]) => ({ command, args: argsOf(cwd) }))
 }
 
-// Where Claude Desktop keeps its Code sessions on each system; on Windows the
-// Store (MSIX) install writes them under its package folder instead.
-export const hostSessionsDirsOf = (platform, home, env, packageNames = []) => {
+// Where Claude Desktop keeps its Code sessions on each system. On Windows the Store (MSIX)
+// install wrote them under its package folder, and Claude Desktop now writes them under
+// LOCALAPPDATA/Claude-Data/claude_<package id> (`dataNames`: the folders found there).
+export const hostSessionsDirsOf = (platform, home, env, packageNames = [], dataNames = []) => {
   const configBases = {
     win32: env.APPDATA || path.join(home, 'AppData', 'Roaming'),
     darwin: path.join(home, 'Library', 'Application Support'),
@@ -36,5 +37,8 @@ export const hostSessionsDirsOf = (platform, home, env, packageNames = []) => {
   const msix = packageNames
     .filter(name => name.startsWith('Claude_'))
     .map(name => path.join(localAppData, 'Packages', name, 'LocalCache', 'Roaming', 'Claude', 'claude-code-sessions'))
-  return [classic, ...msix]
+  const data = dataNames
+    .filter(name => name.toLowerCase().startsWith('claude_'))
+    .map(name => path.join(localAppData, 'Claude-Data', name, 'claude-code-sessions'))
+  return [classic, ...msix, ...data]
 }

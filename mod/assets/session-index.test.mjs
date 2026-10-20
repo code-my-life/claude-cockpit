@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { extractHostSession, loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, repoFromGitConfig, saveIndex, saveSessionList, scanHostFiles, sessionsOf, sortPrs, ticketOf } from './session-index.mjs'
+import { extractHostSession, loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, repoFromGitConfig, runningDistrosOf, saveIndex, saveSessionList, scanHostFiles, sessionsOf, sortPrs, ticketOf, wslLiveDirsOf } from './session-index.mjs'
 
 const makeTree = () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-index-'))
@@ -37,7 +37,7 @@ const countingReader = () => {
 test('keeps only the fields the cockpit needs', () => {
   const text = hostJson('local_a', 'engine-a', 'Analyse ticket 2254')
   const session = extractHostSession(text)
-  assert.deepEqual(session, { hostId: 'local_a', engineId: 'engine-a', title: 'Analyse ticket 2254', cwd: 'C:\\repos\\rd', lastActivityAt: 1000, isArchived: false, gitCommonDir: null, branch: null, prs: [], ticket: '2254', priorEngineIds: [] })
+  assert.deepEqual(session, { hostId: 'local_a', engineId: 'engine-a', title: 'Analyse ticket 2254', cwd: 'C:\\repos\\rd', lastActivityAt: 1000, isArchived: false, gitCommonDir: null, branch: null, prs: [], ticket: '2254', priorEngineIds: [], wslDistro: null })
 })
 
 test('the earlier engine ids of a conversation are kept, without the current one or broken values', () => {
@@ -152,7 +152,7 @@ test('the list read by conversations holds only sessions and live ids, no paths'
   const saved = JSON.parse(fs.readFileSync(listFile, 'utf8'))
   const sessions = sessionsOf(built.index)
   assert.deepEqual(saved.live, ['engine-a'])
-  const expectedHosts = sessions.map(({ priorEngineIds, ...session }) => ({ ...session, repo: null }))
+  const expectedHosts = sessions.map(({ priorEngineIds, wslDistro, ...session }) => ({ ...session, repo: null }))
   assert.deepEqual(saved.hosts, expectedHosts)
   assert.equal(saved.hosts.length, 1)
   const savedKeys = Object.keys(saved).sort()
@@ -282,4 +282,33 @@ test('live engine ids come from the running sessions folder, broken files skippe
   fs.writeFileSync(path.join(tree.liveDir, 'notes.txt'), 'ignored')
   const ids = await readLiveEngineIds(tree.liveDir)
   assert.deepEqual(ids, ['engine-a'])
+})
+
+test('a Claude Desktop session run in WSL keeps its distro', () => {
+  const session = extractHostSession(JSON.stringify({ sessionId: 'local_w', cliSessionId: 'engine-w', title: 'W', cwd: '/home/ana/app', wslConfig: { distro: 'Ubuntu-24.04' } }))
+  assert.equal(session.wslDistro, 'Ubuntu-24.04')
+  assert.equal(extractHostSession(JSON.stringify({ sessionId: 'local_x', cliSessionId: 'engine-x', wslConfig: 'odd' })).wslDistro, null)
+})
+
+test('the live files of WSL sessions are read in the Linux home of running distros only', () => {
+  const sessions = [
+    { wslDistro: 'Ubuntu-24.04', cwd: '/home/ana/app' },
+    { wslDistro: 'Ubuntu-24.04', cwd: '/home/ana' },
+    { wslDistro: 'Ubuntu-24.04', cwd: '/root/work' },
+    { wslDistro: 'Ubuntu-24.04', cwd: '/mnt/c/Users/ana' },
+    { wslDistro: 'Debian', cwd: '/home/bob/x' },
+    { wslDistro: null, cwd: 'C:\\repos\\rd' },
+  ]
+  assert.deepEqual(wslLiveDirsOf(sessions, ['Ubuntu-24.04']), [
+    '\\\\wsl.localhost\\Ubuntu-24.04\\home\\ana\\.claude\\sessions',
+    '\\\\wsl.localhost\\Ubuntu-24.04\\root\\.claude\\sessions',
+  ])
+  assert.deepEqual(wslLiveDirsOf(sessions, []), [])
+})
+
+test('the running distros are read from wsl.exe in UTF-16 or UTF-8', () => {
+  const names = ['Ubuntu-24.04', 'docker-desktop']
+  assert.deepEqual(runningDistrosOf(Buffer.from('\uFEFFUbuntu-24.04\r\ndocker-desktop\r\n', 'utf16le')), names)
+  assert.deepEqual(runningDistrosOf(Buffer.from('Ubuntu-24.04\r\ndocker-desktop\r\n', 'utf8')), names)
+  assert.deepEqual(runningDistrosOf(Buffer.alloc(0)), [])
 })
