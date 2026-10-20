@@ -27,7 +27,7 @@ English | [Français](README.fr.md)
 
 </div>
 
-<!-- Screenshot: cddev adds one capture here, e.g. <p align="center"><img src="docs/screenshot.png" alt="Claude Cockpit" width="800"></p> -->
+<p align="center"><img src="docs/claude-cockpit-card.png" alt="Claude Cockpit: a mythic holographic card with the logo, a hand of cards" width="320"></p>
 
 [site-badge]: https://img.shields.io/badge/site-code--my--life.github.io-000000?style=flat
 [site]: https://code-my-life.github.io/claude-cockpit/
