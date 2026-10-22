@@ -58,10 +58,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # --repo explicite : ce job n'a pas de checkout, gh ne peut pas deviner le dépôt
-          gh release create "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" \
-            --title "v${GITHUB_REF_NAME#v}" --notes "Release ${GITHUB_REF_NAME}"
+          # A rerun finds the release already there: it then only replaces the files.
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" release/* --repo "${GITHUB_REPOSITORY}" \
+              --title "v${GITHUB_REF_NAME#v}" --notes "Release ${GITHUB_REF_NAME}"
+          fi
 
+  # After publish: the graph is added to the release publish created. Run in parallel, its upload created the
+  # release first and publish then failed on "a release with the same tag name already exists" (v0.5.1).
   build-graph:
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -100,13 +108,12 @@ jobs:
           python3 -c "import json, sys; g = json.load(open('graphify-out/graph.json')); n = len(g.get('nodes', [])); print(f'{n} nodes'); sys.exit(0 if n > 0 else 'graph.json has no node')"
       - name: Upload graph as release asset
         if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: graphify-out/graph.json
-          fail_on_unmatched_files: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" graphify-out/graph.json --repo "${GITHUB_REPOSITORY}" --clobber
 
   trigger-global-graph:
-    needs: [publish, build-graph]
+    needs: build-graph
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
