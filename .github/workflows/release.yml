@@ -74,27 +74,36 @@ jobs:
         with:
           activate-environment: true
           python-version: "3.12"
+      # graphify pinned: its output layout changed between versions, which broke this job several times.
       - name: Install graphify
-        run: uv pip install "graphifyy[openai]"
+        run: uv pip install "graphifyy[openai]==0.9.91"
+      # No --out: graphify always writes to ./graphify-out/. With --out X it writes to X/graphify-out/ (hidden files
+      # included), which the former "mv X/graphify-out/*" could not undo (the hidden files stayed, rmdir failed).
       - name: Extract code graph (AST only)
-        run: |
-          uv run graphify extract . --code-only --out graphify-out --no-gitignore
+        run: uv run graphify extract . --code-only --no-gitignore
       - name: Cluster + report
-        run: |
-          uv run graphify cluster-only graphify-out --no-label
-          # graphify écrit parfois dans <out>/graphify-out/ : on normalise sur graphify-out/graph.json
-          [ -f graphify-out/graph.json ] || { mv graphify-out/graphify-out/* graphify-out/ && rmdir graphify-out/graphify-out; }
+        run: uv run graphify cluster-only . --no-label
       - name: Name communities (sans nom, le graphe est illisible pour un humain)
         env:
           OPENAI_BASE_URL: https://integrate.api.nvidia.com/v1
           OPENAI_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           OPENAI_MODEL: nvidia/nemotron-3-super-120b-a12b
         run: uv run graphify label . --backend openai --model nvidia/nemotron-3-super-120b-a12b
+      # Fails here, with the reason, rather than publishing a release without its graph.
+      - name: Check the graph
+        run: |
+          if [ ! -s graphify-out/graph.json ]; then
+            echo "::error::graphify-out/graph.json is missing; graph files found:"
+            find . -name 'graph.json' -not -path './node_modules/*'
+            exit 1
+          fi
+          python3 -c "import json, sys; g = json.load(open('graphify-out/graph.json')); n = len(g.get('nodes', [])); print(f'{n} nodes'); sys.exit(0 if n > 0 else 'graph.json has no node')"
       - name: Upload graph as release asset
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           files: graphify-out/graph.json
+          fail_on_unmatched_files: true
 
   trigger-global-graph:
     needs: [publish, build-graph]
