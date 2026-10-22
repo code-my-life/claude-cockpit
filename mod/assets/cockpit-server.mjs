@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process'
 import { loadIndex, readLiveEngineIds, readRemoteRepo, refreshIndex, runningDistrosOf, saveIndex, saveSessionList, scanHostFiles, sessionsOf, wslHomesOf } from './session-index.mjs'
 import { readHookStatuses } from './hook-status.mjs'
 import { findMatches, hostsByEngineOf, loadSearchCache, refreshSearchIndex, saveSearchCache, scanTranscriptFiles } from './search-index.mjs'
-import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
+import { hostSessionsDirsOf, terminalCandidatesOf, wslTerminalCandidatesOf } from './terminal.mjs'
 import { HttpError, engineIdOf, guardHost, guardJson, readJsonBody, send, sendNotFound } from './cockpit-server-http.mjs'
 import { handleBridge, isBridgeRoute } from './bridge-routes.mjs'
 import { createPageSession, sendNeedsApp } from './page-session.mjs'
@@ -135,6 +135,7 @@ const contextOf = ({ rootDir, dataDir = rootDir, port, sink, bridge = null, page
   state: {
     sessionIndex: loadIndex(path.join(dataDir, 'session-cache.json')),
     savedLiveKey: null,
+    hooks: {},
     isIndexing: false,
     remoteRepos: new Map(),
     lastReportedError: '',
@@ -214,7 +215,31 @@ const launchFirstWorking = (ctx, candidates) => {
   child.unref()
 }
 
+// A folder of a conversation run in WSL (a Linux path, from its hook): the terminal opens in that distro.
+const WSL_FOLDER = /^\/[^\0]*$/
+const wslDistroOf = (ctx, cwd) => {
+  for (const entry of Object.values(ctx.state.hooks || {})) {
+    if (typeof entry.distro !== 'string' || typeof entry.cwd !== 'string') continue
+    if (cwd === entry.cwd || cwd.startsWith(`${entry.cwd.replace(/\/$/, '')}/`)) return entry.distro
+  }
+  return null
+}
+
+const openWslTerminal = (ctx, distro, cwd) => {
+  if (UNSAFE_FOLDER_PATTERN.test(cwd) || cwd.split('/').includes('..')) throw new HttpError(400, 'dossier invalide')
+  const share = path.win32.join('\\\\wsl.localhost', distro, ...cwd.split('/').filter(Boolean))
+  const isFolder = fs.existsSync(share) && fs.statSync(share).isDirectory()
+  if (!isFolder) throw new HttpError(404, 'dossier introuvable')
+  if (process.env.COCKPIT_E2E === '1') return fs.appendFileSync(path.join(ctx.dataDir, 'e2e-terminal.jsonl'), `${JSON.stringify({ cwd, distro, at: Date.now() })}\n`)
+  launchFirstWorking(ctx, wslTerminalCandidatesOf(distro, cwd))
+}
+
 const openTerminal = (ctx, cwd) => {
+  if (process.platform === 'win32' && WSL_FOLDER.test(cwd)) {
+    const distro = wslDistroOf(ctx, cwd)
+    if (distro === null) throw new HttpError(403, 'dossier inconnu du cockpit')
+    return openWslTerminal(ctx, distro, cwd)
+  }
   if (cwd === '' || UNSAFE_FOLDER_PATTERN.test(cwd) || !path.isAbsolute(cwd)) throw new HttpError(400, 'dossier invalide')
   if (!isKnownFolder(knownRootsOf(sessionsOf(ctx.state.sessionIndex), ctx.state.searchIndex), cwd, ctx.homeDir)) throw new HttpError(403, 'dossier inconnu du cockpit')
   const isFolder = fs.existsSync(cwd) && fs.statSync(cwd).isDirectory()
@@ -314,6 +339,7 @@ const refreshSessionIndex = async ctx => {
     const liveDirs = [ctx.liveSessionsDir, ...wslHomes.map(home => path.win32.join(home, '.claude', 'sessions'))]
     const live = [...new Set((await Promise.all(liveDirs.map(dir => readLiveEngineIds(dir)))).flat())]
     const hooks = await readHookStatuses([ctx.hookStatusDir, ...wslHomes.map(home => path.win32.join(home, '.claude', 'cockpit', 'status'))])
+    state.hooks = hooks
     const liveKey = `${[...live].sort().join('|')}#${JSON.stringify(hooks)}`
     const remotesChanged = await resolveRemoteRepos(ctx, state.sessionIndex)
     if (!refreshed.changed && !remotesChanged && liveKey === state.savedLiveKey) return

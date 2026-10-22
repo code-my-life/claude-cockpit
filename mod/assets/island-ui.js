@@ -275,6 +275,7 @@
     if (desktop && typeof desktop.onIslandGeometry === 'function') {
       doc.documentElement.classList.add('island-split');
       desktop.onIslandGeometry(geometry => ctx.motion.geometry(geometry));
+      if (typeof desktop.islandSplit === 'function') desktop.islandSplit();
     }
 
     // Thème choisi par l'app selon le bureau derrière (Nuit ou Papier) : les jetons de l'île suivent.

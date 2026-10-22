@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 
-import { hostSessionsDirsOf, terminalCandidatesOf } from './terminal.mjs'
+import { hostSessionsDirsOf, terminalCandidatesOf, wslTerminalCandidatesOf } from './terminal.mjs'
 
 test('on Windows the terminal is Windows Terminal, then cmd as a fallback', () => {
   const candidates = terminalCandidatesOf('win32', 'C:\\repos\\app')
@@ -56,4 +56,11 @@ test('on Windows Claude Desktop data folders starting with claude_ add their ses
   ]
   assert.deepEqual(hostSessionsDirsOf('win32', home, env, [], ['claude_pzs8sxrjxfjjc', 'other']), expected)
   assert.deepEqual(hostSessionsDirsOf('linux', home, {}, [], ['claude_pzs8sxrjxfjjc']), [path.join(home, '.config', 'Claude', 'claude-code-sessions')])
+})
+
+test('a WSL folder opens in its distro: Windows Terminal first, then the distro console', () => {
+  assert.deepEqual(wslTerminalCandidatesOf('Ubuntu-24.04', '/home/ana/app'), [
+    { command: 'wt.exe', args: ['wsl.exe', '-d', 'Ubuntu-24.04', '--cd', '/home/ana/app'] },
+    { command: 'wsl.exe', args: ['-d', 'Ubuntu-24.04', '--cd', '/home/ana/app'] },
+  ])
 })

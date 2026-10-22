@@ -634,6 +634,12 @@ const connect = async ($: EngineInterface) => {
 const findTranscript = async ($: EngineInterface, engineId: string) => {
   const cached = transcriptCache.get(engineId)
   if (cached !== undefined) return cached
+  // A conversation seen through the cockpit hook (a terminal, in WSL too): the server found its transcript.
+  const hooked = sessionIndex.hooked[engineId]?.transcript
+  if (typeof hooked === 'string' && hooked.length > 0 && await $.fs.exists(hooked)) {
+    transcriptCache.set(engineId, hooked)
+    return hooked
+  }
   const home = await $.env.get('USERPROFILE')
   if (home === undefined) return null
   const projectDirs = await listSubdirs($, `${home}/.claude/projects`)

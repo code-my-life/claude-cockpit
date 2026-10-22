@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { hookEntryOf, readHookStatuses, statusOfEvent } from './hook-status.mjs'
+import { distroOfDir, hookEntryOf, lastTitleOf, readHookStatuses, statusOfEvent } from './hook-status.mjs'
 
 const fileOf = fields => JSON.stringify({ sessionId: 's1', event: 'Stop', notification: '', tool: '', cwd: '/home/ana/app', at: 100, ...fields })
 
@@ -47,4 +47,32 @@ test('the status files of every folder are read, the newest wins, a missing fold
   assert.equal(statuses.s1.status, 'tool')
   assert.equal(statuses.s2.status, 'error')
   fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('a conversation in a terminal gets its transcript and its title (the last one Claude Code gave it)', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-home-'))
+  const status = path.join(home, '.claude', 'cockpit', 'status')
+  const project = path.join(home, '.claude', 'projects', '-home-ana-app')
+  fs.mkdirSync(status, { recursive: true })
+  fs.mkdirSync(project, { recursive: true })
+  fs.writeFileSync(path.join(status, 's1.json'), fileOf({ event: 'UserPromptSubmit' }))
+  const transcript = path.join(project, 's1.jsonl')
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ type: 'user', message: { content: 'Bonjour' } }),
+    JSON.stringify({ type: 'ai-title', aiTitle: 'Premier titre' }),
+    JSON.stringify({ type: 'ai-title', aiTitle: 'Migration de la base' }),
+  ].join('\n'))
+  const entries = await readHookStatuses([status])
+  assert.equal(entries.s1.transcript, transcript)
+  assert.equal(entries.s1.prompt, 'Migration de la base')
+  assert.equal(entries.s1.distro, undefined)
+})
+
+test('a renamed conversation keeps its own name; the WSL distro comes from the share path', () => {
+  const text = [JSON.stringify({ type: 'ai-title', aiTitle: 'Titre auto' }), JSON.stringify({ type: 'custom-title', customTitle: 'Mon nom' })].join('\n')
+  assert.equal(lastTitleOf(text), 'Mon nom')
+  assert.equal(lastTitleOf('not json\n{"type":"user"}'), '')
+  assert.equal(distroOfDir('\\\\wsl.localhost\\Ubuntu-24.04\\home\\ana\\.claude\\cockpit\\status'), 'Ubuntu-24.04')
+  assert.equal(distroOfDir('\\\\wsl$\\Debian\\home\\ana\\.claude\\cockpit\\status'), 'Debian')
+  assert.equal(distroOfDir('C:\\Users\\ana\\.claude\\cockpit\\status'), null)
 })

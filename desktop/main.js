@@ -73,7 +73,50 @@ let win = null
 // resized during a morph: the page draws the same shape on the same clock (island-geometry), so its content is shown
 // all along the morph instead of after it.
 let glassWin = null
-let isIslandOffline = false
+// The content window is split from the glass (fixed, click-through outside the island) only once the page says it
+// draws the shape itself (island-split). Until then (a page loading, the offline page, a page of another version
+// served by an older mod), it follows the glass and takes every click, as one window did: the island never ends up
+// unclickable behind a page that cannot capture the pointer.
+let isContentSplit = false
+const followGlass = bounds => {
+  if (win === null || win.isDestroyed()) return
+  isContentSplit = false
+  isCapturing = null
+  win.setIgnoreMouseEvents(false)
+  const glass = bounds || (glassWin !== null && !glassWin.isDestroyed() ? glassWin.getBounds() : null)
+  if (glass !== null) win.setBounds(glass)
+}
+// Split, the content window takes the clicks only while the cursor is over the island shape (the glass window,
+// toasts included). The app reads the cursor itself: Electron's mouse forwarding (forward: true) did not reach the
+// page on Windows, so a page-driven capture could leave the island unclickable.
+const CAPTURE_POLL_MS = 40
+let isCapturing = null
+let captureTimer = null
+const setCapture = isInside => {
+  if (win === null || win.isDestroyed() || isInside === isCapturing) return
+  isCapturing = isInside
+  win.setIgnoreMouseEvents(!isInside)
+  if (!isInside) win.webContents.send('island-pointer-out')
+}
+const pollCapture = () => {
+  if (win === null || win.isDestroyed() || !isContentSplit || !win.isVisible() || glassWin === null || glassWin.isDestroyed()) return
+  const cursor = screen.getCursorScreenPoint()
+  const glass = glassWin.getBounds()
+  setCapture(cursor.x >= glass.x && cursor.x < glass.x + glass.width && cursor.y >= glass.y && cursor.y < glass.y + glass.height)
+}
+const splitFromGlass = () => {
+  if (win === null || win.isDestroyed()) return
+  isContentSplit = true
+  win.setBounds(contentBoundsOf(workArea()))
+  isCapturing = null
+  pollCapture()
+  if (captureTimer === null) captureTimer = setInterval(pollCapture, CAPTURE_POLL_MS)
+  if (glassWin === null || glassWin.isDestroyed()) return
+  const content = win.getBounds()
+  const glass = glassWin.getBounds()
+  const local = { x: glass.x - content.x, y: glass.y - content.y, width: glass.width, height: glass.height }
+  win.webContents.send('island-geometry', { from: local, to: local, ms: 0, zeta: 1, startedAt: Date.now() })
+}
 const { SCREEN_MARGIN } = require('./bounds')
 const contentBoundsOf = area => ({ x: area.x + SCREEN_MARGIN, y: area.y, width: area.width - 2 * SCREEN_MARGIN, height: area.height })
 let cockpitWin = null
@@ -200,7 +243,7 @@ const createIsland = () => createIslandController({
   // The glass shapes in the content window's coordinates. The offline page has no geometry: its window follows the glass.
   sendGeometry: ({ from, to, ms, zeta, startedAt }) => {
     if (win === null || win.isDestroyed()) return
-    if (isIslandOffline) { win.setBounds(to); return }
+    if (!isContentSplit) { win.setBounds(to); return }
     const content = win.getBounds()
     const local = rect => ({ x: rect.x - content.x, y: rect.y - content.y, width: rect.width, height: rect.height })
     win.webContents.send('island-geometry', { from: local(from), to: local(to), ms, zeta, startedAt })
@@ -391,9 +434,9 @@ const createWindow = () => {
     webPreferences: { ...SECURE_WEB_PREFERENCES, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: path.join(__dirname, 'preload.js') },
   })
   win.setAlwaysOnTop(true, 'floating')
-  // Click-through outside the island; the page captures the pointer while it is over the island (island-capture).
-  win.setIgnoreMouseEvents(true, { forward: true })
-  const placeContent = () => { if (win !== null && !win.isDestroyed() && !isIslandOffline) win.setBounds(contentBoundsOf(workArea())) }
+  // Click-through outside the island once split: the app follows the cursor (pollCapture).
+  followGlass()
+  const placeContent = () => { if (win !== null && !win.isDestroyed() && isContentSplit) win.setBounds(contentBoundsOf(workArea())) }
   screen.on('display-metrics-changed', placeContent)
   screen.on('display-added', placeContent)
   screen.on('display-removed', placeContent)
@@ -404,29 +447,24 @@ const createWindow = () => {
   win.webContents.on('did-fail-load', (event, code, description, url, isMainFrame) => {
     releaseHold()
     if (!isMainFrame || code === ERR_ABORTED) return
-    isIslandOffline = true
-    win.setIgnoreMouseEvents(false)
+    followGlass()
     island.setOffline(true, OFFLINE_WIDTH, OFFLINE_HEIGHT)
     win.loadURL(OFFLINE_PAGE).catch(() => {})
     setTimeout(loadCockpit, RETRY_MS)
   })
   // Une page rechargée a perdu ses toasts sans le dire : le maintien repart à zéro, la page le reposera s'il en reste un.
   const releaseHold = () => island?.setHeld(false)
-  win.webContents.on('did-start-loading', releaseHold)
+  win.webContents.on('did-start-loading', () => { releaseHold(); followGlass() })
   win.webContents.on('render-process-gone', releaseHold)
   win.webContents.on('did-finish-load', () => {
     if (!win.webContents.getURL().startsWith(cockpitBase())) return
-    if (isIslandOffline) {
-      isIslandOffline = false
-      win.setBounds(contentBoundsOf(workArea()))
-      win.setIgnoreMouseEvents(true, { forward: true })
-    }
     win.webContents.send('island-theme', islandTheme)
     island.setOffline(false)
     win.webContents.send('island-state', island.phase())
   })
   win.webContents.session.on('will-download', event => event.preventDefault())
   win.on('closed', () => {
+    if (captureTimer !== null) { clearInterval(captureTimer); captureTimer = null }
     island.dispose(); island = null; win = null
     if (glassWin !== null && !glassWin.isDestroyed()) glassWin.destroy()
     glassWin = null
@@ -521,7 +559,8 @@ onTrusted('expanded', (event, expanded, width, height, byHover, isPassive, isIns
 
 onTrusted('island-pointer', (event, isInside) => island?.pointer(isInside === true))
 
-onTrusted('island-capture', (event, isInside) => { if (win !== null && !win.isDestroyed() && !isIslandOffline) win.setIgnoreMouseEvents(isInside !== true, { forward: true }) })
+// The page draws the glass shape itself: the content window can leave the glass (see isContentSplit).
+onTrusted('island-split', () => splitFromGlass())
 
 onTrusted('island-event', () => island?.event())
 
