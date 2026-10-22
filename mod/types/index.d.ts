@@ -38,6 +38,10 @@ export type SessionEntry = {
   tool?: string
   steps?: ActivityStep[]
   updatedAt: number
+  // From the cockpit hook (cockpit-server, hook-status.mjs): the transcript file as Windows reads it
+  // (\\wsl.localhost\... for a WSL session) and the WSL distro of the session.
+  transcript?: string
+  distro?: string
 }
 
 export type PullRequest = { number: number; repo: string | null; url: string; state: string }

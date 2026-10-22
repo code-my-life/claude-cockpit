@@ -7,10 +7,10 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   setExpanded: (expanded, width, height, byHover, isPassive, isInstant) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true, isInstant === true),
   setToasts: (width, height) => ipcRenderer.send('island-toasts', width, height),
   islandPointer: isInside => ipcRenderer.send('island-pointer', isInside),
-  // The content window lets clicks through outside the island; the page captures them while over it.
-  setIslandCapture: isInside => ipcRenderer.send('island-capture', isInside === true),
   // The glass window's morph, in the content window's coordinates: { from, to, ms, zeta, startedAt }.
   onIslandGeometry: callback => ipcRenderer.on('island-geometry', (event, geometry) => callback(geometry)),
+  // Said once the page can draw the shape (island-geometry): the app then splits the content window from the glass.
+  islandSplit: () => ipcRenderer.send('island-split'),
   islandEvent: () => ipcRenderer.send('island-event'),
   islandPinned: isPinned => ipcRenderer.send('island-pinned', isPinned),
   islandActivity: () => ipcRenderer.send('island-activity'),
@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   islandMotion: isReduced => ipcRenderer.send('island-motion', isReduced),
   onIslandState: callback => ipcRenderer.on('island-state', (event, phase, cause) => callback(phase, cause)),
   onIslandFocus: callback => ipcRenderer.on('island-focus', () => callback()),
+  // The cursor left the island shape: once the window lets clicks through, the page gets no mouseleave.
+  onIslandPointerOut: callback => ipcRenderer.on('island-pointer-out', () => callback()),
   onIslandCommand: callback => ipcRenderer.on('island-command', (event, action) => callback(String(action))),
   onPermissionsChanged: callback => ipcRenderer.on('permissions-changed', (event, count) => callback(Number(count) || 0)),
   onIslandTheme: callback => ipcRenderer.on('island-theme', (event, theme) => callback(theme)),

@@ -15,6 +15,13 @@ const windowsCandidates = cwd => {
   return [direct, { command: 'cmd.exe', args: ['/d', '/c', 'start', '""', 'wt.exe', '-d', cwd] }]
 }
 
+// A terminal in a folder of a WSL distro (cwd: a Linux path), from Windows: Windows Terminal, else the
+// distro's own console.
+export const wslTerminalCandidatesOf = (distro, cwd) => [
+  { command: 'wt.exe', args: ['wsl.exe', '-d', distro, '--cd', cwd] },
+  { command: 'wsl.exe', args: ['-d', distro, '--cd', cwd] },
+]
+
 // Commands to try in order to open a terminal in a folder, one list per system.
 export const terminalCandidatesOf = (platform, cwd) => {
   if (platform === 'win32') return windowsCandidates(cwd)
