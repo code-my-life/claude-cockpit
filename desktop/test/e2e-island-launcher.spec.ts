@@ -31,10 +31,11 @@ const deck = (island: Page) => island.locator('#pile sg-flip[data-engine]')
 // The launcher has no global shortcut in test mode: the probe shows it, as Alt+Space would.
 const showLauncher = async (): Promise<Page> => {
   const launcher = await windowWhere(cockpit.app, url => url.includes('launcher=1'))
-  // The launcher renders its suggestions when shown, from the data it has: wait for its first load.
-  await expect.poll(() => launcher.evaluate(() => (window as unknown as { __CONVERSATIONS__?: { rows: unknown[] } }).__CONVERSATIONS__?.rows.length ?? 0), { timeout: DATA_REFRESH_MS }).toBeGreaterThan(0)
   await probe(cockpit.app, 'showLauncher')
   await expect.poll(() => probe(cockpit.app, 'isLauncherVisible')).toBe(true)
+  // Shown before its data, the launcher redraws its suggestions once they arrive: wait for that load.
+  await expect.poll(() => launcher.evaluate(() => (window as unknown as { __CONVERSATIONS__?: { rows: unknown[] } }).__CONVERSATIONS__?.rows.length ?? 0), { timeout: 2 * DATA_REFRESH_MS }).toBeGreaterThan(0)
+  await expect(launcher.locator('#search-results .search-row').first()).toBeVisible({ timeout: DATA_REFRESH_MS })
   await expect(launcher.locator('#search-results .search-status')).toBeVisible({ timeout: DATA_REFRESH_MS })
   return launcher
 }

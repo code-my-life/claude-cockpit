@@ -6,11 +6,21 @@
   // trajet de la grande entité d'une place à l'autre. La page ne retient de la géométrie que la cible, pour la donner à l'app.
   const W_COMPACT = 320;
   const W_OPEN = 760;
-  const FADE_IN_MS = 150;
-  const FADE_OUT_MS = 100;
-  const CONTENT_DELAY_MS = 110;
+  // Content inside the shape (plan 001): incoming 200 ms, outgoing 150 ms, both from the start of the morph, strong
+  // ease-out, from or to scale(0.96) at the top centre. The shape itself is drawn by geometry(), on the glass clock.
+  const FADE_IN_MS = 200;
+  const FADE_OUT_MS = 150;
+  const CONTENT_DELAY_MS = 0;
+  const GROW_FROM = 0.96;
+  // Two frames of the real display (measured), 40 ms before the first measure.
+  const SHRINK_LEAD_FRAMES = 2;
+  const SHRINK_LEAD_MS = 40;
+  // Reduced motion: no movement, no scale, but the content still fades (gentler, not zero).
+  const REDUCED_FADE_MS = 150;
   const CONTENT_DELAY_CLOSE_MS = 70;
   const SETTLE_DELAY_MS = 80;
+  // The source of truth for the springs is desktop/bounds.js (OPEN_SPRING, CLOSE_SPRING): the shape follows the values
+  // sent with island-geometry. These copies only drive the page's own tweens (and the page without the desktop app).
   const SPRING_OPEN = { zeta: 0.72, ms: 300 };
   const SPRING_CLOSE = { zeta: 0.9, ms: 260 };
   const SLOT_PX = { compact: 32, home: 96, wait: 64, order: 64, new: 64, park: 64 };
@@ -23,7 +33,19 @@
 
   const createMotion = ctx => {
     const { win, doc, desktop, model, reduceQuery, $, islandEl, heroEl, stageEl } = ctx;
-    const springs = { open: model.springEase(SPRING_OPEN, SPRING_OPEN.ms), close: model.springEase(SPRING_CLOSE, SPRING_CLOSE.ms), fade: p => 1 - (1 - p) * (1 - p) };
+    // Strong ease-out, cubic-bezier(0.23, 1, 0.32, 1), for the incoming content.
+  const easeOut = p => {
+    // x(t) = 3·0.23·t(1−t)² + 3·0.32·t²(1−t) + t³, solved for t by Newton; y(t) with both control points at 1.
+    let t = p;
+    for (let i = 0; i < 8; i++) {
+      const x = 0.69 * t * (1 - t) ** 2 + 0.96 * t * t * (1 - t) + t ** 3 - p;
+      const dx = 0.69 * ((1 - t) ** 2 - 2 * t * (1 - t)) + 0.96 * (2 * t * (1 - t) - t * t) + 3 * t * t;
+      if (Math.abs(dx) < 1e-6) break;
+      t = Math.min(1, Math.max(0, t - x / dx));
+    }
+    return 3 * t * (1 - t) ** 2 + 3 * t * t * (1 - t) + t ** 3;
+  };
+  const springs = { open: model.springEase(SPRING_OPEN, SPRING_OPEN.ms), close: model.springEase(SPRING_CLOSE, SPRING_CLOSE.ms), fade: easeOut };
     let cur = null;
     let tweens = {};
     let raf = 0;
@@ -69,10 +91,13 @@
       heroEl.style.transform = `translate(${cur.hx}px, ${cur.hy}px) scale(${cur.hs})`;
       heroEl.style.opacity = cur.ho;
       $('#hdr').style.opacity = cur.oh;
+      const grow = value => (reduceQuery.matches ? 'none' : `scale(${GROW_FROM + (1 - GROW_FROM) * value})`);
+      $('#hdr').style.transform = grow(cur.oh);
       $('#hdr').style.visibility = cur.oh < 0.01 ? 'hidden' : 'visible';
       for (const name of ctx.LAYERS) {
         const el = ctx.layerEl(name);
         el.style.opacity = cur[`o:${name}`];
+        el.style.transform = grow(cur[`o:${name}`]);
         el.style.visibility = cur[`o:${name}`] < 0.01 ? 'hidden' : 'visible';
       }
       // Les toasts se posent sous l'île, où qu'elle en soit de sa morphose.
@@ -81,6 +106,7 @@
     };
 
     const tweenOf = (key, to, isShrinking, t0, k) => {
+      if (isFadeKey(key) && k === 0) return { from: cur[key], to, t0, delay: 0, dur: REDUCED_FADE_MS, ease: springs.fade };
       if (isFadeKey(key)) {
         const appearing = to > cur[key];
         const delay = appearing ? (isShrinking ? CONTENT_DELAY_CLOSE_MS : CONTENT_DELAY_MS) : 0;
@@ -130,10 +156,54 @@
     };
 
     const snap = target => { cur = { ...target }; tweens = {}; apply(); settle(); };
+
+    // The glass window morphs; the content window never resizes. The page draws the same shape on the same clock:
+    // the island box takes the larger of both shapes (its content is laid out once, at its final size), and a
+    // clip-path inset follows the glass spring, driven by Date.now() like the app's morph.
+    let shapeRaf = 0;
+    // The display's frame time, measured once from 20 animation frames (60 Hz: 16.7 ms, 144 Hz: 6.9 ms).
+    let frameMs = 0;
+    (() => {
+      const stamps = [];
+      const sample = time => { stamps.push(time); if (stamps.length < 21) win.requestAnimationFrame(sample); else { const gaps = stamps.slice(1).map((t, i) => t - stamps[i]).sort((a, b) => a - b); frameMs = gaps[Math.floor(gaps.length / 2)]; } };
+      if (typeof win.requestAnimationFrame === 'function') win.requestAnimationFrame(sample);
+    })();
+    const px = value => `${Math.round(value)}px`;
+    const setBox = rect => {
+      islandEl.style.left = px(rect.x); islandEl.style.top = px(rect.y);
+      islandEl.style.width = px(rect.width); islandEl.style.height = px(rect.height);
+    };
+    const clipOf = (rect, box) => `inset(${px(rect.y - box.y)} ${px(box.x + box.width - rect.x - rect.width)} ${px(box.y + box.height - rect.y - rect.height)} ${px(rect.x - box.x)})`;
+    const geometry = ({ from, to, ms, zeta, startedAt }) => {
+      if (shapeRaf) { win.cancelAnimationFrame(shapeRaf); shapeRaf = 0; }
+      const rootStyle = doc.documentElement.style;
+      rootStyle.setProperty('--island-x', px(to.x)); rootStyle.setProperty('--island-y', px(to.y)); rootStyle.setProperty('--island-w', px(to.width));
+      const settleShape = () => { setBox(to); islandEl.style.clipPath = ''; };
+      if (!(ms > 0) || speed() === 0) { settleShape(); return; }
+      const x = Math.min(from.x, to.x), y = Math.min(from.y, to.y);
+      const box = { x, y, width: Math.max(from.x + from.width, to.x + to.width) - x, height: Math.max(from.y + from.height, to.y + to.height) - y };
+      setBox(box);
+      const ease = model.springEase({ zeta, ms }, ms);
+      // The page paints about two frames after Windows moves the glass. Growing, that lag keeps the content inside the
+      // glass; shrinking, it would leave content outside it, so the page runs ahead by those two frames.
+      const isShrinking = to.width * to.height < from.width * from.height;
+      const lead = isShrinking ? (frameMs > 0 ? SHRINK_LEAD_FRAMES * frameMs : SHRINK_LEAD_MS) : 0;
+      const step = () => {
+        const p = clamp01((Date.now() - startedAt + lead) / ms);
+        if (p >= 1) { shapeRaf = 0; settleShape(); return; }
+        const k = ease(p);
+        const lerp = (a, b) => a + (b - a) * k;
+        const width = lerp(from.width, to.width), height = lerp(from.height, to.height);
+        const centerX = to.x + to.width / 2;
+        islandEl.style.clipPath = clipOf({ x: centerX - width / 2, y: lerp(from.y, to.y), width, height }, box);
+        shapeRaf = win.requestAnimationFrame(step);
+      };
+      step();
+    };
     const start = target => { cur = { ...target }; apply(); };
 
     return {
-      targetFor, extentOf, heightOf, retarget, snap, start, speed, apply,
+      targetFor, extentOf, heightOf, retarget, snap, start, speed, apply, geometry,
       isStarted: () => cur !== null, heightNow: () => (cur ? cur.h : null), opacityOf: name => (cur ? cur[`o:${name}`] || 0 : 0),
       redraw: () => { if (cur) apply(); },
       rescaleHero: factor => {

@@ -5,6 +5,7 @@
   // annonce les arrivées, épingle l'île quand quelqu'un attend et coupe les animations quand elle est cachée.
   const model = typeof module !== 'undefined' && module.exports ? require('./island-model.js') : root.CockpitIslandModel;
   const SHAPE_SELECTOR = '.island';
+  const CAPTURE_SELECTOR = '.island, .ep-toasts';
   const ACTIVITY_THROTTLE_MS = 1000;
   const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
   const PIN_NONE = 'none';
@@ -92,6 +93,8 @@
     const html = doc.documentElement;
     const motion = typeof win.matchMedia === 'function' ? win.matchMedia(REDUCED_MOTION_QUERY) : { matches: false };
     const reportPointer = createPointerReporter(isInside => { desktop.islandPointer(isInside); onPointer(isInside); });
+    // The content window is click-through outside the island and its toasts: capture the pointer while over them.
+    const reportCapture = createPointerReporter(isInside => { if (typeof desktop.setIslandCapture === 'function') desktop.setIslandCapture(isInside); });
     const reportActivity = createThrottle(() => desktop.islandActivity(), ACTIVITY_THROTTLE_MS);
     let previousStatuses = null;
     let lastPin = null;
@@ -120,8 +123,11 @@
     desktop.onIslandFocus(() => doc.getElementById('compactBtn')?.focus());
     desktop.islandMotion(motion.matches);
     if (typeof motion.addEventListener === 'function') motion.addEventListener('change', () => desktop.islandMotion(motion.matches));
-    doc.addEventListener('mousemove', event => reportPointer(isInsideShape(event.target)));
-    html.addEventListener('mouseleave', () => reportPointer(false));
+    doc.addEventListener('mousemove', event => {
+      reportPointer(isInsideShape(event.target));
+      reportCapture(Boolean(event.target && typeof event.target.closest === 'function' && event.target.closest(CAPTURE_SELECTOR)));
+    });
+    html.addEventListener('mouseleave', () => { reportPointer(false); reportCapture(false); });
     // Phase de capture : les menus de la page se ferment d'abord (ils arrêtent la propagation), puis Échap replie l'île.
     doc.addEventListener('keydown', event => {
       reportActivity();

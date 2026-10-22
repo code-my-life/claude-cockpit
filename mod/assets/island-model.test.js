@@ -20,7 +20,7 @@ test('working, blocked and failed rows have their own kinds, resting rows are no
   for (const status of ['later', 'seen', 'opened', 'idle', 'closed', 'archived', 'aborted']) assert.equal(model.kindOf(row('a', status)), null);
 });
 
-test('rows are ordered by urgency, the longest wait first, the freshest work first', () => {
+test('rows are ordered by urgency, the permission first, then the longest wait, the freshest work first', () => {
   const rows = [
     row('work-old', 'thinking', { updatedAt: 100 }),
     row('work-new', 'tool', { updatedAt: 900 }),
@@ -30,22 +30,29 @@ test('rows are ordered by urgency, the longest wait first, the freshest work fir
     row('stuck', 'blocked', { updatedAt: 300 }),
     row('rest', 'closed', { updatedAt: 999 }),
   ];
-  assert.deepEqual(model.byUrgency(rows).map(r => r.engineId), ['wait-early', 'wait-late', 'stuck', 'done', 'work-new', 'work-old']);
+  assert.deepEqual(model.byUrgency(rows).map(r => r.engineId), ['wait-late', 'wait-early', 'stuck', 'done', 'work-new', 'work-old']);
+  const questions = [row('q-late', 'done', { updatedAt: 800, summary: { kind: 'question' } }), row('q-early', 'done', { updatedAt: 200, summary: { kind: 'question' } })];
+  assert.deepEqual(model.byUrgency(questions).map(r => r.engineId), ['q-early', 'q-late']);
 });
 
 test('the signal of a row is an icon and a word', () => {
   assert.deepEqual(model.signalOf(row('a', 'thinking')), { kind: 'work', word: 'Travaille', icon: 'play', tone: '' });
-  assert.deepEqual(model.signalOf(row('a', 'permission')), { kind: 'wait', word: 'T\'attend', icon: 'alert', tone: 'warning' });
-  assert.deepEqual(model.signalOf(row('a', 'done')), { kind: 'done', word: 'Terminé', icon: 'check', tone: 'success' });
+  assert.deepEqual(model.signalOf(row('a', 'permission')), { kind: 'wait', word: 'Permission', icon: 'alert', tone: 'warning' });
+  assert.deepEqual(model.signalOf(row('a', 'done', { summary: { kind: 'question' } })), { kind: 'wait', word: 'Question', icon: 'info', tone: 'warning' });
+  assert.deepEqual(model.signalOf(row('a', 'external')), { kind: 'wait', word: 'Attend autre chose', icon: 'later', tone: 'warning' });
+  assert.deepEqual(model.signalOf(row('a', 'done', { summary: { kind: 'delivered' } })), { kind: 'done', word: 'Mission livrée', icon: 'check', tone: 'success' });
+  assert.deepEqual(model.signalOf(row('a', 'done')), { kind: 'done', word: 'A fini', icon: 'check', tone: 'success' });
   assert.deepEqual(model.signalOf(row('a', 'blocked')), { kind: 'stuck', word: 'Bloquée', icon: 'block', tone: 'danger' });
   assert.deepEqual(model.signalOf(row('a', 'error')), { kind: 'stuck', word: 'En erreur', icon: 'x', tone: 'danger' });
 });
 
-test('the compact word counts the conversations that wait', () => {
+test('the compact word counts the conversations that wait, as the cockpit does', () => {
   const one = [row('a', 'permission'), row('b', 'tool')];
   const two = [row('a', 'permission'), row('c', 'external'), row('b', 'tool')];
-  assert.equal(model.compactWordOf(one), 'T\'attend');
+  const withDelivered = [...two, row('d', 'done', { summary: { kind: 'delivered' } })];
+  assert.equal(model.compactWordOf(one), 'Permission');
   assert.equal(model.compactWordOf(two), '2 t\'attendent');
+  assert.equal(model.compactWordOf(withDelivered), '3 t\'attendent');
   assert.equal(model.compactWordOf([row('b', 'tool')]), 'Travaille');
   assert.equal(model.compactWordOf([]), 'Personne au travail');
 });

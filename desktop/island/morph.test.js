@@ -109,3 +109,17 @@ test('reset oublie la geometrie : le prochain jump est applique meme a l identiq
   morph.jump(SMALL)
   assert.equal(frames.length, 2)
 })
+
+test('a morph tells its start once, with both shapes, the spring and the start time; a jump tells it with ms 0', () => {
+  let time = 100
+  const starts = []
+  const queue = []
+  const morph = createMorph({ now: () => time, schedule: run => { queue.push(run) }, cancel: () => { queue.length = 0 }, apply: () => {}, onStart: start => starts.push(start) })
+  morph.jump(SMALL)
+  assert.deepEqual(starts, [{ from: SMALL, to: SMALL, ms: 0, zeta: 1, startedAt: 100 }])
+  time = 200
+  morph.to(BIG, { ms: 300, zeta: 0.72 })
+  assert.deepEqual(starts[1], { from: SMALL, to: BIG, ms: 300, zeta: 0.72, startedAt: 200 })
+  for (let i = 0; i < 60 && queue.length > 0; i++) { time += 8; queue.shift()() }
+  assert.equal(starts.length, 2)
+})

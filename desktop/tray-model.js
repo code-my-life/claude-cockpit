@@ -45,6 +45,7 @@ const trayMenuOf = ({ isIslandVisible, isAutostart, areSoundsOn = true, canOpenI
   { id: 'open-cockpit', label: 'Ouvrir le cockpit' },
   ...(canOpenInBrowser ? [{ id: 'open-browser', label: 'Ouvrir dans le navigateur' }] : []),
   ...(canInstallMod ? [{ id: 'install-mod', label: 'Installer le mod dans Claude' }] : []),
+  { id: 'search', label: 'Rechercher dans les conversations' },
   { id: 'show-island', label: "Afficher l'île" },
   { id: 'toggle-island', label: isIslandVisible ? "Masquer l'île" : "Remontrer l'île" },
   { id: 'autostart', label: 'Lancer au démarrage', type: 'checkbox', checked: isAutostart },

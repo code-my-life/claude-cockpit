@@ -4,9 +4,13 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   // Échelle de la morphose (1 sauf mise au point, posée par le lanceur) : la page cale ses fondus dessus.
   motionScale: Number(process.env.COCKPIT_ISLAND_SLOW) || 1,
   setCompactSize: (width, height) => ipcRenderer.send('compact-size', width, height),
-  setExpanded: (expanded, width, height, byHover, isPassive) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true),
+  setExpanded: (expanded, width, height, byHover, isPassive, isInstant) => ipcRenderer.send('expanded', expanded, width, height, byHover === true, isPassive === true, isInstant === true),
   setToasts: (width, height) => ipcRenderer.send('island-toasts', width, height),
   islandPointer: isInside => ipcRenderer.send('island-pointer', isInside),
+  // The content window lets clicks through outside the island; the page captures them while over it.
+  setIslandCapture: isInside => ipcRenderer.send('island-capture', isInside === true),
+  // The glass window's morph, in the content window's coordinates: { from, to, ms, zeta, startedAt }.
+  onIslandGeometry: callback => ipcRenderer.on('island-geometry', (event, geometry) => callback(geometry)),
   islandEvent: () => ipcRenderer.send('island-event'),
   islandPinned: isPinned => ipcRenderer.send('island-pinned', isPinned),
   islandActivity: () => ipcRenderer.send('island-activity'),
@@ -18,7 +22,7 @@ contextBridge.exposeInMainWorld('cockpitDesktop', {
   onIslandCommand: callback => ipcRenderer.on('island-command', (event, action) => callback(String(action))),
   onPermissionsChanged: callback => ipcRenderer.on('permissions-changed', (event, count) => callback(Number(count) || 0)),
   onIslandTheme: callback => ipcRenderer.on('island-theme', (event, theme) => callback(theme)),
-  openCockpit: section => ipcRenderer.send('open-cockpit', section),
+  openCockpit: (section, query) => ipcRenderer.send('open-cockpit', section, query),
   openLink: url => ipcRenderer.send('open-link', url),
   quit: () => ipcRenderer.send('quit'),
   setLauncherHeight: height => ipcRenderer.send('launcher-height', height),

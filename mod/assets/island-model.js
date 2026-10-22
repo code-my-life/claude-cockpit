@@ -3,6 +3,7 @@
 
   // Modèle de l'île : ce que la page sait des conversations, réduit à ce que l'île montre.
   // Module pur : ni DOM, ni horloge, ni Electron. Les minuteries sont injectées.
+  const words = typeof module !== 'undefined' && module.exports ? require('./status-words.js') : root.CockpitStatusWords;
   const ACTIVE_STATUSES = ['thinking', 'writing', 'tool', 'working'];
   const WAIT_STATUSES = ['permission', 'external'];
   const STUCK_STATUSES = ['blocked', 'error'];
@@ -29,16 +30,20 @@
     const kindFirst = kindOf(first);
     const kindSecond = kindOf(second);
     if (kindFirst !== kindSecond) return RANK[kindFirst] - RANK[kindSecond];
-    // Une attente se traite dans l'ordre d'arrivée ; le reste, le plus récent d'abord.
-    return kindFirst === KIND_WAIT ? first.updatedAt - second.updatedAt : second.updatedAt - first.updatedAt;
+    // Une attente se traite dans l'ordre d'arrivée, la permission d'abord ; le reste, le plus récent d'abord.
+    if (kindFirst === KIND_WAIT) return words.waitRankOf(first) - words.waitRankOf(second) || first.updatedAt - second.updatedAt;
+    return second.updatedAt - first.updatedAt;
   };
 
   const byUrgency = rows => [...shownOf(rows)].sort(compareUrgency);
 
   const signalOf = row => {
     const kind = kindOf(row);
-    if (kind === KIND_WAIT) return { kind, word: 'T\'attend', icon: 'alert', tone: 'warning' };
-    if (kind === KIND_DONE) return { kind, word: 'Terminé', icon: 'check', tone: 'success' };
+    // Le mot précis du cockpit (Permission, Question, Mission livrée…), pas un mot propre à l'île.
+    if (kind === KIND_WAIT || kind === KIND_DONE) {
+      const wait = words.WAIT_KINDS[words.waitKindOf(row)];
+      return kind === KIND_WAIT ? { kind, word: wait.label, icon: wait.icon, tone: 'warning' } : { kind, word: wait.label, icon: 'check', tone: 'success' };
+    }
     if (kind === KIND_STUCK) return row.status === 'blocked' ? { kind, word: 'Bloquée', icon: 'block', tone: 'danger' } : { kind, word: 'En erreur', icon: 'x', tone: 'danger' };
     return { kind: KIND_WORK, word: 'Travaille', icon: 'play', tone: '' };
   };
@@ -49,8 +54,9 @@
   const compactWordOf = rows => {
     const urgent = byUrgency(rows)[0];
     if (!urgent) return 'Personne au travail';
-    const count = waitingOf(rows).length;
-    return count > 1 ? `${count} t'attendent` : signalOf(urgent).word;
+    // Le même compte que le cockpit et le lanceur : la mission livrée attend aussi tes ordres.
+    const count = words.waitingCountOf(rows);
+    return count > 1 ? words.waitingPhraseOf(count, false) : signalOf(urgent).word;
   };
 
   const STATE_OF_STATUS = { permission: 'permission', error: 'error', blocked: 'error', later: 'sleep' };
@@ -157,7 +163,7 @@
   };
 
   const api = {
-    ACTIVE_STATUSES, KIND_WAIT, KIND_DONE, KIND_WORK, KIND_STUCK, kindOf, shownOf, byUrgency, signalOf, waitingOf, waitingIdsOf, compactWordOf,
+    ACTIVE_STATUSES, isWaiting: words.isWaiting, KIND_WAIT, KIND_DONE, KIND_WORK, KIND_STUCK, kindOf, shownOf, byUrgency, signalOf, waitingOf, waitingIdsOf, compactWordOf,
     entityStateOf, focusOf, othersOf, newWaitOf, canReply, permissionOf, canDecide, isDecisionArmed, waitOrderOf, holdNoteOf, PERMISSION_ARM_MS, createFeed, springEase, createHoverIntent,
   };
 

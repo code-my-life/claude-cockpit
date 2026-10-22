@@ -90,6 +90,8 @@
   };
 
   // Les attributs du dos pour une conversation ; `info` vient de la page : mot d'état, âge, dossier, attente.
+  // Reduced motion: the card shaders stand still (live="false" keeps the image).
+  const liveOf = () => (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'false' : 'true');
   const backAttrsOf = (row, info) => ({
     system: systemOf(row), fit: 'fill', seed: row.engineId, finish: finishOf(row), rarity: rarityOf(row), state: stateOf(row, info.isWaiting),
     'top-left': info.word, 'top-right': info.age, heading: headingOf(row.title), subtitle: info.folder || '',
@@ -101,6 +103,11 @@
     const el = root.document.createElement('sg-flip');
     el.className = 'conv-card';
     el.dataset.engine = row.engineId;
+    // Focusable for the keyboard (Enter or Space turns it over, conversations.html). A group, not a button: its face
+    // holds buttons of its own (audit 2026-10-20, P1 n° 5).
+    el.tabIndex = 0;
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-roledescription', 'carte');
     const back = root.document.createElement('sg-card');
     setAttrs(back, attrs);
     const front = root.document.createElement('div');
@@ -110,7 +117,11 @@
     return el;
   };
 
-  const syncCard = (el, row, info) => { setAttrs(el.querySelector('sg-card'), backAttrsOf(row, info)); return el; };
+  const syncCard = (el, row, info) => {
+    setAttrs(el.querySelector('sg-card'), backAttrsOf(row, info));
+    setAttrs(el, { 'aria-label': `${row.title}, ${info.word}. Entrée pour retourner la carte` });
+    return el;
+  };
 
   const cardIn = (container, row, info) => {
     const known = container.querySelector(`:scope > sg-flip[data-engine="${CSS.escape(row.engineId)}"]`);
@@ -127,6 +138,7 @@
       let el = existing.get(row.engineId);
       if (el) existing.delete(row.engineId); else el = createCard(row, backAttrsOf(row, info));
       syncCard(el, row, info);
+      setAttrs(el.querySelector('sg-card'), { live: liveOf() });
       const body = el.querySelector('[data-body]');
       const html = frontHtmlOf(row);
       if (body.dataset.html !== html) { body.innerHTML = html; body.dataset.html = html; }
@@ -158,6 +170,7 @@
       el.setAttribute('aria-label', `${row.title}, ${info.word}`);
       el.title = row.title;
       const mini = miniIn(el, row, info);
+      setAttrs(mini, { live: liveOf() });
       if (mini.parentElement !== el) el.prepend(mini);
       const label = labelOf(row);
       if (el.lastElementChild.textContent !== label) el.lastElementChild.textContent = label;

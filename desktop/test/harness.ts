@@ -56,6 +56,14 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   fs.mkdirSync(dataFolder, { recursive: true })
   writeDesktopSession(home, desktopDataSessionsDirOf(env), dataFolder, DESKTOP_DATA_SEARCH)
   const removeRoot = () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  // Once the app is closed, its processes (two island windows) can hold the folder for a moment. rmSync's own retries
+  // block this process, which then cannot let go of its own handles: retry asynchronously instead, up to 10 s.
+  const removeRootSoon = async () => {
+    for (let attempt = 0; ; attempt++) {
+      try { removeRoot(); return } catch (error) { if (attempt >= 20) throw error }
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+  }
   const app = await electron.launch({
     args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
     cwd: DESKTOP_DIR,
@@ -90,7 +98,7 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     await testInfo.attach('electron-output', { body: output.join(''), contentType: 'text/plain' })
     const log = path.join(root, 'user-data', 'cockpit.log')
     if (fs.existsSync(log)) await testInfo.attach('cockpit.log', { body: fs.readFileSync(log), contentType: 'text/plain' })
-    removeRoot()
+    await removeRootSoon()
   }
   return { app, root, close, fixtures, link, dataDir: link.dataDir, writeData, startFakeMod, terminalLaunches }
 }

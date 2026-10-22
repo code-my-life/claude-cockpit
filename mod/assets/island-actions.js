@@ -93,7 +93,7 @@
       reply: () => ui().switchView('wait'),
       open: onFocused(row => actions.open(row)),
       'to-order': () => ui().switchView('order'),
-      diff: el => { const at = Number(el.dataset.at); S.diff = S.diff && S.diff.at === at ? null : { at }; S.details = false; ui().refresh(); },
+      diff: el => { const at = Number(el.dataset.at); S.diff = S.diff && S.diff.at === at ? null : { at }; ui().refresh(); },
       'diff-close': () => { S.diff = null; ui().refresh(); },
       details: () => { S.diff = null; S.details = !S.details; if (S.details) actions.ensureSummary(ctx.focus()); ui().refresh(); },
       exact: () => { S.exact = !S.exact; ui().refresh(); },
@@ -105,7 +105,7 @@
       'park-cancel': () => ui().switchView('home'),
       'park-chip': el => { actions.park((ctx.focus() || {}).engineId, S.parkKind, el.dataset.reason).then(ok => { if (ok) ui().switchView('home'); }); },
       perm: el => { decide(el); },
-      quick: el => { const row = ctx.waiting()[0] || ctx.focus(); if (row) resolveReply(row.engineId, el.dataset.text, []); },
+      quick: el => { const engineId = el.dataset.engine || (ctx.waiting()[0] || ctx.focus() || {}).engineId; if (engineId) resolveReply(engineId, el.dataset.text, []); },
       'rm-image': el => { S.images.splice(Number(el.dataset.index), 1); ctx.views.renderOrderThumbs(); ui().refresh(); },
       search: () => actions.openCockpit('search'),
       cockpit: () => actions.openCockpit(null),
@@ -149,6 +149,12 @@
       host.addEventListener('click', onClick);
       host.addEventListener('submit', event => event.preventDefault());
       $('#replyForm').addEventListener('submit', onSubmitReply);
+      // The search of the island opens its results in the cockpit window.
+      $('#islandSearch').addEventListener('submit', () => {
+        const input = $('#islandSearchInput');
+        actions.openCockpit('search', input.value.trim());
+        input.value = '';
+      });
       $('#orderForm').addEventListener('submit', onSubmitOrder);
       $('#parkForm').addEventListener('submit', onSubmitPark);
       $('#orderInput').addEventListener('paste', onPaste);

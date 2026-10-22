@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ton équipe</title>
+<script>
+  // The island page must never show the cockpit header, even for the time the page script takes to load.
+  if (new URLSearchParams(location.search).has('island')) document.documentElement.classList.add('island-mode');
+</script>
 <!--SEED-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,11 +49,11 @@
   .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
   .topbar-left { display: flex; flex-direction: column; gap: var(--space-2); }
   .topbar h1 { margin: 0; font-size: clamp(40px, 6vw, 56px); line-height: 1; }
-  .stats { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  .stats { font-family: var(--font-sans); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   .stats .count { display: inline-block; color: var(--ink); font-weight: 500; }
   .tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
   .clock { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; padding-left: var(--space-3); }
-  .fresh-note { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); margin-top: calc(var(--space-4) * -1); }
+  .fresh-note { font-family: var(--font-sans); font-size: 12px; color: var(--ink-2); margin-top: calc(var(--space-4) * -1); }
   .fresh-note.stale { color: var(--warning); }
 
   .banner { display: none; padding: var(--space-3) var(--space-4); font-size: 14px; }
@@ -59,7 +63,7 @@
 
   .ident { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--ident-size, 48px); height: var(--ident-size, 48px); border-radius: 50%; color: var(--ink); }
   .ident-canvas { display: block; width: 100%; height: 100%; }
-  .ident-fallback { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--ink-2); border: 1px solid var(--line); border-radius: 50%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .ident-fallback { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--ink-2); border: 1px solid var(--line); border-radius: 50%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
   .ident-badge { position: absolute; right: -4px; top: -4px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink); background: var(--glass-strong); border: 1px solid var(--glass-edge); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
   .ident-badge .ep-icon { width: 12px; height: 12px; }
   .ident-badge.waiting { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 60%, transparent); }
@@ -70,18 +74,36 @@
   .av:hover { transform: translateY(-3px); }
   .av.inert { cursor: default; }
   .av.inert:hover { transform: none; }
-  .av-level { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); white-space: nowrap; }
+  .av-level { font-family: var(--font-sans); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
 
   section { display: flex; flex-direction: column; }
   section h2 { margin: 0 0 var(--space-4); font-size: 30px; line-height: 1.1; display: flex; align-items: baseline; gap: var(--space-3); }
-  .count-tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; color: var(--ink-2); }
+  .count-tag { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   .lane { display: flex; flex-direction: column; gap: var(--space-3); }
   /* Cartes : une grille par section ; la face avant reprend le détail (question, réponses rapides, résumé, composeur). */
   .lane.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: var(--space-4); align-items: start; }
   .lane.cards.lane-plate { padding: var(--space-3); }
   .lane.cards .empty { grid-column: 1 / -1; }
-  .conv-card-body { display: flex; flex-direction: column; gap: var(--space-2); overflow: auto; overscroll-behavior: contain; font-size: 13px; }
-  .conv-card-body .card-kind { font-size: 10px; }
+  .conv-card-body { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; font-size: 13px; padding: var(--space-4); border-radius: var(--radius-glass-s); background: color-mix(in srgb, var(--paper) 86%, transparent); }
+  .lane.cards .sg-flip__body { inset: var(--space-3); }
+  .lane.cards [data-front] > .sg-flip__picto { display: none; }
+  .card-flip-icon { width: 18px; height: 18px; }
+  .conv-card-body .card-state { padding: 5px 6px; }
+  /* Without WebGPU the back is drawn as HTML, which the shader would have un-mirrored: once turned over,
+     its text would show backwards through the face. Only that fallback text is hidden, never the canvas. */
+  .lane.cards sg-flip[flipped] sg-card[data-fallback] .sg-card__fallback { visibility: hidden; transition: visibility 0s .2s; }
+  .conv-card-body .card-more { display: none; }
+  .conv-card-body .card-ask > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+  .conv-card-body .card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .lane.cards sg-flip.big .conv-card-body { overflow: auto; overscroll-behavior: contain; }
+  .lane.cards sg-flip.big .conv-card-body .card-more { display: flex; flex-direction: column; gap: var(--space-2); }
+  .lane.cards sg-flip.big .conv-card-body .card-ask > span { -webkit-line-clamp: unset; }
+  .conv-card-body .card-kind { font-size: 12px; }
+  /* As on the GitHub page: a hidden face is out of sight and out of the tab order; the paper of the face
+     keeps the engraving faintly visible without letting the mirrored text of the back show through. */
+  .lane.cards sg-flip:not([flipped]) [data-front] { visibility: hidden; transition: visibility 0s .35s; }
+  .lane.cards sg-flip[flipped] [data-front] { visibility: visible; }
+  .lane.cards sg-flip:focus-visible { outline: 2px solid var(--focus); outline-offset: var(--space-1); }
   .conv-card-body .conv-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .conv-card-body .card-ask { font-size: 14px; line-height: 1.4; }
   .conv-card-body .card-quick, .conv-card-body .card-body { padding: 0; gap: var(--space-2); }
@@ -105,8 +127,8 @@
   .card-main { all: unset; cursor: pointer; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
   .card-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); min-width: 0; }
   .card-title { font-family: var(--font-display); font-size: 22px; line-height: 1.15; color: var(--ink); max-width: 100%; }
-  .card-kind { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-  .card-stats { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-2); }
+  .card-kind { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans); font-size: 13px; font-weight: 500; }
+  .card-stats { font-family: var(--font-sans); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   .card-ask { display: flex; gap: var(--space-2); align-items: baseline; font-size: 17px; line-height: 1.45; color: var(--ink); }
   .card-ask .ep-icon { flex: none; transform: translateY(2px); color: var(--ink-2); }
   .card-ask.stale { color: var(--ink-2); }
@@ -135,7 +157,7 @@
   .feedback.error { color: var(--danger); }
 
   h3.md, h4.md, h5.md, h6.md { margin: 10px 0 4px; font-family: var(--font-sans); font-weight: 600; }
-  h3.md { font-size: 16px; } h4.md { font-size: 15px; } h5.md, h6.md { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  h3.md { font-size: 16px; } h4.md { font-size: 15px; } h5.md, h6.md { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--ink-2); }
   ul.md, ol.md { margin: 4px 0 6px; padding-left: 20px; }
   ul.md li, ol.md li { margin: 2px 0; }
   ul.md li::marker, ol.md li::marker { color: var(--ink-2); }
@@ -146,13 +168,13 @@
   hr.md { border: 0; border-top: 1px solid var(--rule); margin: 8px 0; }
   table.md { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
   table.md th, table.md td { border: 1px solid var(--rule); padding: 4px 8px; text-align: left; vertical-align: top; }
-  table.md th { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  table.md th { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--ink-2); }
 
   .empty { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-6); }
   .empty-mark { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--ink); display: flex; align-items: center; justify-content: center; flex: none; color: var(--success); }
   .empty-mark .ep-icon { width: 22px; height: 22px; }
   .empty-title { font-family: var(--font-display); font-size: 30px; line-height: 1.1; }
-  .empty-line { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  .empty-line { font-family: var(--font-sans); font-size: 13px; color: var(--ink-2); }
 
   .mrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-4); padding: var(--space-2) var(--space-4); border-radius: var(--radius-glass-s); transition: background-color 150ms ease-out; }
   .mrow:hover { background: var(--glass-nested); }
@@ -165,22 +187,22 @@
   .card.mission .mrow:hover { background: transparent; }
   .card.mission .card-body { padding-left: calc(40px + var(--space-4) + var(--space-5)); }
   .mrow-title { font-size: 15px; font-weight: 500; color: var(--ink); }
-  .mrow-activity { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+  .mrow-activity { font-family: var(--font-sans); font-size: 13px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
   .mrow-activity.blocked-kind { color: var(--danger); }
-  .mrow-age { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .mrow-age { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 
   .rest-toggle { align-self: flex-start; }
   .rest-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: 7px 0 7px var(--space-4); font-size: 14px; color: var(--ink-2); border-bottom: 1px solid var(--rule); }
   .rest-row a { color: inherit; text-decoration: none; }
   .rest-row a:hover { color: var(--ink); }
-  .rest-side { flex: none; display: flex; align-items: baseline; gap: var(--space-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: var(--ink-2); }
+  .rest-side { flex: none; display: flex; align-items: baseline; gap: var(--space-2); font-family: var(--font-sans); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 
   .changed { animation: changed 1200ms ease-out; }
   @keyframes changed { 0% { outline: 1px solid var(--ink); outline-offset: 2px; } 100% { outline: 1px solid transparent; outline-offset: 2px; } }
   .mission.changed { animation-name: changedRow; }
   @keyframes changedRow { 0% { background-color: var(--glass-strong); } 100% { background-color: transparent; } }
   .repo-menu:not([data-surface="paper"] *):not([data-surface="paper"]) { position: fixed; z-index: var(--z-modal); min-width: 300px; max-width: 460px; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; --glass-bezel: 14px; border-radius: 22px; }
-  .repo-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); padding: var(--space-2) var(--space-3) var(--space-1); display: flex; align-items: center; gap: 6px; }
+  .repo-title { font-family: var(--font-sans); font-size: 12px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); padding: var(--space-2) var(--space-3) var(--space-1); display: flex; align-items: center; gap: 6px; }
   .repo-item { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 1px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-glass-s); }
   .repo-item:hover, .repo-item:focus-visible { background: var(--glass-nested); }
   .repo-item.muted .repo-name { color: var(--ink-2); font-weight: 400; }
@@ -195,8 +217,13 @@
   .card.big > * { flex: none; }
   .card.big > .card-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   .card.big .thread { max-height: none; overflow: visible; }
-  .lane.cards sg-flip.big { position: fixed; inset: 3vh max(4vw, calc((100vw - 1100px) / 2)); z-index: var(--z-bar); width: auto; height: auto; aspect-ratio: auto; }
+  /* Enlarged: a bigger card, not a full-screen sheet; it keeps the proportions of a card. */
+  .lane.cards sg-flip.big { position: fixed; inset: 0; margin: auto; z-index: var(--z-bar); width: min(460px, calc(100vw - 2 * var(--space-6))); height: min(640px, calc(100vh - 2 * var(--space-6))); aspect-ratio: auto; }
   .lane.cards sg-flip.big .conv-card-body .thread { max-height: none; overflow: visible; }
+  /* A plate holding the enlarged card (team view, En mission, Mis de côté) would keep it under the backdrop and,
+     through its backdrop-filter, place it against the plate instead of the window. While the card is enlarged
+     the plate, blurred under the backdrop anyway, drops its own glass so it no longer holds the card. */
+  .ep-plate:has(sg-flip.big) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; isolation: auto !important; z-index: auto !important; }
 
   .pop { animation: pop 420ms cubic-bezier(0.3, 1.35, 0.45, 1); }
   @keyframes pop { 0% { transform: scale(0.85); } 100% { transform: scale(1); } }
@@ -204,7 +231,7 @@
   @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
   .trace { position: fixed; left: 50%; bottom: 72px; width: 240px; height: 90px; margin-left: -120px; pointer-events: none; z-index: var(--z-toast); color: var(--ink); }
   .trace svg { display: block; width: 100%; height: 100%; }
-  .trace path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: traceDraw 900ms ease-out forwards, traceFade 500ms ease-in 1100ms forwards; }
+  .trace path { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: traceDraw 900ms ease-out forwards, traceFade 200ms cubic-bezier(0.23, 1, 0.32, 1) 1100ms forwards; }
   @keyframes traceDraw { to { stroke-dashoffset: 0; } }
   @keyframes traceFade { to { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .pop, .bump, .changed, .trace path { animation: none !important; } .av { transition: none !important; } .trace { display: none; } }
@@ -219,7 +246,7 @@
   .t-zone-head { display: flex; align-items: center; gap: var(--space-3); }
   .t-dot { width: 8px; height: 8px; border-radius: 50%; }
   .t-zone-title { font-family: var(--font-display); font-size: 26px; line-height: 1.1; }
-  .t-zone-count { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; color: var(--ink-2); }
+  .t-zone-count { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   .t-grid { min-height: 120px; display: flex; align-items: center; gap: var(--space-4); overflow-x: auto; overflow-y: hidden; padding: var(--space-2) 2px; overscroll-behavior-x: contain; }
   .t-grid .t-agent { flex: none; width: 320px; display: grid; grid-template-columns: 80px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: var(--space-4); row-gap: var(--space-1); align-items: center; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1); }
   .t-grid .t-agent:hover { transform: translateY(-3px); background: var(--glass-nested); }
@@ -240,7 +267,7 @@
   .card.mission { background: color-mix(in srgb, var(--conv-tint, transparent) 20%, transparent); border-radius: var(--radius-glass-s); }
   .t-name { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .t-title { max-width: 200px; font-size: 14px; font-weight: 500; color: var(--ink); }
-  .t-meta { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: var(--ink-2); }
+  .t-meta { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-sans); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   .t-rest { display: flex; flex-direction: column; gap: var(--space-3); }
   .t-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .t-chip { display: inline-flex; align-items: center; gap: var(--space-2); max-width: 100%; text-decoration: none; }
@@ -256,14 +283,14 @@
   @keyframes tSheetIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
   .t-sheet-head { display: flex; align-items: center; gap: var(--space-5); }
   .t-sheet-title { margin: 0; font-family: var(--font-display); font-size: 32px; line-height: 1.1; font-weight: 400; }
-  .t-sheet-sub { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+  .t-sheet-sub { font-family: var(--font-sans); font-size: 12px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); }
   .t-ask { display: flex; gap: var(--space-3); align-items: baseline; padding: var(--space-4) var(--space-5); border-radius: var(--radius-glass-s); font-size: 18px; line-height: 1.45; border: 1px solid var(--b-line, var(--glass-edge)); background: var(--b-bg, var(--glass-nested)); color: var(--b-fg, var(--ink)); }
   .t-ask .ep-icon { flex: none; transform: translateY(2px); }
   .t-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .t-stats { display: flex; flex-wrap: wrap; gap: var(--space-6); }
   .t-stat { display: flex; flex-direction: column; gap: 4px; }
   .t-stat-value { font-family: var(--font-display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
-  .t-stat-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+  .t-stat-label { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--ink-2); }
   @media (prefers-reduced-motion: reduce) { .t-sheet.enter { animation: none !important; } .t-agent { transition: none !important; } }
 
   .zone { display: none; }
@@ -274,7 +301,7 @@
   html.os-glass .ep-scene__bg { display: none; }
   .drag-strip { display: none; }
   html.os-glass:not(.island-mode) .drag-strip { display: block; position: fixed; inset: 0 0 auto 0; height: 36px; -webkit-app-region: drag; z-index: var(--z-tooltip); }
-  body.island-mode .wrap { display: none; }
+  body.island-mode .wrap, html.island-mode .wrap { display: none; }
   body.island-mode .zone { display: block; }
   /* L'île a sa feuille (island.css). --motion-ui est la durée standard du modèle ; le ressort de la forme (300 / 260 ms) est dans island-ui.js. */
   :root { --motion-ui: 150ms; }
@@ -296,16 +323,16 @@
   .search-results { display: none; flex-direction: column; gap: 8px; margin-top: var(--space-4); }
   body.searching .search-results { display: flex; }
   body.searching #wrap > section, body.searching #team { display: none; }
-  .search-status { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+  .search-status { margin: 0; font-family: var(--font-sans); font-size: 13px; color: var(--ink-2); }
   .search-row { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 12px 16px; text-decoration: none; color: inherit; border-radius: 20px; }
   a.search-row:hover { border-color: var(--ink-2); }
   .search-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .search-title { font-weight: 600; }
   .search-snippet { color: var(--ink-2); font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
   .search-snippet mark { background: color-mix(in srgb, var(--warning) 35%, transparent); color: var(--ink); border-radius: 3px; padding: 0 1px; }
-  .search-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
-  .nc-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
-  .nc-label span { text-transform: none; letter-spacing: 0; font-family: var(--font-sans); font-size: 13px; }
+  .search-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-family: var(--font-sans); font-size: 12px; color: var(--ink-2); }
+  .nc-label { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .nc-label span { font-weight: 400; }
   .nc-search { width: 100%; }
   .nc-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; border: 1px solid var(--glass-edge); border-radius: var(--radius-glass-s); padding: var(--space-1); background: var(--glass-nested); }
   .nc-item { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: var(--space-2); padding: 7px 10px; border-radius: 10px; cursor: pointer; }
@@ -375,7 +402,7 @@
   <div class="search-results" id="search-results" aria-live="polite"></div>
 
   <section id="s-waiting" aria-labelledby="h-waiting">
-    <h2 id="h-waiting" class="display" tabindex="-1">Attendent tes ordres <span class="count-tag" id="n-waiting">0</span></h2>
+    <h2 id="h-waiting" class="display" tabindex="-1">T'attendent <span class="count-tag" id="n-waiting">0</span></h2>
     <div class="lane"></div>
   </section>
 
@@ -412,6 +439,7 @@
 <script src="mod/assets/entity/entity-mount.js"></script>
 <script src="mod/assets/cards.js"></script>
 <script src="mod/assets/dock.js"></script>
+<script src="mod/assets/status-words.js"></script>
 <script src="mod/assets/island-model.js"></script>
 <script src="mod/assets/island.js"></script>
 <script src="mod/assets/island-shell.js"></script>
@@ -433,10 +461,10 @@
   const ZOOM_MIN = 1;
   const ZOOM_MAX = 1.3;
   const ZOOM_STEP = 0.05;
-  const QUICK_REPLIES = ['OK', 'GO', 'Non'];
 
   const ACTIVE_STATUSES = ['thinking', 'writing', 'tool', 'working'];
-  const WAITING_STATUSES = ['permission', 'done', 'external'];
+  const WORDS = window.CockpitStatusWords;
+  const WAITING_STATUSES = WORDS.WAITING_STATUSES;
   const REST_LABELS = {
     seen: 'vue, au repos', opened: 'ouverte, rien de nouveau', idle: 'hors radar', closed: 'fermée',
     aborted: 'interrompue', error: 'en erreur',
@@ -456,18 +484,16 @@
     [/^AskUserQuestion$/, 'info', 'te pose une question'],
     [/^mcp__/, 'arrow', 'interroge un service'],
   ];
-  const KINDS = {
-    permission: { label: 'Permission', icon: 'alert', color: 'var(--warning)', rank: 0 },
-    question: { label: 'Question', icon: 'info', color: 'var(--accent)', rank: 1 },
-    unknown: { label: 'A fini', icon: 'check', color: 'var(--ink-2)', rank: 2 },
-    delivered: { label: 'Mission livrée', icon: 'check', color: 'var(--success)', rank: 3 },
-    external: { label: 'Attend autre chose', icon: 'later', color: 'var(--ink-2)', rank: 4 },
-  };
+  // Words, icons and order come from the shared vocabulary; only the colours are the cockpit's.
+  const KIND_COLORS = { permission: 'var(--warning)', question: 'var(--accent)', unknown: 'var(--ink-2)', delivered: 'var(--success)', external: 'var(--ink-2)' };
+  const KINDS = Object.fromEntries(Object.entries(WORDS.WAIT_KINDS).map(([kind, words]) => [kind, { ...words, color: KIND_COLORS[kind] }]));
 
   const pageParams = new URLSearchParams(location.search);
   const isIsland = pageParams.has('island');
   // Les conversations en cartes (systems-generator) ; ?cards=0 garde l'ancien affichage en lignes.
   const isCards = !isIsland && pageParams.get('cards') !== '0';
+  // Shared by the list and team renders: both draw cards only once the card engine is ready.
+  const cardsOn = () => Boolean(isCards && state.data.cards !== false && window.CockpitCards && window.CockpitCards.isReady());
   const isIslandCards = isIsland && pageParams.get('cards') !== '0' && !(window.__CONVERSATIONS__ && window.__CONVERSATIONS__.cards === false);
   const isOsGlass = pageParams.has('glass');
   const isLauncher = pageParams.has('launcher');
@@ -669,17 +695,17 @@
   const firstLineOf = text => (String(text || '').split(/\r?\n/).find(line => line.trim().length > 0) || '').replace(/^[-*#>\s]+/, '').replace(/\*\*/g, '').slice(0, 160);
   const awaitingOf = row => (row.summary && !row.summary.isLoading ? (row.summary.awaiting || firstLineOf(row.summary.text)) : '');
 
-  const kindOf = row => {
-    if (row.status === 'permission') return 'permission';
-    if (row.status === 'external') return 'external';
-    const kind = row.summary && row.summary.kind;
-    if (kind === 'question' || kind === 'delivered') return kind;
-    return 'unknown';
-  };
+  const kindOf = WORDS.waitKindOf;
+
+  // "Voir l'agent au repos", "Voir les 3 agents au repos".
+  const restToggleLabelOf = (count, isOpen) => (count === 1 ? `${isOpen ? 'Masquer' : 'Voir'} l'agent au repos` : `${isOpen ? 'Masquer' : 'Voir'} les ${count} agents au repos`);
+
+  const FLIP_ICON = '<svg class="card-flip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"/><path d="M15 8h2a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3v-1"/><path d="M18 16l2 2-2 2"/></svg>';
+  const quickButtonsOf = row => WORDS.quickRepliesOf(row).map(reply => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${escapeHtml(reply.text)}">${escapeHtml(reply.label)}</button>`).join('');
 
   const PARK_KINDS = {
-    blocked: { icon: 'block', label: 'Bloquée', title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
-    later: { icon: 'later', label: 'Plus tard', title: 'Je reviens dessus…', color: 'var(--ink-2)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
+    blocked: { ...WORDS.PARK_WORDS.blocked, title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },
+    later: { ...WORDS.PARK_WORDS.later, title: 'Je reviens dessus…', color: 'var(--ink-2)', chips: ['Pas prioritaire', 'Après la mise en prod', 'Demain', 'Quand j\'ai le temps'] },
   };
 
   const sectionIdOf = status => {
@@ -958,11 +984,11 @@
   };
 
   const renderComposer = row => {
-    if (!isServer) return '<div class="note">Donner un ordre demande la version servie (voir le bandeau en haut).</div>';
+    if (!isServer) return '<div class="note">Pour donner un ordre d\'ici, ouvre le cockpit depuis l\'app (voir le bandeau en haut).</div>';
     const draft = draftOf(row.engineId);
     const thumbs = draft.images.map((image, index) => `<div class="thumb"><img src="${image.url}" alt=""><button type="button" data-action="remove-image" data-index="${index}" aria-label="Retirer l'image">${iconOf('x')}</button></div>`).join('');
     return `<label style="display: flex"><span class="sr">Ordre pour ${escapeHtml(row.title)}</span>
-      <textarea class="ep-textarea" data-role="draft" style="width: 100%" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Ctrl+Entrée, colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
+      <textarea class="ep-textarea" data-role="draft" style="width: 100%" rows="3" placeholder="Ton ordre pour « ${escapeHtml(row.title)} »… (Entrée pour envoyer, Maj+Entrée pour un retour à la ligne ; colle une image si besoin)">${escapeHtml(draft.text)}</textarea></label>
       ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}`;
   };
 
@@ -984,7 +1010,7 @@
           <div class="group">
             ${isServer ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="summarize">${iconOf('refresh')} Rafraîchir</button>` : ''}
             ${isServer && row.cwd ? `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="terminal" data-testid="card-terminal">${ICONS.terminal} Ouvrir le terminal</button>` : ''}
-            <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>
+            ${inCard ? '' : `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-action="big" data-testid="card-enlarge">${isBig ? `${iconOf('collapse')} Réduire` : `${iconOf('expand')} Agrandir`}</button>`}
             ${feedbackHtml}
           </div>
           <div class="group">
@@ -1008,7 +1034,7 @@
     const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
     const canOrder = isServer && !row.isCurrent;
     const quick = !isOpen && canOrder ? `<div class="card-quick">
-        ${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}
+        ${quickButtonsOf(row)}
         <button type="button" class="ep-btn ep-btn--ghost ep-btn--sm order" data-action="toggle">Donner un ordre…</button>
         ${feedbackHtml}
       </div>` : '';
@@ -1174,19 +1200,27 @@
     const [actIcon, actLabel] = activityOf(row);
     const bonus = ageBonus(row, now);
     const head = isWaiting
-      ? `<span class="card-kind" style="color: ${info.color}">${iconOf(info.icon)} ${info.label}</span><span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}">${escapeHtml(bonus.label)}</span>`
+      ? `${row.status === 'permission' ? `<span class="ep-tag ep-tag--warning card-state" role="img" aria-label="${info.label}" title="${info.label}"></span>` : `<span class="ep-tag card-state" role="img" aria-label="${info.label}" title="${info.label}">${iconOf(info.icon)}</span>`}<span class="ep-tag age-pill ${bonus.tone}" data-updated="${row.updatedAt}" data-short="" title="${escapeHtml(bonus.label)}">${escapeHtml(formatAge(row.updatedAt, now))}</span>`
       : `<span class="mrow-activity trunc">${iconOf(section === 'parked' ? park.icon : actIcon)} ${escapeHtml(section === 'parked' ? park.label : actLabel)}</span><span class="mrow-age" data-updated="${row.updatedAt}">${formatAge(row.updatedAt, now)}</span>`;
     const askStale = row.summary && row.summary.updatedAt !== row.updatedAt ? ' stale' : '';
     const ask = isWaiting ? `<span class="card-ask${askStale}">${iconOf('arrow')}<span>${inlineMarkdown(awaitingOf(row) || 'Regarde où en est cet agent.')}</span></span>` : '';
     const canOrder = isServer && !row.isCurrent;
-    const quick = isWaiting && canOrder ? `<div class="card-quick">${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>` : '';
+    const replies = isWaiting && canOrder ? quickButtonsOf(row) : '';
+    const quick = replies ? `<div class="card-quick">${replies}</div>` : '';
     const openUrl = openUrlOf(row);
     const tools = [
       openUrl ? `<a href="${escapeHtml(openUrl)}" class="${ICON_BUTTON}" aria-label="Ouvrir dans l'app" title="Ouvrir dans l'app">${ICONS.open}</a>` : '',
       isServer && isWaiting ? `<button type="button" class="${ICON_BUTTON}" data-action="seen" aria-label="Mettre au repos" title="Mettre au repos">${ICONS.eye}</button>` : '',
       section === 'parked' && isServer ? `<button type="button" class="ep-btn ep-btn--sm resume" data-action="unpark">${iconOf('arrow')} Reprendre</button>` : parkButtons(row),
     ].join('');
-    return `<div class="conv-card-head">${head}</div>${ask}${renderContext(row, { limit: 3 })}${quick}${renderCardBody(row, { inCard: true })}<div class="card-side">${tools}</div>`;
+    const isBig = state.bigId === row.engineId;
+    // The face shows the minimum (state, age, request, quick replies) and never scrolls; the rest only
+    // shows in the enlarged view. The turn-over button sits in the face, so its margin is even all round.
+    const foot = `<div class="card-foot">
+        <button type="button" class="${ICON_BUTTON}" data-action="big" data-testid="card-enlarge" aria-label="${isBig ? 'Réduire' : 'Agrandir'}" title="${isBig ? 'Réduire' : 'Agrandir'}">${iconOf(isBig ? 'collapse' : 'expand')}</button>
+        ${isBig ? '' : `<button type="button" class="${ICON_BUTTON} card-flip" data-action="flip" aria-label="Retourner la carte" title="Retourner la carte">${FLIP_ICON}</button>`}
+      </div>`;
+    return `<div class="conv-card-head">${head}</div>${ask}${quick}<div class="card-more">${renderContext(row, { limit: 3 })}${renderCardBody(row, { inCard: true })}<div class="card-side">${tools}</div></div>${foot}`;
   };
 
   // Ce que le dos d'une carte dit d'une conversation : mot d'état, âge, dossier, état de l'entité à graver.
@@ -1196,13 +1230,30 @@
     return { isWaiting: section === 'waiting', word, age: formatAge(row.updatedAt, now), folder: folderOf(row.cwd) };
   };
 
+  // A waiting card arrives face up (audit 2026-10-20, P1 n° 4): its request and its replies show without
+  // turning it over. Turned by the page, not by the user, it does not count as a card being read.
+  const turnByPage = (el, flipped) => {
+    el.dataset.pageFlip = '1';
+    el.flip(flipped);
+    delete el.dataset.pageFlip;
+  };
+
   const renderCardLane = (lane, rows, now) => {
     lane.classList.add('cards');
     window.CockpitCards.renderLane(lane, rows, row => cardInfoOf(row, now), row => renderCardFront(row, now));
+    const sectionOf = new Map(rows.map(row => [row.engineId, sectionIdOf(row.status)]));
     for (const el of lane.querySelectorAll(':scope > sg-flip[data-engine]')) {
       const isBig = state.bigId === el.dataset.engine;
       el.classList.toggle('big', isBig);
       if (isBig) el.flip(true);
+      const isWaiting = sectionOf.get(el.dataset.engine) === 'waiting';
+      if (isWaiting && el.dataset.faceUp !== '1') {
+        el.dataset.faceUp = '1';
+        turnByPage(el, true);
+      } else if (!isWaiting && el.dataset.faceUp === '1') {
+        delete el.dataset.faceUp;
+        if (!isBig && !state.expanded.has(el.dataset.engine)) turnByPage(el, false);
+      }
     }
   };
 
@@ -1290,10 +1341,10 @@
   };
 
   const TEAM_ZONES = [
-    ['waiting', 'T\'attendent', 'var(--warning)'],
-    ['working', 'En mission', 'var(--accent)'],
-    ['stuck', 'Bloqués', 'var(--danger)'],
-    ['later', 'Plus tard', 'var(--ink-faint)'],
+    ['waiting', WORDS.SECTION_TITLES.waiting, 'var(--warning)'],
+    ['working', WORDS.SECTION_TITLES.working, 'var(--accent)'],
+    ['stuck', WORDS.SECTION_TITLES.stuck, 'var(--danger)'],
+    ['later', WORDS.SECTION_TITLES.later, 'var(--ink-faint)'],
   ];
 
   // The card zones stay in the page from one render to the next: a card keeps its face and its
@@ -1330,7 +1381,7 @@
   };
 
   const renderTeamRest = (rows, now) => {
-    const toggleLabel = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${rows.length} agents au repos`;
+    const toggleLabel = restToggleLabelOf(rows.length, state.othersOpen);
     const chips = rows.map(row => {
       const openUrl = openUrlOf(row);
       const stateLabel = REST_LABELS[row.status] || row.status;
@@ -1366,8 +1417,8 @@
     const feedback = state.feedback.get(row.engineId);
     const feedbackHtml = feedback ? `<span class="feedback ${feedback.isError ? 'error' : ''}">${escapeHtml(feedback.text)}</span>` : '';
     const headline = zone === 'waiting' ? `${iconOf('arrow')}<span>${inlineMarkdown(face.bubble)}</span>` : `${iconOf(face.icon)}<span>${escapeHtml(face.bubble)}</span>`;
-    const quick = canOrder && zone === 'waiting'
-      ? `<div class="t-quick">${QUICK_REPLIES.map(text => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${text}">${text}</button>`).join('')}</div>`
+    const quick = canOrder && zone === 'waiting' && quickButtonsOf(row)
+      ? `<div class="t-quick">${quickButtonsOf(row)}</div>`
       : '';
     const composer = row.isCurrent
       ? '<div class="note">C\'est la conversation qui fait tourner ce cockpit : réponds-lui directement dans l\'app.</div>'
@@ -1426,10 +1477,10 @@
       renderTeamCards(team, groups, now).innerHTML = extra;
     } else {
       const board = `<div class="t-board">
-        ${renderTeamZone('waiting', 'T\'attendent', 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
-        ${renderTeamZone('working', 'En mission', 'var(--accent)', groups.working, now)}
-        ${renderTeamZone('stuck', 'Bloqués', 'var(--danger)', groups.stuck, now)}
-        ${renderTeamZone('later', 'Plus tard', 'var(--ink-faint)', groups.later, now)}
+        ${renderTeamZone('waiting', WORDS.SECTION_TITLES.waiting, 'var(--warning)', groups.waiting, now, renderTeamEmpty())}
+        ${renderTeamZone('working', WORDS.SECTION_TITLES.working, 'var(--accent)', groups.working, now)}
+        ${renderTeamZone('stuck', WORDS.SECTION_TITLES.stuck, 'var(--danger)', groups.stuck, now)}
+        ${renderTeamZone('later', WORDS.SECTION_TITLES.later, 'var(--ink-faint)', groups.later, now)}
       </div>`;
       team.innerHTML = `${board}${extra}`;
     }
@@ -1718,7 +1769,7 @@
     let offset = 0;
     for (const row of [...groups.waiting, ...groups.working, ...groups.parked]) state.shownOrder.set(row.engineId, offset++);
 
-    const useCards = isCards && state.data.cards !== false && window.CockpitCards && window.CockpitCards.isReady();
+    const useCards = cardsOn();
     if (useCards) window.CockpitCards.configure({ finishes: state.data.cardFinishes });
     const crew = document.getElementById('crew');
     if (useCards) window.CockpitCards.renderMinis(crew, [...groups.waiting, ...groups.working], row => cardInfoOf(row, now), row => (row.stats ? `${row.stats.messages} msg` : ''));
@@ -1742,14 +1793,20 @@
     const restToggle = document.getElementById('rest-toggle');
     const errorCount = groups.others.filter(row => row.status === 'error').length;
     const errorNote = errorCount > 0 ? `, dont ${errorCount} en erreur` : '';
-    restToggle.textContent = `${state.othersOpen ? 'Masquer les' : 'Voir les'} ${groups.others.length} ${groups.others.length > 1 ? 'agents' : 'agent'} au repos${errorNote}`;
+    restToggle.textContent = `${restToggleLabelOf(groups.others.length, state.othersOpen)}${errorNote}`;
     restToggle.classList.toggle('has-error', errorCount > 0);
     restToggle.setAttribute('aria-expanded', String(state.othersOpen));
     document.getElementById('s-others').style.display = groups.others.length === 0 ? 'none' : '';
     document.getElementById('rest-list').innerHTML = state.othersOpen ? groups.others.map(row => renderRestRow(row, now)).join('') : '';
 
     renderDayStats();
-    if (state.view === 'team') renderTeam(now, useCards);
+    if (state.view === 'team') {
+      // A failed team render must say so in the view rather than leave an empty screen that reads as "nobody waits".
+      try { renderTeam(now, useCards); } catch (error) {
+        console.error('team view render failed', error);
+        document.getElementById('team').innerHTML = `<div class="ep-alert ep-tone-warning" role="alert"><p class="ep-alert__title">La vue Équipe n'a pas pu s'afficher</p><p class="ep-alert__msg">Passe en vue Liste pour voir les conversations. Détail : ${escapeHtml(String(error && error.message || error))}</p></div>`;
+      }
+    }
     else document.getElementById('team').innerHTML = '';
     hydrateIdentities();
 
@@ -1780,7 +1837,8 @@
     for (const pill of document.querySelectorAll('.age-pill[data-updated]')) {
       const updatedAt = Number(pill.dataset.updated);
       const bonus = ageBonus({ updatedAt }, now);
-      pill.textContent = bonus.label;
+      // On a card face the pill only shows the age; the bonus is in its tooltip.
+      if (pill.hasAttribute('data-short')) { pill.textContent = formatAge(updatedAt, now); pill.title = bonus.label; } else pill.textContent = bonus.label;
       pill.classList.remove('ep-tag--info', 'ep-tag--warning', 'ep-tag--danger');
       if (bonus.tone) pill.classList.add(bonus.tone);
     }
@@ -1900,6 +1958,7 @@
     }
     notifyNewWaiting(state.data.rows);
     render();
+    if (isLauncher && desktop && document.getElementById('search-input').value.trim().length === 0) renderSuggestions({ keep: true });
   };
 
   const sendPost = (path, payload) => fetch(`${serverBase}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-cockpit-token': cockpitToken }, body: JSON.stringify(payload) });
@@ -1957,7 +2016,29 @@
     desktop.setLauncherHeight(wrap.scrollHeight);
   };
 
-  const launcherRows = () => [...document.querySelectorAll('#search-results .search-row')];
+  // Only the rows that open something take part in the arrows (audit 2026-10-20, P1 n° 9): a terminal-only row has
+  // no link, Enter did nothing on it.
+  const launcherRows = () => [...document.querySelectorAll('#search-results a.search-row')];
+
+  // Combobox pattern: the field keeps the focus, the list is a listbox, the selected row is its active descendant.
+  // The status line alone is announced (not the whole list at each keystroke).
+  const syncLauncherA11y = () => {
+    if (!isLauncher) return;
+    const input = document.getElementById('search-input');
+    const rows = launcherRows();
+    rows.forEach((row, position) => {
+      row.id = `launcher-option-${position}`;
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', String(position === launcherIndex));
+      row.tabIndex = -1;
+    });
+    const selected = rows[launcherIndex];
+    if (selected) input.setAttribute('aria-activedescendant', selected.id); else input.removeAttribute('aria-activedescendant');
+    const status = document.querySelector('#search-results .search-status');
+    const announce = document.getElementById('launcher-announce');
+    const text = status ? status.textContent : '';
+    if (announce && announce.textContent !== text) announce.textContent = text;
+  };
 
   const selectLauncherRow = index => {
     const rows = launcherRows();
@@ -1965,6 +2046,7 @@
     rows.forEach((row, position) => row.classList.toggle('selected', position === launcherIndex));
     const selected = rows[launcherIndex];
     if (selected) selected.scrollIntoView({ block: 'nearest' });
+    syncLauncherA11y();
     syncLauncherHeight();
   };
 
@@ -1990,21 +2072,26 @@
     };
   };
 
-  const renderSuggestions = () => {
+  let shownSuggestions = null;
+  // keep: called by the data refresh; redraws only when the suggestions changed and keeps the selected row.
+  const renderSuggestions = ({ keep = false } = {}) => {
     const rows = window.CockpitDock.suggestionsOf(state.data.rows, WAITING_STATUSES);
-    const waitingCount = rows.filter(row => WAITING_STATUSES.includes(row.status)).length;
-    const plural = waitingCount > 1;
-    const header = waitingCount > 0 ? `${waitingCount} conversation${plural ? 's' : ''} t'attend${plural ? 'ent' : ''}` : 'Conversations récentes';
+    const signature = rows.map(row => `${row.engineId}:${row.status}:${row.updatedAt}:${row.title}`).join('|');
+    if (keep && signature === shownSuggestions) return;
+    shownSuggestions = signature;
+    const waitingCount = WORDS.waitingCountOf(rows);
+    const header = rows.length === 0 ? 'Aucune conversation pour l\'instant' : waitingCount > 0 ? WORDS.waitingPhraseOf(waitingCount) : 'Conversations récentes';
     const now = Date.now();
     const results = rows.map(suggestionResultOf);
     const html = results.map(result => renderSearchRow(result, now)).join('');
     document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(header)}</p>${html}`;
     hydrateIdentities();
-    selectLauncherRow(0);
+    selectLauncherRow(keep ? Math.max(launcherIndex, 0) : 0);
   };
 
   const renderSearchStatus = message => {
     document.getElementById('search-results').innerHTML = `<p class="search-status">${escapeHtml(message)}</p>`;
+    if (isLauncher) { launcherIndex = -1; syncLauncherA11y(); }
     syncLauncherHeight();
   };
 
@@ -2067,10 +2154,15 @@
     input.select();
   };
 
+  // #recherche focuses the search; #recherche=<words> (sent by the island) also runs it.
   const focusSearchFromHash = () => {
-    if (location.hash !== '#recherche') return;
+    const match = /^#recherche(?:=(.*))?$/.exec(location.hash);
+    if (!match) return;
     focusSearch();
     history.replaceState(null, '', `${location.pathname}${location.search}`);
+    let query = '';
+    try { query = decodeURIComponent(match[1] || '').trim(); } catch { query = ''; }
+    if (query) { document.getElementById('search-input').value = query; runSearch(query); }
   };
 
   const setFeedback = (engineId, text, isError = false) => {
@@ -2194,7 +2286,7 @@
     const card = document.querySelector(`[data-engine="${engineId}"]:not(.big)`);
     if (!card) return;
     const top = card.getBoundingClientRect().top;
-    if (top < 0 || top > window.innerHeight - 80) window.scrollBy({ top: top - 80, behavior: 'smooth' });
+    if (top < 0 || top > window.innerHeight - 80) window.scrollBy({ top: top - 80, behavior: prefersCalm() ? 'auto' : 'smooth' });
   };
 
   const syncBackdrop = () => {
@@ -2271,10 +2363,10 @@
       const row = rowOf(avatar.dataset.av);
       // En cartes : la mini-carte mène à sa carte, retournée ; en lignes : seules celles qui attendent se déplient.
       const flipCard = row && document.querySelector(`sg-flip[data-engine="${escapeHtml(row.engineId)}"]`);
-      if (flipCard) { flipCard.flip(true); flipCard.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+      if (flipCard) { flipCard.flip(true); flipCard.scrollIntoView({ block: 'center', behavior: prefersCalm() ? 'auto' : 'smooth' }); return; }
       if (!row || !WAITING_STATUSES.includes(row.status)) return;
       expand(row.engineId);
-      document.querySelector(`.card[data-engine="${escapeHtml(row.engineId)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      document.querySelector(`.card[data-engine="${escapeHtml(row.engineId)}"]`)?.scrollIntoView({ block: 'center', behavior: prefersCalm() ? 'auto' : 'smooth' });
       return;
     }
     if (event.target.closest('a')) return;
@@ -2295,6 +2387,7 @@
     if (action === 'park') { const row = rowOf(engineId); if (row) showParkMenu(button, row, button.dataset.kind); }
     if (action === 'unpark') unpark(engineId);
     if (action === 'big') toggleBig(engineId);
+    if (action === 'flip') { const card = holder.closest('sg-flip'); if (card) card.flip(!card.flipped); }
     if (action === 'exact') {
       if (state.exactThreads.has(engineId)) {
         state.exactThreads.delete(engineId);
@@ -2317,9 +2410,17 @@
   });
 
   // Une carte retournée se lit : elle compte comme dépliée (l'ordre des sections reste figé pendant la lecture).
+  // Keyboard, as on the GitHub page: a focused card turns over with Enter or Space.
+  document.addEventListener('keydown', event => {
+    if (event.target.matches && event.target.matches('.lane.cards > sg-flip[data-engine]') && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      event.target.flip(!event.target.flipped);
+    }
+  });
+
   document.addEventListener('sg-flip', event => {
     const engineId = event.target.dataset ? event.target.dataset.engine : null;
-    if (!engineId) return;
+    if (!engineId || event.target.dataset.pageFlip) return;
     if (event.detail.flipped) state.expanded.add(engineId); else state.expanded.delete(engineId);
   });
 
@@ -2380,7 +2481,8 @@
   document.addEventListener('keydown', event => {
     if (!event.target.matches('[data-role="draft"]')) return;
     const card = event.target.closest('[data-engine]');
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    // Enter sends, Shift+Enter starts a new line, as in the island; Ctrl+Enter still sends.
+    if (event.key === 'Enter' && !event.isComposing && !event.shiftKey) {
       event.preventDefault();
       sendReply(card.dataset.engine);
     }
@@ -2426,9 +2528,9 @@
   // L'île : le modèle, les entités vivantes, l'interface et l'hôte qui parle à l'app. Les actions sont celles du cockpit.
   const startIsland = () => {
     const helpers = {
-      esc: escapeHtml, icon: iconOf, markdown: renderMarkdown, ageOf: (updatedAt, now = Date.now()) => `il y a ${formatAge(updatedAt, now)}`,
+      esc: escapeHtml, icon: iconOf, markdown: renderMarkdown, ageOf: (updatedAt, now = Date.now()) => formatAge(updatedAt, now),
       activityOf, awaitingOf, statsLineOf, tintOf: engineId => (window.CockpitIdentity ? window.CockpitIdentity.tintOf(engineId) : ''),
-      openUrlOf, folderOf, isServer, quickReplies: QUICK_REPLIES,
+      openUrlOf, folderOf, isServer, quickRepliesOf: WORDS.quickRepliesOf,
     };
     const actions = {
       reply: async (engineId, text, images) => {
@@ -2455,7 +2557,7 @@
         showReward('Nouvelle conversation', `${folderOf(folders[0])} : appuie sur Entrée dans Claude`, 'info');
         return '';
       },
-      openCockpit: section => { if (desktop) desktop.openCockpit(section === 'search' ? 'search' : undefined); else window.open(section === 'search' ? '/#recherche' : '/', 'cockpit'); },
+      openCockpit: (section, query = '') => { if (desktop) desktop.openCockpit(section === 'search' ? 'search' : undefined, query); else window.open(section === 'search' ? `/#recherche${query ? `=${encodeURIComponent(query)}` : ''}` : '/', 'cockpit'); },
       setSounds: toggleSounds,
       quit: () => { if (desktop) desktop.quit(); },
       decide: async (requestId, decision) => {
@@ -2549,6 +2651,15 @@
       document.documentElement.classList.add('launcher-mode');
       document.body.classList.add('launcher-mode');
       searchInput.placeholder = 'Rechercher dans toutes les conversations';
+      const results = document.getElementById('search-results');
+      results.removeAttribute('aria-live');
+      results.setAttribute('role', 'listbox');
+      results.setAttribute('aria-label', 'Conversations');
+      searchInput.setAttribute('role', 'combobox');
+      searchInput.setAttribute('aria-expanded', 'true');
+      searchInput.setAttribute('aria-controls', 'search-results');
+      searchInput.setAttribute('aria-autocomplete', 'list');
+      results.insertAdjacentHTML('afterend', '<p class="ep-sr" id="launcher-announce" aria-live="polite"></p>');
       document.addEventListener('click', event => {
         const link = event.target.closest && event.target.closest('a.search-row');
         if (!link) return;

@@ -23,6 +23,7 @@ const STATIC_FILES = {
   '/mod/assets/identity-badge.js': 'text/javascript; charset=utf-8',
   '/mod/assets/identity-sound.js': 'text/javascript; charset=utf-8',
   '/mod/assets/dock.js': 'text/javascript; charset=utf-8',
+  '/mod/assets/status-words.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-model.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-ui.js': 'text/javascript; charset=utf-8',
   '/mod/assets/island-actions.js': 'text/javascript; charset=utf-8',

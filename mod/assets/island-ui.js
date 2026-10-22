@@ -78,6 +78,7 @@
       if (ctx.cards) ctx.deck.render();
       ctx.living.syncHero();
       ctx.living.mountVisible();
+      if (ctx.cards) ctx.deck.syncLive(S.phase === 'open' ? shownViewOf(S.view) : 'compact');
     };
 
     // Un rendu réécrit les vues : le focus clavier retrouve son bouton (par data-act ou data-pick).
@@ -105,7 +106,7 @@
       const key = `${phase}:${w}x${Math.round(h)}`;
       if (key === lastExtent) return;
       lastExtent = key;
-      if (phase === 'open') desktop.setExpanded(true, w, Math.round(h), S.by === 'hover', S.by !== 'click');
+      if (phase === 'open') desktop.setExpanded(true, w, Math.round(h), S.by === 'hover', S.by !== 'click' && S.by !== 'key', S.by === 'key');
       else desktop.setCompactSize(w, Math.round(h));
     };
 
@@ -131,7 +132,8 @@
       applyInert(phase, view);
       setTabs(view);
       if (!ctx.motion.isStarted()) ctx.motion.start(target);
-      else if (silent || ctx.motion.speed() === 0) ctx.motion.snap(target);
+      // Reduced motion still goes through retarget: positions jump, the content fades (island-motion.js, REDUCED_FADE_MS).
+      else if (silent || S.by === 'key') ctx.motion.snap(target);
       else ctx.motion.retarget(target, isShrinking);
       pushExtent(phase, view);
       if (phase === 'open') startAges();
@@ -143,7 +145,7 @@
     const focusFirst = view => {
       const selector = FIELD_OF_VIEW[view] || FIRST_FOCUS;
       const isShown = el => !el.hidden && el.offsetParent !== null;
-      const el = $(selector, ctx.layerEl(shownViewOf(view))).find(isShown) || $(selector).find(isShown);
+      const el = $$(selector, ctx.layerEl(shownViewOf(view))).find(isShown) || $$(selector).find(isShown);
       if (el) el.focus({ preventScroll: true });
     };
 
@@ -168,7 +170,9 @@
       if (view === 'wait') S.focusId = (ctx.waiting()[0] || {}).engineId || S.focusId;
       else if (!S.focusId || !ctx.rowOf(S.focusId)) S.focusId = (ctx.urgent() || {}).engineId || null;
       go('open', view);
-      if (S.by === 'click') win.setTimeout(() => focusFirst(view), ctx.reduceQuery.matches ? 0 : FOCUS_DELAY_MS);
+      // Opened from the keyboard, the island is already in place (no morph): the field takes the focus at once.
+      if (S.by === 'key') focusFirst(view);
+      else if (S.by === 'click') win.setTimeout(() => focusFirst(view), ctx.reduceQuery.matches ? 0 : FOCUS_DELAY_MS);
     };
 
     const openWith = (view, by) => {
@@ -177,7 +181,8 @@
       if (S.phase === 'open') { switchView(view, { by }); return; }
       if (!desktop) { setPhase('open'); return; }
       renderAll();
-      desktop.setExpanded(true, ctx.motion.extentOf('open', shownViewOf(view)).w, Math.round(ctx.motion.extentOf('open', shownViewOf(view)).h), by === 'hover', by !== 'click');
+      // A keyboard open takes the focus (not passive) and asks the app for no morph (instant).
+      desktop.setExpanded(true, ctx.motion.extentOf('open', shownViewOf(view)).w, Math.round(ctx.motion.extentOf('open', shownViewOf(view)).h), by === 'hover', by !== 'click' && by !== 'key', by === 'key');
     };
 
     const fold = () => {
@@ -233,8 +238,6 @@
     };
 
     // Raccourcis globaux (relayés par l'app) : ouvrir, aller à ce qui attend, passer d'une conversation à l'autre.
-    // Le focus attend que la vue soit posée (comme une ouverture au clic), sauf en mouvement réduit.
-    const focusSoon = view => win.setTimeout(() => focusFirst(view), ctx.reduceQuery.matches ? 0 : FOCUS_DELAY_MS);
     const shownRows = () => model.byUrgency(S.rows);
     const step = delta => {
       const rows = shownRows();
@@ -242,25 +245,25 @@
       const index = rows.findIndex(row => row.engineId === S.focusId);
       S.focusId = rows[(index + delta + rows.length) % rows.length].engineId;
       S.diff = null;
-      if (S.phase === 'open') switchView('home', { by: 'click' });
-      else openWith('home', 'click');
-      focusSoon('home');
+      if (S.phase === 'open') { switchView('home', { by: 'key' }); focusFirst('home'); }
+      else openWith('home', 'key');
     };
+    // Global shortcuts are keyboard actions: no animation, the focus at once (plan 002).
     const command = name => {
-      if (name === 'toggle') { openWith('home', 'click'); focusSoon('home'); return; }
+      if (name === 'toggle') { if (S.phase === 'open') focusFirst('home'); else openWith('home', 'key'); return; }
       if (name === 'next' || name === 'previous') { step(name === 'next' ? 1 : -1); return; }
       if (name !== 'waiting') return;
       const first = ctx.waiting()[0];
-      if (!first) { announce('Personne ne t’attend'); openWith('home', 'click'); return; }
+      if (!first) { announce('Personne ne t’attend'); openWith('home', 'key'); return; }
       S.focusId = first.engineId;
-      openWith('wait', 'click');
-      focusSoon('wait');
+      if (S.phase === 'open') { switchView('wait', { by: 'key' }); focusFirst('wait'); }
+      else openWith('wait', 'key');
     };
 
     ctx.ui = {
       fold, switchView, openWith, focusFirst,
       refresh: () => { if (S.phase === 'open') go('open', S.view); },
-      interacted: () => { if (S.by === 'hover') S.by = 'click'; },
+      interacted: () => { if (S.by === 'hover' || S.by === 'key') S.by = 'click'; },
     };
     ctx.act.wire();
     ctx.living.wirePointer();
@@ -268,9 +271,20 @@
     ctx.views.renderNewList();
     renderAll();
     go('hidden', 'home', { silent: true });
+    // Desktop app: the glass window morphs, this page draws the same shape (plan 001).
+    if (desktop && typeof desktop.onIslandGeometry === 'function') {
+      doc.documentElement.classList.add('island-split');
+      desktop.onIslandGeometry(geometry => ctx.motion.geometry(geometry));
+    }
 
     // Thème choisi par l'app selon le bureau derrière (Nuit ou Papier) : les jetons de l'île suivent.
-    const setTheme = theme => { ctx.islandEl.dataset.theme = theme === 'light' ? 'light' : 'dark'; };
+    // The toasts sit outside the island element: the page theme follows too, or a light desktop gets light ink on light
+    // glass in the toasts, which carry the errors (audit 2026-10-20, P1 n° 7).
+    const setTheme = theme => {
+      const name = theme === 'light' ? 'light' : 'dark';
+      ctx.islandEl.dataset.theme = name;
+      doc.documentElement.dataset.theme = name;
+    };
 
     return {
       setPhase, setTheme, update, openWith, fold, pointer, command, dispose: () => { stopAges(); ctx.living.dispose(); },

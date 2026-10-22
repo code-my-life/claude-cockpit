@@ -8,7 +8,7 @@
   } catch (_) {
     // Fallback for browser where require is not available
       renderReplyField = () => `<form class="reply" id="replyForm" autocomplete="off">
-      <input class="ep-input" id="replyInput" type="text" placeholder="Répondre…" />
+      <input class="ep-input" id="replyInput" type="text" placeholder="Réponds à Claude…" />
       <button class="send" type="submit" aria-label="Envoyer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M5 12h13" />
@@ -33,7 +33,7 @@
           <button type="button" class="compact" id="compactBtn">${slot('c')}<span class="ep-tag" id="cSig"></span><span class="others" id="cOthers"></span></button>
         </div>
         <div class="layer l-home" id="v-home" role="tabpanel" aria-labelledby="tab-home" aria-label="Accueil">
-          <div class="is-body"><div class="home"><div class="pile" id="pile" hidden></div><div class="is-card">${slot('')}<div class="is-card-text" id="homeText"></div></div><nav class="ep-side-group side" id="homePills" aria-label="Autres conversations"></nav></div><div class="details" id="details" hidden></div></div>
+          <div class="is-body"><form class="is-search" id="islandSearch" role="search" autocomplete="off"><label class="ep-search"><span class="ep-icon ep-icon--search" aria-hidden="true"></span><input class="ep-search__input" id="islandSearchInput" type="search" placeholder="Rechercher dans les conversations" aria-label="Rechercher dans les conversations, les résultats s'ouvrent dans le cockpit"></label></form><div class="home"><div class="pile" id="pile" hidden></div><div class="is-card">${slot('')}<div class="is-card-text" id="homeText"></div></div><nav class="ep-side-group side" id="homePills" aria-label="Autres conversations"></nav></div><div class="details" id="details" hidden></div></div>
         </div>
         <div class="layer l-wait" id="v-wait" role="group" aria-label="Une conversation t'attend">
           <div class="is-body"><div class="alert">${slot('')}
@@ -55,7 +55,7 @@
               <p class="ep-hint" id="wNote" hidden></p>
               <div class="is-acts" id="wOpen" hidden></div>
             </div>
-            <div class="rail" data-rail aria-label="Autres conversations"></div></div><div id="alertKeep" hidden></div></div>
+            <div class="rail" data-rail aria-label="Autres conversations"></div></div><div id="alertKeep" hidden></div><div class="is-more" id="cardMore" hidden></div></div>
         </div>
         <div class="layer l-order" id="v-order" role="tabpanel" aria-labelledby="tab-order" aria-label="Envoyer un ordre">
           <div class="is-body"><div class="simple">${slot('')}

@@ -446,3 +446,18 @@ test('blur() delegue au fsm: l ile passe de open a compact', () => {
   island.blur()
   assert.equal(island.phase(), 'compact')
 })
+
+test('keyboard open: the glass jumps to the open size at once; the next fold keeps its spring', () => {
+  const { island, log, clock } = setup()
+  island.start()
+  clock.advance(GROW_MS)
+  const before = log.bounds.length
+  island.setExpanded(true, 760, 280, false, true)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [760, 280])
+  assert.ok(log.bounds.length - before <= 2, 'one jump, not a morph')
+  const beforeFold = log.bounds.length
+  island.escape()
+  clock.advance(SETTLE_MS)
+  assert.deepEqual([last(log.bounds).width, last(log.bounds).height], [320, 44])
+  assert.ok(log.bounds.length - beforeFold > 10, 'the fold still morphs')
+})
