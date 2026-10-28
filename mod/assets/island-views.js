@@ -236,7 +236,7 @@
       $('#replyForm').hidden = !can;
       const replies = can ? quickRepliesOf(row) : [];
       $('#wQuick').hidden = replies.length === 0;
-      $('#wQuick').innerHTML = replies.map(reply => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm" data-act="quick" data-engine="${esc(row.engineId)}" data-text="${esc(reply.text)}">${esc(reply.label)}</button>`).join('');
+      $('#wQuick').innerHTML = replies.map(reply => `<button type="button" class="ep-btn ep-btn--ghost ep-btn--sm quick-reply" data-act="quick" data-engine="${esc(row.engineId)}" data-text="${esc(reply.text)}"><span class="quick-label">${esc(reply.label)}</span></button>`).join('');
       $('#wNote').hidden = can || ask !== null;
       $('#wNote').textContent = cannotReplyNote(row);
       $('#wOpen').hidden = can || ask !== null || !url;

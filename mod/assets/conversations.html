@@ -287,6 +287,9 @@
   .t-ask { display: flex; gap: var(--space-3); align-items: baseline; padding: var(--space-4) var(--space-5); border-radius: var(--radius-glass-s); font-size: 18px; line-height: 1.45; border: 1px solid var(--b-line, var(--glass-edge)); background: var(--b-bg, var(--glass-nested)); color: var(--b-fg, var(--ink)); }
   .t-ask .ep-icon { flex: none; transform: translateY(2px); }
   .t-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  /* A quick reply never widens its card: the button keeps to the width of the card, its label ends in an ellipsis. */
+  .quick-reply { max-width: 100%; min-width: 0; }
+  .quick-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .t-stats { display: flex; flex-wrap: wrap; gap: var(--space-6); }
   .t-stat { display: flex; flex-direction: column; gap: 4px; }
   .t-stat-value { font-family: var(--font-display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
@@ -424,7 +427,7 @@
   <div id="team"></div>
 </div>
 <div class="zone" id="zone"></div>
-<div id="newconv" data-surface="paper"></div>
+<div id="newconv"></div>
 
 <script src="mod/assets/liquid-paper/bundle.js"></script>
 <script src="mod/assets/systems-generator/index.global.js"></script>
@@ -701,7 +704,7 @@
   const restToggleLabelOf = (count, isOpen) => (count === 1 ? `${isOpen ? 'Masquer' : 'Voir'} l'agent au repos` : `${isOpen ? 'Masquer' : 'Voir'} les ${count} agents au repos`);
 
   const FLIP_ICON = '<svg class="card-flip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="2"/><path d="M15 8h2a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3v-1"/><path d="M18 16l2 2-2 2"/></svg>';
-  const quickButtonsOf = row => WORDS.quickRepliesOf(row).map(reply => `<button type="button" class="ep-btn ep-btn--sm" data-action="quick" data-text="${escapeHtml(reply.text)}">${escapeHtml(reply.label)}</button>`).join('');
+  const quickButtonsOf = row => WORDS.quickRepliesOf(row).map(reply => `<button type="button" class="ep-btn ep-btn--sm quick-reply" data-action="quick" data-text="${escapeHtml(reply.text)}"><span class="quick-label">${escapeHtml(reply.label)}</span></button>`).join('');
 
   const PARK_KINDS = {
     blocked: { ...WORDS.PARK_WORDS.blocked, title: 'Bloquée par…', color: 'var(--danger)', chips: ['Attente client', 'Attente d\'un collègue', 'Accès manquant', 'Bug externe'] },

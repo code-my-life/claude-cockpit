@@ -40,6 +40,9 @@ export const isolatedEnv = (root: string, home: string): NodeJS.ProcessEnv => ({
 // Where the app reads Claude Desktop sessions (mod/assets/terminal.mjs, hostSessionsDirsOf).
 const configBaseOf = (env: NodeJS.ProcessEnv) => (process.platform === 'win32' ? env.APPDATA! : env.XDG_CONFIG_HOME!)
 
+// A 4K screen runs at 150 % or 200 % on Windows: COCKPIT_E2E_SCALE replays a run at that device scale factor.
+const scaleArgs = process.env.COCKPIT_E2E_SCALE ? [`--force-device-scale-factor=${process.env.COCKPIT_E2E_SCALE}`] : []
+
 export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-e2e-'))
   const home = path.join(root, 'home')
@@ -65,7 +68,7 @@ export const launchCockpit = async (testInfo: TestInfo): Promise<Cockpit> => {
     }
   }
   const app = await electron.launch({
-    args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`],
+    args: [DESKTOP_DIR, `--user-data-dir=${path.join(root, 'user-data')}`, ...scaleArgs],
     cwd: DESKTOP_DIR,
     env: env as Record<string, string>,
   }).catch(error => { removeRoot(); throw error })
