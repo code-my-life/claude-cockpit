@@ -68,6 +68,9 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 .island .pile .conv-card [data-body] { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; font-size: 13px; inset: var(--space-3); padding: var(--space-4); border-radius: var(--radius-glass-s); background: color-mix(in srgb, var(--paper) 86%, transparent); }
 /* As on the cockpit cards and the GitHub page: no scroll in the face, the turn-over button inside it. */
 .island .pile .conv-card [data-front] > .sg-flip__picto { display: none; }
+/* Without WebGL a card back draws its title as text: hidden once turned over, as on the cockpit cards, so it never shows
+   mirrored through the face. */
+.island .pile sg-flip[flipped] sg-card[data-fallback] .sg-card__fallback { visibility: hidden; transition: visibility 0s .2s; }
 .island .pile .conv-card [data-body] > .card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
 .island .pile .conv-card [data-body] .is-head { justify-content: space-between; }
 /* The state is already the picto of the top line: the alert keeps only the request. */
@@ -132,7 +135,10 @@ html:not(.os-glass) .island { --epf: color-mix(in srgb, var(--conv-tint) 20%, co
 
 /* c. T'attend, vues simples */
 .island .alert { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; column-gap: var(--space-4); align-items: start; }
-.island .alert-main { display: grid; gap: var(--space-2); min-width: 0; }
+.island .alert-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); min-width: 0; }
+/* A quick reply never widens the card (#88): its implicit grid track would take the width of an unbreakable label. */
+.island .quick-reply { max-width: 100%; min-width: 0; }
+.island .quick-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .island .alert-main .h4 { margin: 0; }
 .island .reply { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2); align-items: end; }
 .island .reply[hidden], .island .ep-cluster[hidden], .island .is-acts[hidden], .island .ep-hint[hidden], .island .perm[hidden], .island #wAlways[hidden] { display: none; }
@@ -181,6 +187,8 @@ html[data-island="hidden"] .island * { animation-play-state: paused !important; 
 .island.is-card-big .pile { width: min(460px, 100%); margin: 0 auto; }
 .island.is-card-big .pile .conv-card.is-below { visibility: hidden; }
 .island.is-card-big .pile .conv-card:not(.is-below) [data-body] { overflow: auto; overscroll-behavior: contain; }
+/* The enlarged face scrolls: its blocks keep their height instead of shrinking under the next one (#88). */
+.island.is-card-big .pile .conv-card:not(.is-below) [data-body] > * { flex-shrink: 0; }
 .island .is-more { display: grid; gap: var(--space-2); }
 .island .is-more[hidden] { display: none; }
 .island .is-more .col { display: grid; gap: var(--space-2); align-content: start; min-width: 0; }
