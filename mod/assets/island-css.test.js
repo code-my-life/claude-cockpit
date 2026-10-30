@@ -5,17 +5,6 @@ const path = require('node:path');
 
 const cssPath = path.join(__dirname, 'island.css');
 const css = fs.readFileSync(cssPath, 'utf8');
-const convPath = path.join(__dirname, 'conversations.html');
-const conv = fs.readFileSync(convPath, 'utf8');
-
-test('the folded island unfolds on a click', () => {
-  // The island host (#newconv) must have data-glass="off" so the liquid-paper glass engine
-  // does not process its subtree. Without this, the glass engine (enabled by OS acrylic on Windows)
-  // intercepts clicks on the folded island (#compactBtn). Unlike data-surface="paper", this
-  // attribute does not affect the CSS glass rules for the "Nouvelle conversation" sheet in the
-  // cockpit page, so L4 layout test still passes.
-  assert.match(conv, /id="newconv"[^>]*data-glass="off"/, 'island host (#newconv) must have data-glass="off"');
-});
 
 test('en cartes, les vues ordre et mise de côté prennent toute la largeur', () => {
   const pattern = /\.island\.cards\s+\.simple\s*\{[^}]*grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s*;/;

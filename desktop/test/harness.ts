@@ -145,7 +145,7 @@ export const openCockpit = async (app: ElectronApplication): Promise<Page> => {
 }
 
 type Bounds = { x: number, y: number, width: number, height: number }
-type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void, isLauncherVisible: () => boolean, launcherBounds: () => Bounds | null, cursorWorkArea: () => Bounds, islandBounds: () => Bounds | null, contentBounds: () => Bounds | null }
+type Probe = { serverPort: () => number | null, islandPhase: () => string | null, isIslandFocused: () => boolean, areSoundsOn: () => boolean, hasGlobalShortcuts: () => boolean, hasUpdater: () => boolean, showLauncher: () => void, isLauncherVisible: () => boolean, launcherBounds: () => Bounds | null, cursorWorkArea: () => Bounds }
 
 // Reads one value of the main process through the probe main.js exposes in test mode.
 export const probe = <K extends keyof Probe>(app: ElectronApplication, key: K): Promise<ReturnType<Probe[K]>> =>
