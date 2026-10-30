@@ -62,16 +62,29 @@ test('the folded island unfolds on a click at its coordinates', async ({}, testI
   const html = island.locator('html')
   await expect(html).toHaveAttribute('data-island', 'compact')
 
-  // Get the island bounds from the main process probe
+  // Get the island bounds from the main process probe (screen coordinates of the glass window)
   const bounds = await probe(app, 'islandBounds')
   expect(bounds).not.toBeNull()
   expect(bounds!.width).toBeGreaterThan(0)
   expect(bounds!.height).toBeGreaterThan(0)
 
-  // Click at the center of the island bounds (in the content window coordinates)
-  // The content window covers the work area, so we need to click at the island's position relative to the content window
-  await island.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2)
+  // Get the content window bounds (screen coordinates) to convert to page coordinates
+  const content = await probe(app, 'contentBounds')
+  expect(content).not.toBeNull()
+
+  // Click at the center of the island, converted to content window (page) coordinates
+  const clickX = bounds!.x + bounds!.width / 2 - content!.x
+  const clickY = bounds!.y + bounds!.height / 2 - content!.y
+  await island.mouse.click(clickX, clickY)
+
   await expect(html).toHaveAttribute('data-island', 'open')
   await expect.poll(() => probe(app, 'isIslandFocused')).toBe(true)
+
+  // The glass window must grow to the open size (not stay folded)
+  await expect.poll(async () => {
+    const b = await probe(app, 'islandBounds')
+    return b !== null && b.width >= 700 && b.height >= 200
+  }, { timeout: 5000 }).toBe(true)
+
   await attachScreenshot(testInfo, island, 'ile-ouverte-par-clic-coordonnees')
 })
