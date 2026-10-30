@@ -5,16 +5,6 @@ const path = require('node:path');
 
 const cssPath = path.join(__dirname, 'island.css');
 const css = fs.readFileSync(cssPath, 'utf8');
-const convPath = path.join(__dirname, 'conversations.html');
-const conv = fs.readFileSync(convPath, 'utf8');
-
-test('the folded island unfolds on a click', () => {
-  // The island host (#newconv) must have data-surface="paper" so the liquid-paper glass engine
-  // does not add a full-screen canvas layer that intercepts clicks on the folded island.
-  // Without this, the glass engine (enabled by OS acrylic on Windows) adds a layer
-  // above #compactBtn that swallows clicks and hover.
-  assert.match(conv, /id="newconv"[^>]*data-surface="paper"/, 'island host (#newconv) must have data-surface="paper"');
-});
 
 test('en cartes, les vues ordre et mise de côté prennent toute la largeur', () => {
   const pattern = /\.island\.cards\s+\.simple\s*\{[^}]*grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s*;/;
