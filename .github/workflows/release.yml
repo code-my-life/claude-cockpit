@@ -111,15 +111,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${GITHUB_REF_NAME}" graphify-out/graph.json --repo "${GITHUB_REPOSITORY}" --clobber
-
-  trigger-global-graph:
-    needs: build-graph
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    steps:
-      - name: Dispatch to code-graph
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          repository: code-my-life/code-graph
-          event-type: repo-released
-          client-payload: '{"repo": "${{ github.repository }}", "tag": "${{ github.ref_name }}"}'
