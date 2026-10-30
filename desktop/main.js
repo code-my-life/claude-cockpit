@@ -627,6 +627,7 @@ const exposeTestProbe = () => {
     isLauncherVisible: () => launcherWin !== null && !launcherWin.isDestroyed() && launcherWin.isVisible(),
     launcherBounds: () => (launcherWin === null || launcherWin.isDestroyed() ? null : launcherWin.getBounds()),
     cursorWorkArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+    islandBounds: () => (glassWin === null || glassWin.isDestroyed() ? null : glassWin.getBounds()),
   }
 }
 
