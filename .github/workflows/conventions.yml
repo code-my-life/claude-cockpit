@@ -1,0 +1,17 @@
+name: Conventions
+
+# La branche, le titre et le texte de chaque pull request suivent le type de son issue (ADR 0017 de
+# hermes-software-factory) : le contrôle vit dans code-my-life/.github, ce workflow ne fait que l'appeler.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  conventions:
+    name: Conventions
+    uses: code-my-life/.github/.github/workflows/conventions.yml@main
